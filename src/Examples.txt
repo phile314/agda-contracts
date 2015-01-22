@@ -1,0 +1,39 @@
+-- first question: We need a more precise type. Nat is not good enough.
+-- Could be either Int, Integer, Long and so on.
+--
+-- We could adapt the idris FFI style for this?
+-- Much more complicated will be datatypes.
+--
+-- We can use the mkForeign idris approach, and later on add
+-- syntactic sugar if necessary. That sounds like a reasonable plan?
+
+-- Idris FFI example
+-- foo : Int -> IO Int
+-- foo x = mkForeign (FFun "foo" [FInt] FInt) x
+
+
+gcd : (x y : Nat) -> (| z : Nat | z divides x && z divides y |)
+
+
+map : {A B : Set} -> (f : A -> B) -> (xs : List A) -> (| ys : List B | length xs == length ys &&
+    forall i . i > 0 && i < length xs ==> ys !! i == f (xs !! i) |)
+
+
+getLine : (| x : IO String | not ('\n' elem x ) |)
+getLine = mkForeign (HSFun "UHC.Base.getLine" [] (HSIO HSString))
+
+sum : (xs : List Nat) -> (| r : Nat | r == foldr (+) 0 xs |)
+
+-- string append
++s+ : (x : String) -> (y : String) -> (| z : String | z == (toList x) ++ (toList y)|)
+
+splitOn : (x : String) -> (sep : Char) -> (| gr : List String | length gr - 1 == number of sep in x |)
+
+-- we can only validate the contract at the start & end
+foldr : (inv : Contract B) -> (f : A -> B -> B) -> (| a : B | inv a |) -> List A -> (| r : B | inv r |)
+foldr inv = ..
+
+nub : (xs : List A) -> (| ys : List A | all (1 _==_ . length) (group ys) |)
+
+
+sort : (xs : List A) -> (| ys : List A | isSorted ys |)
