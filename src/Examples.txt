@@ -37,3 +37,24 @@ nub : (xs : List A) -> (| ys : List A | all (1 _==_ . length) (group ys) |)
 
 
 sort : (xs : List A) -> (| ys : List A | isSorted ys |)
+
+insert : (| xs : List A | isSorted xs |) -> (x : A) -> (| ys : List A | isSorted ys && x elem ys)
+
+
+-----------------------------------------------------
+
+insert1 : (xs : List A) -> (xs_p : Sorted xs) -> (x : A) -> (| ys : List A | isSorted ys && x elem ys)
+insert1 = mkForeign (HSFun "hsinsert" [HSList A, A] (HSList A))
+
+-- external interface
+insert : (xs : SortedList A) -> (x : A) -> (ys : SortedList A ** x elem ys)
+insert ..
+
+-- If we only talk about calling HS through the FFI. Does it ever occur that we need
+-- to establish the preconditions using contracts?
+-- This can potentially occur with higher-order functions, when we want to validate the input
+-- from the HS function. eg.:
+
+foldr = HS function
+
+sum xs = foldr (\a b -> || a elem xs || a agda_+_ b) 0 xs
