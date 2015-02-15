@@ -58,3 +58,48 @@ insert ..
 foldr = HS function
 
 sum xs = foldr (\a b -> || a elem xs || a agda_+_ b) 0 xs
+
+
+---------------------------------------------------------
+Higher Order Contracts
+---------------------------------------------------------
+Use case: callbacks / continuation passing
+          e.g. GUIs, Iteratees, CPS
+Tricky part: Contracts would often depend on the real world, but we don't want IO contracts. Might also be racy.
+
+-- HS defs
+data ListView a = ... items :: IORef [a] ....
+
+onListItemSelected :: ListView a -> (ListIndex -> IO ()) -> IO ()
+onListItemSelected' :: (lst : ListView a) -> ( {x : ListIndex | x in (getItems lst) } -> IO ()) -> IO ()
+-- or simpler, index >= 0. getItems is in IO, so how would that work?
+
+-- assume we use OpenGL, and convert mouse coordinates to ([0;1], [0;1]). Then we could specify a contract for that.
+-- If we would use pixel-coordinates, we would need to know the size of the surface. This would probably be in IO as well..
+setMouseHandler :: ((Double, Double) -> IO ()) -> IO ()
+setMouseHandler :: ({ (x : Double, y : Double) | x,y in [0..1] } -> IO ()) -> IO ()
+
+
+(actually, IO in contracts shouldn't be that much of a problem, assuming the result of a function is in IO. Then we can just do this
+for the list example:
+do
+    items <- getItems
+    assert (index in items)
+    DoSomething..
+)
+
+Actually, this means we can also use asserts to check the current state.
+do
+    setWindowSize w
+    w' <- getWindowSize
+    assert w == w'
+
+----------------------------------------------------------
+Evaluation
+----------------------------------------------------------
+As we assume that we are in a lazy language, contracts are only
+checked if the body is evaluated.
+
+Should a failed contract call error? Or should we have some special
+support for a MonadFail or MonadContract, where the user can specify the
+behaviour on error? For FFI calls, just crashing should be okay.
