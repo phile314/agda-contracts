@@ -75,10 +75,10 @@ data T : ℕ → Set where
     → List (T n) -- argument for HSₐ
     → List (T n) -- arguments for Agdaₐ
     → T n
-  lift_ : ∀ {n k}
+{-  lift_ : ∀ {n k}
     → {p : k ≥″ n}
     → T n
-    → T k
+    → T k-}
 
 {-mkTy : ∀ {n} → T n → Set1
 mkTy 
@@ -109,7 +109,6 @@ elAGDA : ∀ {n} → (t : T n) → Term
 elAGDA (v k ∙ xs) = var (toℕ k) (List.map elArg xs)
 elAGDA (def x ∙ xs) = def x (List.map elArg xs)
 elAGDA (π t ⇒ t₁) = pi (arg def-argInfo (el unknown (elAGDA t))) (abs "" (el unknown (elAGDA t₁)))
-elAGDA (T.lift t) = elAGDA t
 elAGDA (set l) = sort (lit l)
 elAGDA (iso i HSₐ AGDAₐ) = def (quote PartIso'.AGDA) [ arg def-argInfo isoWithAgdaArgs ]
   where iso' = def (quote PartIso.iso) [ arg def-argInfo (def i []) ]
@@ -117,8 +116,68 @@ elAGDA (iso i HSₐ AGDAₐ) = def (quote PartIso'.AGDA) [ arg def-argInfo isoWi
         isoWithAgdaArgs : Term
         isoWithAgdaArgs = app isoWithHsArgs (List.map (arg def-argInfo ∘ elAGDA) AGDAₐ)
 
-
 elArg t = arg def-argInfo (elAGDA t)
+
+open import Data.String
+
+HsName : Set
+HsName = String
+
+data HS_Type : ℕ → Set where
+  HS-var : ∀{n} (k : Fin n) → HS_Type n -- (k : Fin n)
+  HS-App : ∀ {n} → (HS_Type n) → (HS_Type n) → (HS_Type n)
+  -- shared rep.
+  HS-Shared : ∀{n} → HsName → Name → HS_Type n
+  HS-∀ : ∀ {n} → HS_Type (ℕ.suc n) → HS_Type n
+  _HS⇒_ : ∀ {n} → HS_Type n → HS_Type n → HS_Type n
+
+open import Data.Vec as Vec
+
+{-HStoTy : ∀ {n} → HS_Type n → Term
+HStoTy (HS-var x) = var (toℕ x) []
+HStoTy (HS-App t t₁) = app (HStoTy t) List.[ arg def-argInfo (HStoTy t₁) ]
+HStoTy (HS-Shared x x₁) = def x₁ []
+HStoTy (HS-∀ t) = pi (arg def-argInfo (el {!!} {!!})) (abs "" (el {!!} {!HStoTy !}))
+HStoTy (HS-⇒ t t₁) = {!!}-}
+
+open import Data.String as S
+open import Data.Nat.Show as NS
+
+ΓP : ℕ → Set
+ΓP n = Vec String n
+
+printHSty1 : ∀ {n} → (env : ΓP n) → HS_Type n → String
+printHSty1 e (HS-var k) = lookup k e
+printHSty1 e (HS-App ty ty₁) = "(" S.++ printHSty1 e ty S.++ " " S.++ printHSty1 e ty₁ S.++ ")"
+printHSty1 e (HS-Shared x x₁) = "(" S.++ x S.++ " as " S.++ showName x₁ S.++ ")"
+printHSty1 {n} e (HS-∀ ty) = "(∀ " S.++ nm S.++ " . " S.++ printHSty1 e' ty S.++ ")"
+  where nm = ("a" S.++ NS.show n)
+        e' = nm Vec.∷ e
+printHSty1 e (ty HS⇒ ty₁) = "(" S.++ printHSty1 e ty S.++ " → " S.++ printHSty1 e ty₁ S.++ ")"
+
+printHSty : HS_Type 0 → String
+printHSty = printHSty1 []
+
+mapTy : HS_Type 0
+mapTy = HS-∀ (((HS-var (fromℕ 0)) HS⇒ (HS-var (fromℕ 0))) HS⇒ ((HS-App listTy (HS-var (fromℕ 0))) HS⇒ HS-App listTy (HS-var (fromℕ 0))))
+  where listTy = HS-Shared "HsList" (quote List)
+
+
+-- off is the number of pis not introducting a forall
+elHS1 : ∀ {n} (e : ℕ) → (t : T n) → Maybe (HS_Type (n ∸ e))
+elHS1 e (set l) = nothing
+elHS1 {n} e (v k ∙ x) with (toℕ k) ∸ e
+... | p with (ℕ.suc p) ≤? n ∸ e
+elHS1 e (v k ∙ x) | p | yes p₁ = just (HS-var ( fromℕ≤  p₁))
+elHS1 e (v k ∙ x) | p | no ¬p = nothing
+elHS1 e (def x ∙ x₁) = {!!}
+elHS1 e (π set l ⇒ t₁) = just (HS-∀ {!!})
+elHS1 e (π (iso x x1 x2) ⇒ t1) = {!!}
+elHS1 e (π t ⇒ t₁) = {!!}
+elHS1 e (iso x x₁ x₂) = {!!}
+
+elHS : (t : T 0) → Maybe (HS_Type 0)
+elHS t = elHS1 {0} 0 t
 
 open import Data.Vec
 
