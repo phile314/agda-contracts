@@ -170,8 +170,10 @@ elHS1 {n} e (v k ∙ x) with (toℕ k) ∸ e
 ... | p with (ℕ.suc p) ≤? n ∸ e
 elHS1 e (v k ∙ x) | p | yes p₁ = just (HS-var ( fromℕ≤  p₁))
 elHS1 e (v k ∙ x) | p | no ¬p = nothing
-elHS1 e (def x ∙ x₁) = {!!}
-elHS1 e (π set l ⇒ t₁) = just (HS-∀ {!!})
+elHS1 e (def x ∙ x₁) = {!!} -- this should become hs-shared here
+elHS1 e (π set l ⇒ t₁) with elHS1 e t₁
+elHS1 e (π set l ⇒ t₁) | just x = just (HS-∀ {!!})
+elHS1 e (π set l ⇒ t₁) | nothing = nothing --just (HS-∀ (elHS1 {?} ? {!!}))
 elHS1 e (π (iso x x1 x2) ⇒ t1) = {!!}
 elHS1 e (π t ⇒ t₁) = {!!}
 elHS1 e (iso x x₁ x₂) = {!!}
