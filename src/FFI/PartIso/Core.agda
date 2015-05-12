@@ -5,6 +5,7 @@ open import Relation.Nullary
 open import Data.Maybe
 open import Data.Nat
 open import Data.List as List
+open import Function
 
 data Conversion {a b} (A : Set a) (B : Set b) : Set (L.suc (a L.⊔ b)) where
   total : (A → B) → Conversion A B
@@ -16,20 +17,20 @@ data Conversion {a b} (A : Set a) (B : Set b) : Set (L.suc (a L.⊔ b)) where
   [] : ArgTys {c}
   _∷_ : (A : Set c) → ArgTys → ArgTys-}
 
-ArgTys : ∀ {c} → Set (L.suc c)
-ArgTys {c} = List (Set c)
+ArgTys : Set₁ --(L.suc c)
+ArgTys = List (Set)
 
-data WithArgs {c} : (ArgTys {c}) → Set (L.suc c) where
+data WithArgs : (ArgTys ) → Set₁ where
   [] : WithArgs []
-  _∷_ : {A : Set c} → (a : A) → {AS : ArgTys} → WithArgs AS → WithArgs (A List.∷ AS)
+  _∷_ : {A : Set} → (a : A) → {AS : ArgTys} → WithArgs AS → WithArgs (A List.∷ AS)
 
-argsToTy : ∀ {b c} → ArgTys {c} → Set b → Set (b L.⊔ c)
-argsToTy {b} {c} [] f = Lift {b} {c} f
-argsToTy {b} {c} (x List.∷ a) f = x → argsToTy {b} {c} a f
+argsToTy : ∀ {b} → ArgTys → Set b → Set (b)
+argsToTy {b} [] f = f
+argsToTy {b} (x List.∷ a) f = x → argsToTy {b} a f
 
 open import Data.Product
 
-record PartIso' {l} (agdaArgTys : ArgTys {l}) (HS : Set l) : Set (L.suc l) where
+record PartIso' {l} (agdaArgTys : ArgTys) (HS : Set l) : Set (L.suc l) where
   field AGDA : Set l -- agda type
   field there : Conversion AGDA HS
   field back : Conversion HS AGDA
@@ -37,10 +38,10 @@ record PartIso' {l} (agdaArgTys : ArgTys {l}) (HS : Set l) : Set (L.suc l) where
 {-mkTy : ∀ {l} → (agdaArgTys : ArgTys {l}) (HS : Set l) (agdaArgs : WithArgs agdaArgTys) → Set (L.suc l)
 mkTy = PartIso'-}
   
-record PartIso {l} : Set (L.suc l) where
-  field HSₐ : ArgTys {l}
-  field AGDAₐ : ArgTys {l}
-  field iso : argsToTy HSₐ (Σ (Set l) (λ hsty → (argsToTy AGDAₐ (PartIso' AGDAₐ hsty))))
+record PartIso : Set1 where
+  field HSₐ : ArgTys
+  field AGDAₐ : ArgTys
+  field iso : argsToTy HSₐ (Σ (Set) (λ hsty → (argsToTy AGDAₐ (PartIso' AGDAₐ hsty))))
   --WithArgs HSₐ → Σ (Set l) (λ hs → (WithArgs AGDAₐ → PartIso' AGDAₐ hs))
 
 {-getFromType : ∀ {a b c argTys} → PartIso {c} {a} {b} argTys → WithArgs argTys → Set a
@@ -52,7 +53,7 @@ getFromType p args = PartIso'.FROM (PartIso.other p args)-}
 open import Data.Fin
 open import Reflection
 
-data T {l} : ℕ → Set (L.suc l) where
+data T : ℕ → Set where
   set : (l : ℕ) → T 0
   -- var
   v_∙_ : ∀ {n}
@@ -70,7 +71,7 @@ data T {l} : ℕ → Set (L.suc l) where
     → T n
 
   iso : ∀ {n}
-    → PartIso {l}
+    → Name --PartIso {l}
     → List (T n) -- argument for HSₐ
     → List (T n) -- arguments for Agdaₐ
     → T n
@@ -89,6 +90,17 @@ mkTy (T.lift t) = mkTy t-}
 def-argInfo : Arg-info
 def-argInfo = arg-info visible relevant
 
+-- Part iso together with the name is has been unquoted into.
+--PartIsoWithDecl : ∀ {l} → Set (L.suc l)
+--PartIsoWithDecl = (PartIso × Name)
+
+-- There is no way to apply a term to something, e.g.:
+-- app (unquoteTerm (iso)) (args...)
+
+-- apply
+--applyHsArgs : ∀ {l} → PartIsoWithDecl {l} → Term
+--applyHsArgs (proj₁ , proj₂) = def proj₂ {!!}
+
 {-# TERMINATING #-}
 elArg : ∀ {n} → (t : T n) → Arg Term
 
@@ -99,21 +111,53 @@ elAGDA (def x ∙ xs) = def x (List.map elArg xs)
 elAGDA (π t ⇒ t₁) = pi (arg def-argInfo (el unknown (elAGDA t))) (abs "" (el unknown (elAGDA t₁)))
 elAGDA (T.lift t) = elAGDA t
 elAGDA (set l) = sort (lit l)
-elAGDA (iso i HSₐ AGDAₐ) = def (quote PartIso'.AGDA) [ arg def-argInfo {!!} ]
+elAGDA (iso i HSₐ AGDAₐ) = def (quote PartIso'.AGDA) [ arg def-argInfo isoWithAgdaArgs ]
+  where iso' = def (quote PartIso.iso) [ arg def-argInfo (def i []) ]
+        isoWithHsArgs = def (quote proj₂) [ arg def-argInfo (app iso' (List.map (arg def-argInfo ∘ elAGDA) HSₐ)) ]
+        isoWithAgdaArgs : Term
+        isoWithAgdaArgs = app isoWithHsArgs (List.map (arg def-argInfo ∘ elAGDA) AGDAₐ)
+
 
 elArg t = arg def-argInfo (elAGDA t)
 
 open import Data.Vec
 
-vec⇔list : PartIso
+{-vec⇔list : PartIso
 vec⇔list = record
   { HSₐ = List.[ Set ]
   ; AGDAₐ = List.[ Lift ℕ ]
   ; iso = λ x → L.lift ((List (Lift x)) , (λ x₁ → L.lift (record { AGDA = Vec (Lift x) (lower x₁) })))
+  }-}
+
+open import Data.Integer as I
+
+ℕ⇔ℤ : PartIso
+ℕ⇔ℤ = record
+  { HSₐ = []
+  ; AGDAₐ = []
+  ; iso = (ℤ , (record { AGDA = ℕ ; there = total (+_) ; back = withMaybe f }))
   }
+  where f : ℤ → Maybe ℕ
+        f -[1+ n ] = nothing
+        f (+ n) = just n
 
-fTy : T 0
-fTy = π (set 0) ⇒ (π (def (quote ℕ) ∙ []) ⇒ (π (π (v (fromℕ 1) ∙ []) ⇒ (v (fromℕ 2) ∙ [])) ⇒ (π (iso vec⇔list List.[ v (fromℕ 2) ∙ [] ] List.[ T.lift (v (fromℕ 1) ∙ []) ]) ⇒ (iso vec⇔list List.[ (v (fromℕ 3) ∙ []) ] List.[ T.lift (v (fromℕ 2) ∙ [] )]))))
+gTy : T  0
+gTy = π set 0 ⇒ (v (fromℕ 0) ∙ [])
 
-k : unquote (elAGDA fTy)
-k = {!!}
+--fTy : T 0
+--fTy = π (set 0) ⇒ (π (def (quote ℕ) ∙ []) ⇒ (π (π (v (fromℕ 1) ∙ []) ⇒ (v (fromℕ 2) ∙ [])) ⇒ (π (iso vec⇔list List.[ v (fromℕ 2) ∙ [] ] List.[ T.lift (v (fromℕ 1) ∙ []) ]) ⇒ (iso vec⇔list List.[ (v (fromℕ 3) ∙ []) ] List.[ T.lift (v (fromℕ 2) ∙ [] )]))))
+
+fTy2 : T 0
+fTy2 = π (set 0) ⇒ (π (def (quote ℕ) ∙ []) ⇒ (π (π (v (fromℕ 1) ∙ []) ⇒ (v (fromℕ 2) ∙ [])) ⇒ (v (fromℕ 2) ∙ []))) -- ⇒ (π (iso vec⇔list List.[ v (fromℕ 2) ∙ [] ] List.[ T.lift (v (fromℕ 1) ∙ []) ]) ⇒ (iso vec⇔list List.[ (v (fromℕ 3) ∙ []) ] List.[ T.lift (v (fromℕ 2) ∙ [] )]))))
+
+fTy3 : T 0
+fTy3 = π (iso (quote ℕ⇔ℤ) [] []) ⇒ (iso (quote ℕ⇔ℤ) [] [])
+
+fTy4 : T  0
+fTy4 = iso (quote ℕ⇔ℤ) [] []
+
+g : unquote (elAGDA gTy)
+g = {!unquote (elAGDA fTy3)!}
+
+--f : unquote (elAGDA fTy)
+--f = {!!}
