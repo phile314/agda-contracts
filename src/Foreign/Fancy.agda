@@ -55,7 +55,7 @@ open import Data.Fin
 open import Reflection
 
 data T : ℕ → Set where
-  set : (l : ℕ) → T 0
+  set : ∀ {n} → (l : ℕ) → T n
   -- var
   v_∙_ : ∀ {n}
     → (k : Fin n)
@@ -132,26 +132,139 @@ mapTy = HS-UHC "Data.List.map" (∀' (((var (fromℕ 0)) ⇒ (var (fromℕ 0))) 
 
 open import Relation.Binary.PropositionalEquality
 
+open import Category.Monad
+open import Category.Monad.Indexed
+open import Category.Applicative.Indexed
 
+open Category.Monad.Indexed.RawIMonad {L.zero} {L.zero} Data.Maybe.monad
+
+{-import Category.Monad
+open Category.Monad.RawMonad {_} {Maybe}-}
+
+
+
+open import Data.Nat.Properties.Simple
+
+{-
+Goal: Maybe (τ-Hs (toℕ (n ℕ- e)))
+————————————————————————————————————————————————————————————
+t' : Maybe (τ-Hs (toℕ (n N.+ 1 ℕ- inject+ 1 e)))
+t₁ : T (ℕ.suc n)
+l  : ℕ
+e  : Fin (ℕ.suc n)
+n  : ℕ
+-}
+
+open Relation.Binary.PropositionalEquality.≡-Reasoning
+--lem1 : ∀ {n} {e : Fin (ℕ.suc n)} → ((n N.+ 1) ℕ- (inject+ 1 e)) ≡ (Fin.suc (n ℕ- e))
+--lem1 = ?
+
+module A where
+  open import Relation.Binary.HeterogeneousEquality as H
+  lem3 : ∀ {n : ℕ} {e : Fin (ℕ.suc n)} → ((n N.+ 1) ℕ- (inject+ 1 e)) ≅ (Fin.suc (n ℕ- e))
+  lem3 {ℕ.zero} {Fin.zero} = refl
+  lem3 {ℕ.zero} {Fin.suc ()}
+  lem3 {ℕ.suc n} {Fin.zero} rewrite +-comm n 1 = refl
+  lem3 {ℕ.suc n} {Fin.suc e} = lem3 {n} {e}
+--  ... | p = p 
+
+open A
+open import Relation.Binary.HeterogeneousEquality as H using ()
+
+lem4 : ∀ {n} {k : Fin n} → ℕ.suc (toℕ k) ≡ toℕ (Fin.suc k)
+lem4 = refl
+
+lem6 : ∀ {n} {e : Fin n} → toℕ (inject₁ e) ≡ toℕ e
+lem6 {e = Fin.zero} = refl
+lem6 {e = Fin.suc e} = cong ℕ.suc lem6
+
+
+≡-to-≤ : {a b : ℕ} → a ≡ b → a N.≤ b
+≡-to-≤ {ℕ.zero} refl = z≤n
+≡-to-≤ {ℕ.suc a} refl = s≤s (≡-to-≤ refl)
+
+lem10 : ∀ {n} {e : Fin (ℕ.suc n)} → (toℕ e) N.≤ n
+lem10 {ℕ.zero} {Fin.zero} = z≤n
+lem10 {ℕ.zero} {Fin.suc ()}
+lem10 {ℕ.suc n} {Fin.zero} = z≤n
+lem10 {ℕ.suc n} {Fin.suc e} = s≤s lem10
+
+open import Data.Nat.Properties
+
+lem9 : ∀ {n} {e : Fin (ℕ.suc n)} → 2 N.+ n ∸ (toℕ (inject₁ e)) ≡ 1 N.+ (1 N.+ n ∸ toℕ e)
+lem9 {n} {e} = begin
+    2 N.+ n ∸ toℕ (inject₁ e)
+  ≡⟨ cong (λ x → 2 N.+ n ∸ x) (lem6 {_} {e} )⟩
+    ((1 N.+ 1) N.+ n) ∸ toℕ e
+  ≡⟨ +-∸-assoc (1 N.+ 1) {n} {toℕ e} lem10 ⟩
+    1 N.+ (1 N.+ (n ∸ toℕ e))
+  ≡⟨ cong (λ x → 1 N.+ x) (sym (+-∸-assoc 1 {n} {toℕ e} lem10)) ⟩
+    1 N.+ ((1 N.+ n) ∸ toℕ e)
+  ∎
+
+--  ℕ.suc (ℕ.suc n) ∸ toℕ (inject₁ e) N.≤ ℕ.suc (ℕ.suc n ∸ toℕ e)
+
+--  Fin.suc (n ℕ- e) ≡  inject≤ ((ℕ.suc n) ℕ- (inject₁ e)) ...
+-- Goal: ℕ.suc (ℕ.suc n) ∸ toℕ (inject₁ e) ≡ ℕ.suc (ℕ.suc n ∸ toℕ e)
+lem5 : ∀ {n} {e : Fin (ℕ.suc n)} → Fin.suc (n ℕ- e) ≡ inject≤ {_} {ℕ.suc (ℕ.suc n ∸ toℕ e)} ((ℕ.suc n) ℕ- (inject₁ e))(≡-to-≤ {ℕ.suc (ℕ.suc n) ∸ toℕ (inject₁ e)} {ℕ.suc (ℕ.suc n ∸ toℕ e)} (lem9 {n} {e}))
+lem5 {e = Fin.zero} = {!!}
+lem5 {e = Fin.suc e} = {!!}
+{-lem5 {n} {e} = begin
+    Fin.suc (n ℕ- e)
+  ≡⟨ {!!} ⟩
+    {!!}
+  ≡⟨ {!!} ⟩
+    inject≤ {_} {ℕ.suc (ℕ.suc n ∸ toℕ e)} ((ℕ.suc n) ℕ- (inject₁ e))(≡-to-≤ {ℕ.suc (ℕ.suc n) ∸ toℕ (inject₁ e)} {ℕ.suc (ℕ.suc n ∸ toℕ e)} (lem9 {n} {e}))
+    ∎-}
+
+open import Data.Fin.Properties
+
+lem : {n : ℕ} {e : Fin (ℕ.suc n)} → (ℕ.suc (toℕ (n ℕ- e))) ≡ toℕ ((ℕ.suc n) ℕ- (inject₁ e))
+lem {n} {e} = begin
+    (ℕ.suc (toℕ (n ℕ- e)))
+  ≡⟨ lem4 ⟩
+    toℕ (Fin.suc (n ℕ- e))
+  ≡⟨ cong toℕ (lem5 {n} {e}) ⟩
+    toℕ (inject≤ {_} { ℕ.suc (ℕ.suc n ∸ toℕ e)} (ℕ.suc n ℕ- inject₁ e) (≡-to-≤ { ℕ.suc (ℕ.suc n) ∸ toℕ (inject₁ e)} {ℕ.suc (ℕ.suc n ∸ toℕ e)} (lem9 {n} {e})))
+  ≡⟨ inject≤-lemma (ℕ.suc n ℕ- inject₁ e) (≡-to-≤ (lem9 {n} {e})) ⟩
+    toℕ ((ℕ.suc n) ℕ- (inject₁ e))
+  ∎
+
+{-lem {ℕ.zero} {Fin.zero} = refl
+lem {ℕ.zero} {Fin.suc ()}
+lem {ℕ.suc n} {e} = {!!}-}
+
+lem2 : ∀ {n} → (n N.+ 1) ≡ ℕ.suc n
+lem2 {ℕ.zero} = refl
+lem2 {ℕ.suc n} = cong ℕ.suc lem2
+
+k : ∀ {n} → T (ℕ.suc n) → T (n N.+ 1)
+k {n} t rewrite lem2 {n} = t
+
+m : ∀ {n} {e : Fin (ℕ.suc n)} {w : FFIWay} → τ-Hs {w} (toℕ (ℕ.suc n ℕ- inject₁ e)) → τ-Hs {w} (ℕ.suc (toℕ (n ℕ- e)))
+m {n} {e}  t rewrite lem {n} {e} = t
 
 -- off is the number of pis not introducting a forall
-elHS1 : ∀ {n} (e : ℕ) → (t : T n) → Maybe (τ-Hs {HS-UHC} (n ∸ e))
+{-# TERMINATING #-}
+elHS1 : {n : ℕ} (e : Fin (1 N.+ n)) → (t : T n) → Maybe (τ-Hs {HS-UHC} (toℕ (n ℕ- e)))
 elHS1 e (set l) = nothing
-elHS1 {n} e (v k ∙ x) with (toℕ k) ∸ e
-... | p with (ℕ.suc p) ≤? n ∸ e
-elHS1 e (v k ∙ x) | p | yes p₁ = just (var ( fromℕ≤  p₁))
+elHS1 {n} e (v k ∙ x) with (toℕ k) ∸ (toℕ e)
+... | p with (ℕ.suc p) ≤? (toℕ (n ℕ- e))
+elHS1 e (v k ∙ x) | p | yes p₁ = just (var (fromℕ≤ p₁))
 elHS1 e (v k ∙ x) | p | no ¬p = nothing
-elHS1 e (def x ∙ []) = just (apps (ty x) [])
-elHS1 e (def x ∙ xs) = {!!}
-elHS1 e (π set l ⇒ t₁) with elHS1 e t₁ | (1 N.∸ e) N.≟ ℕ.suc (0 ∸ e)
-elHS1 e (π set l ⇒ t₁) | just x | yes p = {!!}
-elHS1 e (π set l ⇒ t₁) | just x | no ¬p = nothing --just (∀' {!p!})
-elHS1 e (π set l ⇒ t₁) | nothing | p = nothing --just (HS-∀ (elHS1 {?} ? {!!}))
-elHS1 e (π t ⇒ t₁) = {!!}
-elHS1 e (iso x x₁ x₂) = {!!}
+elHS1 e (def x ∙ xs) with mapM Data.Maybe.monad (elHS1 e) xs
+... | xs' = xs' >>= (λ xs'' → just (apps (ty x) xs''))
+elHS1 {n} e (π (set l) ⇒ t₁) with elHS1 (inject₁ e) t₁ --(k t₁)
+... | p = p >>= λ p' → just (∀' (m {n} {e} p'))-- (m {n} {e} p'))
+elHS1 e (π t ⇒ t₁) with elHS1 e t | elHS1 (Fin.suc e) t₁
+... | p1 | p2 = p1 >>= λ p1' →
+  p2 >>= λ p2' →
+  just (p1' ⇒ p2')
+elHS1 e (iso x x₁ x₂) with mapM Data.Maybe.monad (elHS1 e) x₁
+... | hsArgs = hsArgs >>= λ hsArgs' → just (apps (ty (unquote {!!})) hsArgs')
 
 elHS : (t : T 0) → Maybe (τ-Hs 0)
-elHS t = elHS1 {0} 0 t
+elHS t = elHS1 {0} Fin.zero t
 
 open import Data.Vec
 
@@ -189,8 +302,15 @@ fTy3 = π (iso (quote ℕ⇔ℤ) [] []) ⇒ (iso (quote ℕ⇔ℤ) [] [])
 fTy4 : T  0
 fTy4 = iso (quote ℕ⇔ℤ) [] []
 
+x : Maybe (τ-Hs ℕ.zero)
+x = elHS gTy
+
 g : unquote (elAGDA gTy)
-g = {!unquote (elAGDA fTy3)!}
+g with x
+... | just x' = {!elHS gTy!}
+... | nothing = {!!}
+
+
 
 --f : unquote (elAGDA fTy)
 --f = {!!}
