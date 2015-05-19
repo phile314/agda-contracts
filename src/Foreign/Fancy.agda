@@ -1,14 +1,14 @@
 module Foreign.Fancy where
 
 open import Foreign.Base
-open import Level as L
+open import Level
 open import Relation.Nullary
 open import Data.Maybe
 open import Data.Nat as N
 open import Data.List as List
 open import Function
 
-data Conversion {a b} (A : Set a) (B : Set b) : Set (L.suc (a L.⊔ b)) where
+data Conversion {a b} (A : Set a) (B : Set b) : Set (Level.suc (a Level.⊔ b)) where
   total : (A → B) → Conversion A B
   withDec : (A → Dec B) → Conversion A B
   withMaybe : (A → Maybe B) → Conversion A B
@@ -31,15 +31,17 @@ argsToTy {b} (x List.∷ a) f = x → argsToTy {b} a f
 
 open import Data.Product
 
-record PartIso' {l} (agdaArgTys : ArgTys) (HS : Set l) : Set (L.suc l) where
+record PartIso' {l} (agdaArgTys : ArgTys) (HS : Set l) : Set (Level.suc l) where
   field AGDA : Set l -- agda type
   field there : Conversion AGDA HS
   field back : Conversion HS AGDA
 
 {-mkTy : ∀ {l} → (agdaArgTys : ArgTys {l}) (HS : Set l) (agdaArgs : WithArgs agdaArgTys) → Set (L.suc l)
 mkTy = PartIso'-}
-  
+
+open import Reflection
 record PartIso : Set1 where
+  field HS : Name
   field HSₐ : ArgTys
   field AGDAₐ : ArgTys
   field iso : argsToTy HSₐ (Σ (Set) (λ hsty → (argsToTy AGDAₐ (PartIso' AGDAₐ hsty))))
@@ -126,8 +128,8 @@ open import Data.String
 open import Level
 
 mapTy : ForeignSpec HS-UHC
-mapTy = HS-UHC "Data.List.map" (∀' (((var (fromℕ 0)) ⇒ (var (fromℕ 0))) ⇒ ((app listTy (var (fromℕ 0))) ⇒ app listTy (var (fromℕ 0)))))
-  where listTy : τ-Hs 1
+mapTy = HS-UHC "Data.List.map" (∀' (((var 0) ⇒ (var 0)) ⇒ ((app listTy (var 0)) ⇒ app listTy (var 0))))
+  where listTy : τ-Hs
         listTy = ty (quote List) {{record { foreign-spec = Data.HS-UHC "Data.List" }}}
 
 open import Relation.Binary.PropositionalEquality
@@ -136,7 +138,7 @@ open import Category.Monad
 open import Category.Monad.Indexed
 open import Category.Applicative.Indexed
 
-open Category.Monad.Indexed.RawIMonad {L.zero} {L.zero} Data.Maybe.monad
+open Category.Monad.Indexed.RawIMonad {Level.zero} {Level.zero} Data.Maybe.monad
 
 {-import Category.Monad
 open Category.Monad.RawMonad {_} {Maybe}-}
@@ -155,6 +157,7 @@ e  : Fin (ℕ.suc n)
 n  : ℕ
 -}
 
+{-
 open Relation.Binary.PropositionalEquality.≡-Reasoning
 --lem1 : ∀ {n} {e : Fin (ℕ.suc n)} → ((n N.+ 1) ℕ- (inject+ 1 e)) ≡ (Fin.suc (n ℕ- e))
 --lem1 = ?
@@ -242,31 +245,36 @@ k : ∀ {n} → T (ℕ.suc n) → T (n N.+ 1)
 k {n} t rewrite lem2 {n} = t
 
 m : ∀ {n} {e : Fin (ℕ.suc n)} {w : FFIWay} → τ-Hs {w} (toℕ (ℕ.suc n ℕ- inject₁ e)) → τ-Hs {w} (ℕ.suc (toℕ (n ℕ- e)))
-m {n} {e}  t rewrite lem {n} {e} = t
+m {n} {e}  t rewrite lem {n} {e} = t-}
+
+open import Data.List as L
 
 -- off is the number of pis not introducting a forall
 {-# TERMINATING #-}
-elHS1 : {n : ℕ} (e : Fin (1 N.+ n)) → (t : T n) → Maybe (τ-Hs {HS-UHC} (toℕ (n ℕ- e)))
+elHS1 : {n : ℕ} (e : ℕ) → (t : T n) → Maybe (τ-Hs {HS-UHC})
 elHS1 e (set l) = nothing
-elHS1 {n} e (v k ∙ x) with (toℕ k) ∸ (toℕ e)
-... | p with (ℕ.suc p) ≤? (toℕ (n ℕ- e))
-elHS1 e (v k ∙ x) | p | yes p₁ = just (var (fromℕ≤ p₁))
-elHS1 e (v k ∙ x) | p | no ¬p = nothing
-elHS1 e (def x ∙ xs) with mapM Data.Maybe.monad (elHS1 e) xs
-... | xs' = xs' >>= (λ xs'' → just (apps (ty x) xs''))
-elHS1 {n} e (π (set l) ⇒ t₁) with elHS1 (inject₁ e) t₁ --(k t₁)
-... | p = p >>= λ p' → just (∀' (m {n} {e} p'))-- (m {n} {e} p'))
-elHS1 e (π t ⇒ t₁) with elHS1 e t | elHS1 (Fin.suc e) t₁
-... | p1 | p2 = p1 >>= λ p1' →
-  p2 >>= λ p2' →
-  just (p1' ⇒ p2')
+elHS1 e (v k ∙ x) = just (var (toℕ k))
+elHS1 e (def x ∙ xs) =
+  mapM Data.Maybe.monad (elHS1 e) xs >>= λ xs' →
+  return (apps (ty x) xs')
+elHS1 {n} e (π (set l) ⇒ t₁) =
+  elHS1 e t₁ >>= λ t₁' →
+  return (∀' t₁')
+elHS1 e (π t ⇒ t₁) =
+  elHS1 e t >>= λ t' →
+  elHS1 (ℕ.suc e) t₁ >>= λ t₁' →
+  just (t' ⇒ t₁')
+-- problem:  Name is not a literal => we cannot unquote here.
+-- solution 1: Return terms in elHS1, and unquote on top level.
 elHS1 e (iso x x₁ x₂) with mapM Data.Maybe.monad (elHS1 e) x₁
-... | hsArgs = hsArgs >>= λ hsArgs' → just (apps (ty (unquote {!!})) hsArgs')
+... | hsArgs = hsArgs >>= λ hsArgs' → {!!} --just (apps (ty (unquote (def hsTy L.[ arg def-argInfo (def x []) ]))) hsArgs')
+  where hsTy = quote PartIso.HS
+        isoT = L.[ arg def-argInfo (def x []) ]
 
-elHS : (t : T 0) → Maybe (τ-Hs 0)
-elHS t = elHS1 {0} Fin.zero t
+elHS : (t : T 0) → Maybe (τ-Hs)
+elHS t = elHS1 {0} 0 t
 
-open import Data.Vec
+open import Data.Vec hiding (_>>=_)
 
 {-vec⇔list : PartIso
 vec⇔list = record
@@ -279,7 +287,8 @@ open import Data.Integer as I
 
 ℕ⇔ℤ : PartIso
 ℕ⇔ℤ = record
-  { HSₐ = []
+  { HS = quote ℕ
+  ; HSₐ = []
   ; AGDAₐ = []
   ; iso = (ℤ , (record { AGDA = ℕ ; there = total (+_) ; back = withMaybe f }))
   }
@@ -302,12 +311,14 @@ fTy3 = π (iso (quote ℕ⇔ℤ) [] []) ⇒ (iso (quote ℕ⇔ℤ) [] [])
 fTy4 : T  0
 fTy4 = iso (quote ℕ⇔ℤ) [] []
 
-x : Maybe (τ-Hs ℕ.zero)
-x = elHS gTy
+x : Maybe (τ-Hs)
+x = {!elHS fTy3!} --elHS gTy
+
+import Data.List
 
 g : unquote (elAGDA gTy)
 g with x
-... | just x' = {!elHS gTy!}
+... | just x' = {!elHS gTy >>= show-τ-Hs Data.List.[]!}
 ... | nothing = {!!}
 
 
