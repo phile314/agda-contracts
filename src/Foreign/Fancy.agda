@@ -41,7 +41,7 @@ mkTy = PartIso'-}
 
 open import Reflection
 record PartIso : Set1 where
-  field HS : Name
+  constructor mkPartIso
   field HSₐ : ArgTys
   field AGDAₐ : ArgTys
   field iso : argsToTy HSₐ (Σ (Set) (λ hsty → (argsToTy AGDAₐ (PartIso' AGDAₐ hsty))))
@@ -50,13 +50,19 @@ record PartIso : Set1 where
 {-getFromType : ∀ {a b c argTys} → PartIso {c} {a} {b} argTys → WithArgs argTys → Set a
 getFromType p args = PartIso'.FROM (PartIso.other p args)-}
 
+record PartIsoInt : Set1 where
+  field wrapped : PartIso
+  field HSₙ : Name
+  field AGDAₙ : Name
+  field foreign-data :  Data.ForeignData HS-UHC AGDAₙ
+
 
 
 
 open import Data.Fin
 open import Reflection
 
-data T : ℕ → Set where
+data T : ℕ → Set₂ where
   set : ∀ {n} → (l : ℕ) → T n
   -- var
   v_∙_ : ∀ {n}
@@ -75,35 +81,13 @@ data T : ℕ → Set where
     → T n
 
   iso : ∀ {n}
-    → Name --PartIso {l}
+    → PartIsoInt
     → List (T n) -- argument for HSₐ
     → List (T n) -- arguments for Agdaₐ
     → T n
-{-  lift_ : ∀ {n k}
-    → {p : k ≥″ n}
-    → T n
-    → T k-}
-
-{-mkTy : ∀ {n} → T n → Set1
-mkTy 
-mkTy (v k ∙ x) = Set
-mkTy (def x ∙ x₁) = Set
-mkTy (π t ⇒ t₁) = mkTy t → mkTy t₁
-mkTy (T.lift t) = mkTy t-}
 
 def-argInfo : Arg-info
 def-argInfo = arg-info visible relevant
-
--- Part iso together with the name is has been unquoted into.
---PartIsoWithDecl : ∀ {l} → Set (L.suc l)
---PartIsoWithDecl = (PartIso × Name)
-
--- There is no way to apply a term to something, e.g.:
--- app (unquoteTerm (iso)) (args...)
-
--- apply
---applyHsArgs : ∀ {l} → PartIsoWithDecl {l} → Term
---applyHsArgs (proj₁ , proj₂) = def proj₂ {!!}
 
 open Foreign.Base.Fun
 
@@ -117,7 +101,7 @@ elAGDA (def x ∙ xs) = def x (List.map elArg xs)
 elAGDA (π t ⇒ t₁) = pi (arg def-argInfo (el unknown (elAGDA t))) (abs "" (el unknown (elAGDA t₁)))
 elAGDA (set l) = sort (lit l)
 elAGDA (iso i HSₐ AGDAₐ) = def (quote PartIso'.AGDA) [ arg def-argInfo isoWithAgdaArgs ]
-  where iso' = def (quote PartIso.iso) [ arg def-argInfo (def i []) ]
+  where iso' = def (quote PartIso.iso) [ arg def-argInfo (def {!!} []) ]
         isoWithHsArgs = def (quote proj₂) [ arg def-argInfo (app iso' (List.map (arg def-argInfo ∘ elAGDA) HSₐ)) ]
         isoWithAgdaArgs : Term
         isoWithAgdaArgs = app isoWithHsArgs (List.map (arg def-argInfo ∘ elAGDA) AGDAₐ)
@@ -144,134 +128,36 @@ open Category.Monad.Indexed.RawIMonad {Level.zero} {Level.zero} Data.Maybe.monad
 open Category.Monad.RawMonad {_} {Maybe}-}
 
 
-
 open import Data.Nat.Properties.Simple
-
-{-
-Goal: Maybe (τ-Hs (toℕ (n ℕ- e)))
-————————————————————————————————————————————————————————————
-t' : Maybe (τ-Hs (toℕ (n N.+ 1 ℕ- inject+ 1 e)))
-t₁ : T (ℕ.suc n)
-l  : ℕ
-e  : Fin (ℕ.suc n)
-n  : ℕ
--}
-
-{-
-open Relation.Binary.PropositionalEquality.≡-Reasoning
---lem1 : ∀ {n} {e : Fin (ℕ.suc n)} → ((n N.+ 1) ℕ- (inject+ 1 e)) ≡ (Fin.suc (n ℕ- e))
---lem1 = ?
-
-module A where
-  open import Relation.Binary.HeterogeneousEquality as H
-  lem3 : ∀ {n : ℕ} {e : Fin (ℕ.suc n)} → ((n N.+ 1) ℕ- (inject+ 1 e)) ≅ (Fin.suc (n ℕ- e))
-  lem3 {ℕ.zero} {Fin.zero} = refl
-  lem3 {ℕ.zero} {Fin.suc ()}
-  lem3 {ℕ.suc n} {Fin.zero} rewrite +-comm n 1 = refl
-  lem3 {ℕ.suc n} {Fin.suc e} = lem3 {n} {e}
---  ... | p = p 
-
-open A
-open import Relation.Binary.HeterogeneousEquality as H using ()
-
-lem4 : ∀ {n} {k : Fin n} → ℕ.suc (toℕ k) ≡ toℕ (Fin.suc k)
-lem4 = refl
-
-lem6 : ∀ {n} {e : Fin n} → toℕ (inject₁ e) ≡ toℕ e
-lem6 {e = Fin.zero} = refl
-lem6 {e = Fin.suc e} = cong ℕ.suc lem6
-
-
-≡-to-≤ : {a b : ℕ} → a ≡ b → a N.≤ b
-≡-to-≤ {ℕ.zero} refl = z≤n
-≡-to-≤ {ℕ.suc a} refl = s≤s (≡-to-≤ refl)
-
-lem10 : ∀ {n} {e : Fin (ℕ.suc n)} → (toℕ e) N.≤ n
-lem10 {ℕ.zero} {Fin.zero} = z≤n
-lem10 {ℕ.zero} {Fin.suc ()}
-lem10 {ℕ.suc n} {Fin.zero} = z≤n
-lem10 {ℕ.suc n} {Fin.suc e} = s≤s lem10
-
-open import Data.Nat.Properties
-
-lem9 : ∀ {n} {e : Fin (ℕ.suc n)} → 2 N.+ n ∸ (toℕ (inject₁ e)) ≡ 1 N.+ (1 N.+ n ∸ toℕ e)
-lem9 {n} {e} = begin
-    2 N.+ n ∸ toℕ (inject₁ e)
-  ≡⟨ cong (λ x → 2 N.+ n ∸ x) (lem6 {_} {e} )⟩
-    ((1 N.+ 1) N.+ n) ∸ toℕ e
-  ≡⟨ +-∸-assoc (1 N.+ 1) {n} {toℕ e} lem10 ⟩
-    1 N.+ (1 N.+ (n ∸ toℕ e))
-  ≡⟨ cong (λ x → 1 N.+ x) (sym (+-∸-assoc 1 {n} {toℕ e} lem10)) ⟩
-    1 N.+ ((1 N.+ n) ∸ toℕ e)
-  ∎
-
---  ℕ.suc (ℕ.suc n) ∸ toℕ (inject₁ e) N.≤ ℕ.suc (ℕ.suc n ∸ toℕ e)
-
---  Fin.suc (n ℕ- e) ≡  inject≤ ((ℕ.suc n) ℕ- (inject₁ e)) ...
--- Goal: ℕ.suc (ℕ.suc n) ∸ toℕ (inject₁ e) ≡ ℕ.suc (ℕ.suc n ∸ toℕ e)
-lem5 : ∀ {n} {e : Fin (ℕ.suc n)} → Fin.suc (n ℕ- e) ≡ inject≤ {_} {ℕ.suc (ℕ.suc n ∸ toℕ e)} ((ℕ.suc n) ℕ- (inject₁ e))(≡-to-≤ {ℕ.suc (ℕ.suc n) ∸ toℕ (inject₁ e)} {ℕ.suc (ℕ.suc n ∸ toℕ e)} (lem9 {n} {e}))
-lem5 {e = Fin.zero} = {!!}
-lem5 {e = Fin.suc e} = {!!}
-{-lem5 {n} {e} = begin
-    Fin.suc (n ℕ- e)
-  ≡⟨ {!!} ⟩
-    {!!}
-  ≡⟨ {!!} ⟩
-    inject≤ {_} {ℕ.suc (ℕ.suc n ∸ toℕ e)} ((ℕ.suc n) ℕ- (inject₁ e))(≡-to-≤ {ℕ.suc (ℕ.suc n) ∸ toℕ (inject₁ e)} {ℕ.suc (ℕ.suc n ∸ toℕ e)} (lem9 {n} {e}))
-    ∎-}
-
-open import Data.Fin.Properties
-
-lem : {n : ℕ} {e : Fin (ℕ.suc n)} → (ℕ.suc (toℕ (n ℕ- e))) ≡ toℕ ((ℕ.suc n) ℕ- (inject₁ e))
-lem {n} {e} = begin
-    (ℕ.suc (toℕ (n ℕ- e)))
-  ≡⟨ lem4 ⟩
-    toℕ (Fin.suc (n ℕ- e))
-  ≡⟨ cong toℕ (lem5 {n} {e}) ⟩
-    toℕ (inject≤ {_} { ℕ.suc (ℕ.suc n ∸ toℕ e)} (ℕ.suc n ℕ- inject₁ e) (≡-to-≤ { ℕ.suc (ℕ.suc n) ∸ toℕ (inject₁ e)} {ℕ.suc (ℕ.suc n ∸ toℕ e)} (lem9 {n} {e})))
-  ≡⟨ inject≤-lemma (ℕ.suc n ℕ- inject₁ e) (≡-to-≤ (lem9 {n} {e})) ⟩
-    toℕ ((ℕ.suc n) ℕ- (inject₁ e))
-  ∎
-
-{-lem {ℕ.zero} {Fin.zero} = refl
-lem {ℕ.zero} {Fin.suc ()}
-lem {ℕ.suc n} {e} = {!!}-}
-
-lem2 : ∀ {n} → (n N.+ 1) ≡ ℕ.suc n
-lem2 {ℕ.zero} = refl
-lem2 {ℕ.suc n} = cong ℕ.suc lem2
-
-k : ∀ {n} → T (ℕ.suc n) → T (n N.+ 1)
-k {n} t rewrite lem2 {n} = t
-
-m : ∀ {n} {e : Fin (ℕ.suc n)} {w : FFIWay} → τ-Hs {w} (toℕ (ℕ.suc n ℕ- inject₁ e)) → τ-Hs {w} (ℕ.suc (toℕ (n ℕ- e)))
-m {n} {e}  t rewrite lem {n} {e} = t-}
 
 open import Data.List as L
 
+--apps : 
+
 -- off is the number of pis not introducting a forall
 {-# TERMINATING #-}
-elHS1 : {n : ℕ} (e : ℕ) → (t : T n) → Maybe (τ-Hs {HS-UHC})
+elHS1 : {n : ℕ} (e : ℕ) → (t : T n) → Maybe Term --Maybe (τ-Hs {HS-UHC})
 elHS1 e (set l) = nothing
-elHS1 e (v k ∙ x) = just (var (toℕ k))
+elHS1 e (v k ∙ x) = just (def (quote τ-Hs.var) ((arg def-argInfo (def (quote FFIWay.HS-UHC) L.[])) L.∷ L.[ arg def-argInfo (lit (nat (toℕ k))) ]))
 elHS1 e (def x ∙ xs) =
   mapM Data.Maybe.monad (elHS1 e) xs >>= λ xs' →
-  return (apps (ty x) xs')
+  return (def (quote apps) (((arg def-argInfo (quoteTerm (ty {way = HS-UHC} x)))) L.∷ {!xs'!}) ) --return (quoteTerm (apps (ty x) xs'))
 elHS1 {n} e (π (set l) ⇒ t₁) =
   elHS1 e t₁ >>= λ t₁' →
-  return (∀' t₁')
+  return (def (quote ∀') L.[ arg def-argInfo t₁' ])
 elHS1 e (π t ⇒ t₁) =
   elHS1 e t >>= λ t' →
   elHS1 (ℕ.suc e) t₁ >>= λ t₁' →
-  just (t' ⇒ t₁')
+  just (def (quote _⇒_) (arg def-argInfo t' L.∷ L.[ arg def-argInfo t₁' ]))
 -- problem:  Name is not a literal => we cannot unquote here.
 -- solution 1: Return terms in elHS1, and unquote on top level.
 elHS1 e (iso x x₁ x₂) with mapM Data.Maybe.monad (elHS1 e) x₁
-... | hsArgs = hsArgs >>= λ hsArgs' → {!!} --just (apps (ty (unquote (def hsTy L.[ arg def-argInfo (def x []) ]))) hsArgs')
-  where hsTy = quote PartIso.HS
-        isoT = L.[ arg def-argInfo (def x []) ]
+... | hsArgs = hsArgs >>= λ hsArgs' →
+  return (def (quote ty) (arg def-argInfo (lit (name hsTy)) L.∷ {!!})) --just (apps (ty (unquote (def hsTy L.[ arg def-argInfo (def x []) ]))) hsArgs')
+  where hsTy = PartIsoInt.HSₙ x --quote PartIso.HS
+        isoT = L.[ arg def-argInfo (def {!!} []) ]
 
-elHS : (t : T 0) → Maybe (τ-Hs)
+elHS : (t : T 0) → Maybe Term --(τ-Hs)
 elHS t = elHS1 {0} 0 t
 
 open import Data.Vec hiding (_>>=_)
@@ -285,16 +171,36 @@ vec⇔list = record
 
 open import Data.Integer as I
 
-ℕ⇔ℤ : PartIso
-ℕ⇔ℤ = record
-  { HS = quote ℕ
-  ; HSₐ = []
-  ; AGDAₐ = []
-  ; iso = (ℤ , (record { AGDA = ℕ ; there = total (+_) ; back = withMaybe f }))
+postulate error : ∀ {a} → a
+          error2 : ∀ {a} → a
+
+getHsTyNm : Term → Name
+getHsTyNm (con c args) with Fun.lookup 2 args
+getHsTyNm (con c args) | just (arg i (con c' args')) with Fun.lookup 4 args'
+getHsTyNm (con c args) | just (arg i₁ (con c' args')) | just (arg i (def nm _)) = nm
+getHsTyNm (con c args) | just (arg i₁ (con c' args')) | just (arg i x) = error
+getHsTyNm (con c args) | just (arg i (con c' args')) | nothing = error2
+getHsTyNm (con c args) | just _ = error2
+getHsTyNm (con c args) | nothing = error2
+getHsTyNm d = error
+
+toIntPartIso : PartIso → (t : Term) → {{fd : Data.ForeignData HS-UHC (getHsTyNm t)}} → PartIsoInt
+toIntPartIso p t {{fd}} = record
+  { HSₙ = getHsTyNm t
+  ; wrapped = p
+  ; foreign-data = fd
   }
+
+instance
+  bla : Data.ForeignData HS-UHC (quote ℤ)
+  bla = record { foreign-spec = Data.HS-UHC "Integer" }
+
+ℕ⇔ℤ : PartIsoInt
+ℕ⇔ℤ = toIntPartIso partIso (quoteTerm partIso)
   where f : ℤ → Maybe ℕ
         f -[1+ n ] = nothing
         f (+ n) = just n
+        partIso = mkPartIso [] [] (ℤ , (record { AGDA = ℕ ; there = total (+_) ; back = withMaybe f }))
 
 gTy : T  0
 gTy = π set 0 ⇒ (v (fromℕ 0) ∙ [])
@@ -306,21 +212,30 @@ gTy = π set 0 ⇒ (v (fromℕ 0) ∙ [])
 --fTy2 = π (set 0) ⇒ (π (def (quote ℕ) ∙ []) ⇒ (π (π (v (fromℕ 1) ∙ []) ⇒ (v (fromℕ 2) ∙ [])) ⇒ (v (fromℕ 2) ∙ []))) -- ⇒ (π (iso vec⇔list List.[ v (fromℕ 2) ∙ [] ] List.[ T.lift (v (fromℕ 1) ∙ []) ]) ⇒ (iso vec⇔list List.[ (v (fromℕ 3) ∙ []) ] List.[ T.lift (v (fromℕ 2) ∙ [] )]))))
 
 fTy3 : T 0
-fTy3 = π (iso (quote ℕ⇔ℤ) [] []) ⇒ (iso (quote ℕ⇔ℤ) [] [])
+fTy3 = π (iso ℕ⇔ℤ [] []) ⇒ (iso ℕ⇔ℤ [] [])
 
 fTy4 : T  0
-fTy4 = iso (quote ℕ⇔ℤ) [] []
+fTy4 = iso ℕ⇔ℤ [] []
 
 x : Maybe (τ-Hs)
-x = {!elHS fTy3!} --elHS gTy
+x = {!!} --elHS gTy
+
+record D : Set where
+  constructor kk
+  field k : ℕ
 
 import Data.List
+
+l : D
+l = record { k = 2}
 
 g : unquote (elAGDA gTy)
 g with x
 ... | just x' = {!elHS gTy >>= show-τ-Hs Data.List.[]!}
-... | nothing = {!!}
+... | nothing = {!quoteTerm (ℕ⇔ℤ)!}
 
+--q : PartIso
+--q = unquote (quoteTerm ℕ⇔ℤ)
 
 
 --f : unquote (elAGDA fTy)
