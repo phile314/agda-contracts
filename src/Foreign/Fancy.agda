@@ -86,32 +86,44 @@ open import Data.Fin
 open import Reflection
 
 data Discard : Set where
-  Yes : Discard
-  No : Discard
+  discard : Discard
+  pass : Discard
 
-data T {l} : ℕ → Set₂ where
-  set : ∀ {n} → (l : ℕ) → T n
+-- TODO discard only makes sense in positive (or negative??) positions, we should enforce that it is only specified there
+data T {l} : {d : Discard} → ℕ → Set₂ where
+  set : ∀ {n} → {d : Discard} → (l : ℕ) → T {_} {d} n -- this get erased at runtime anyway, so it doesn't matter what value of discard they get
   -- var
-  v_∙_ : ∀ {n}
+  v_-_∙_ : ∀ {n}
+    → (d : Discard) -- we don't enforce in the AST that the thing we pass on can actually be passed on. Should always be "discard" if args is not empty
     → (k : Fin n)
-    → List (T {l} n) -- arguments
-    → T n
+    → List (T {l} {d} n) -- arguments, we don't support keeping the arguments anyway, so just force discard here.
+    → T {_} {d} n
+  -- term from outside, getting discarded
+  def↯_∙_ : ∀ {n}
+    → (nm : Name)
+    → List (T {l} {discard} n)
+    → T {_} {discard} n
   -- term from outside, getting passed to hs
-  def_∙_ : ∀ {n}
+  def⇓_∙_ : ∀ {n}
     → (nm : Name)
     → {{ f : Data.ForeignData HS-UHC nm}}
-    → List (T {l} n)
-    → T n
-  π_⇒_ : ∀ {n}
-    → T {l} n -- type of the arg
-    → T {l} (ℕ.suc n) -- body
-    → T n
+    → List (T {l} {pass} n)
+    → T {_} {pass} n
+  π_-_⇒_ : ∀ {n D} -- D = if the whole things gets discarded
+    → (d : Discard) -- if the arguments gets passed to the body
+    → T {l} {d} n -- type of the arg
+    → T {l} {D} (ℕ.suc n) -- body
+    → T {_} {D} n
 
   iso : ∀ {n}
     → PartIsoInt {l}
-    → List (T {l} n) -- argument for HSₐ
-    → List (T {l} n) -- arguments for Agdaₐ
-    → T n
+    → List (T {l} {pass} n) -- argument for HSₐ
+    → List (T {l} {discard} n) -- arguments for Agdaₐ
+    → T {_} {pass} n
+
+  ⇓-to-↯_ : ∀ {n}
+    → T {l} {pass} n
+    → T {l} {discard} n
 
 def-argInfo : Arg-info
 def-argInfo = arg-info visible relevant
@@ -119,16 +131,18 @@ def-argInfo = arg-info visible relevant
 open Foreign.Base.Fun
 
 {-# TERMINATING #-}
-elArg : ∀ {l n} → (t : T {l} n) → Arg Term
+elArg : ∀ {d l n} → (t : T {l} {d} n) → Arg Term
 
 -- getting Agda type
-elAGDA : ∀ {l n} → (t : T {l} n) → Term
-elAGDA (v k ∙ xs) = var (toℕ k) (List.map elArg xs)
-elAGDA (def x ∙ xs) = def x (List.map elArg xs)
-elAGDA (π t ⇒ t₁) = pi (arg def-argInfo (el unknown (elAGDA t))) (abs "" (el unknown (elAGDA t₁)))
+elAGDA : ∀ {d l n} → (t : T {l} {d}  n) → Term
+elAGDA (v d - k ∙ xs) = var (toℕ k) (List.map elArg xs)
+elAGDA (def↯ x ∙ xs) = {!!}
+elAGDA (def⇓ x ∙ xs) = def x (List.map elArg xs)
+elAGDA (π d - t ⇒ t₁) = pi (arg def-argInfo (el unknown (elAGDA t))) (abs "" (el unknown (elAGDA t₁)))
 elAGDA (set l) = sort (lit l)
 elAGDA (iso i HSₐ AGDAₐ) = unquote-term {!!} {!!}
   where wr = PartIsoInt.wrapped i
+elAGDA (⇓-to-↯ t) = {!!}
 
 {-def (quote PartIso'.AGDA) [ arg def-argInfo isoWithAgdaArgs ]
   where iso' = def (quote PartIso.iso) [ arg def-argInfo (def (PartIsoInt.AGDAₙ i) []) ]
@@ -172,15 +186,16 @@ FAIL = def (quote SomethingBad) []
 import Data.List.Base
 -- off is the number of pis not introducting a forall
 {-# TERMINATING #-}
-elHS1 : ∀ {l} → {n : ℕ} (e : ℕ) → (t : T {l} n) → Term
+elHS1 : ∀ {d l} → {n : ℕ} (e : ℕ) → (t : T {l} {d} n) → Term
 elHS1 e (set l) = FAIL
-elHS1 e (v k ∙ x) = con (quote τ-Hs.var) ( L.[ arg def-argInfo (lit (nat (toℕ k))) ])
-elHS1 e (def x ∙ xs) =
+elHS1 e (v d - k ∙ x) = con (quote τ-Hs.var) ( L.[ arg def-argInfo (lit (nat (toℕ k))) ])
+elHS1 e (def↯ x ∙ xs) = {!!}
+elHS1 e (def⇓ x ∙ xs) =
   def (quote apps) (((arg def-argInfo (quoteTerm (ty {way = HS-UHC} x)))) L.∷ xs')
   where xs' = L.map (arg def-argInfo ∘ elHS1 e) xs
-elHS1 {n} e (π (set l) ⇒ t₁) =
+elHS1 {n} e (π d - (set l) ⇒ t₁) =
   con (quote ∀') L.[ arg def-argInfo (elHS1 e t₁) ]
-elHS1 e (π t ⇒ t₁) =
+elHS1 e (π d - t ⇒ t₁) =
   con (quote _⇒_) (arg def-argInfo (elHS1 e t) L.∷ L.[ arg def-argInfo (elHS1 (N.suc e) t₁) ])
 -- problem:  Name is not a literal => we cannot unquote here.
 -- solution 1: Return terms in elHS1, and unquote on top level.
@@ -195,9 +210,10 @@ elHS1 e (iso x x₁ x₂) =
         mkList (x L.∷ xs) = con (quote L._∷_) ((arg def-argInfo x) L.∷ L.[ arg def-argInfo (mkList xs) ])
         mkList [] = con (quote Data.List.Base.List.[]) []
         hsArgs = mkList (L.map (elHS1 e) x₁)
+elHS1 e (⇓-to-↯ t) = {!!}
 
-elHS : ∀ {l} → (t : T {l} 0) → Term --(τ-Hs)
-elHS t = elHS1 {_} {0} 0 t
+elHS : ∀ {l} → (t : T {l} {pass} 0) → Term --(τ-Hs)
+elHS t = elHS1 {pass} {_} {0} 0 t
 
 open import Data.Vec hiding (_>>=_)
 
@@ -254,6 +270,9 @@ instance
   blub : Data.ForeignData HS-UHC (quote L.List)
   blub = record { foreign-spec = Data.HS-UHC "Data.List.List" }
 
+HS-T : {l : Level} → Set (Level.suc (Level.suc Level.zero))
+HS-T {l} = T {l} {pass} 0
+
 ℕ⇔ℤ : PartIsoInt
 ℕ⇔ℤ = toIntPartIso partIso (quoteTerm partIso) (quoteTerm bla)
   where f : ℤ → Maybe ℕ
@@ -280,19 +299,25 @@ vec⇔list l = toIntPartIso partIso (quoteTerm partIso) (quoteTerm blub)
 --  ; iso = λ x → L.lift ((List (Lift x)) , (λ x₁ → L.lift (record { AGDA = Vec (Lift x) (lower x₁) })))
 --  }
 
-gTy : ∀ {l} → T {l} 0
-gTy = π set 0 ⇒ (v (fromℕ 0) ∙ [])
+gTy : ∀ {l} → HS-T {l}
+gTy = π pass - set 0 ⇒ (v pass - (fromℕ 0) ∙ [])
 
---fTy : T 0
---fTy = π (set 0) ⇒ (π (def (quote ℕ) ∙ []) ⇒ (π (π (v (fromℕ 1) ∙ []) ⇒ (v (fromℕ 2) ∙ [])) ⇒ (π (iso vec⇔list List.[ v (fromℕ 2) ∙ [] ] List.[ (v (fromℕ 1) ∙ []) ]) ⇒ (iso vec⇔list List.[ (v (fromℕ 3) ∙ []) ] List.[ (v (fromℕ 2) ∙ [] )]))))
+fTy : T 0
+fTy =
+  π pass - (set 0)
+  ⇒ (π discard - (def↯ (quote ℕ) ∙ [])
+  ⇒ (π pass - (π pass - (v pass - (fromℕ 1) ∙ [])
+    ⇒ (v pass - (fromℕ 2) ∙ []))
+  ⇒ (π pass - (iso (vec⇔list Level.zero) List.[ v pass - (fromℕ 2) ∙ [] ] List.[ {!!} ]) --(v ? - (fromℕ 1) ∙ []) ])
+  ⇒ (iso (vec⇔list Level.zero) List.[ (v pass - (fromℕ 3) ∙ []) ] List.[ {!!} ])))) -- (v ? - (fromℕ 2) ∙ [] )]))))
 
 --fTy2 : T 0
 --fTy2 = π (set 0) ⇒ (π (def (quote ℕ) ∙ []) ⇒ (π (π (v (fromℕ 1) ∙ []) ⇒ (v (fromℕ 2) ∙ [])) ⇒ (v (fromℕ 2) ∙ []))) -- ⇒ (π (iso vec⇔list List.[ v (fromℕ 2) ∙ [] ] List.[ T.lift (v (fromℕ 1) ∙ []) ]) ⇒ (iso vec⇔list List.[ (v (fromℕ 3) ∙ []) ] List.[ T.lift (v (fromℕ 2) ∙ [] )]))))
 
-fTy3 : T 0
-fTy3 = π (iso ℕ⇔ℤ [] []) ⇒ (iso ℕ⇔ℤ [] [])
+fTy3 : HS-T
+fTy3 = π pass - (iso ℕ⇔ℤ [] []) ⇒ (iso ℕ⇔ℤ [] [])
 
-fTy4 : T  0
+fTy4 : HS-T
 fTy4 = iso ℕ⇔ℤ [] []
 
 x : τ-Hs {HS-UHC}
