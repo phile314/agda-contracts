@@ -1,5 +1,16 @@
 module Foreign.Fancy where
 
+
+open import Reflection
+
+data PatLamNotAllowed : Set where
+
+lamBody : Term → Term
+lamBody (lam v (abs s x)) = lamBody x
+lamBody (pat-lam cs args) = quoteTerm PatLamNotAllowed
+lamBody (pi t₁ (abs s (el s₁ t))) = lamBody t
+lamBody t = t
+
 open import Foreign.Base
 open import Level
 open import Relation.Nullary
@@ -7,6 +18,8 @@ open import Data.Maybe
 open import Data.Nat as N
 open import Data.List as List
 open import Function
+
+
 
 data Conversion {a b} (A : Set a) (B : Set b) : Set (Level.suc (a Level.⊔ b)) where
   total : (A → B) → Conversion A B
@@ -72,6 +85,10 @@ record PartIsoInt {l} : Set (Level.suc (Level.suc l)) where
 open import Data.Fin
 open import Reflection
 
+data Discard : Set where
+  Yes : Discard
+  No : Discard
+
 data T {l} : ℕ → Set₂ where
   set : ∀ {n} → (l : ℕ) → T n
   -- var
@@ -79,7 +96,7 @@ data T {l} : ℕ → Set₂ where
     → (k : Fin n)
     → List (T {l} n) -- arguments
     → T n
-  -- term from outside
+  -- term from outside, getting passed to hs
   def_∙_ : ∀ {n}
     → (nm : Name)
     → {{ f : Data.ForeignData HS-UHC nm}}
@@ -191,30 +208,27 @@ open import Data.Integer as I
 postulate error : ∀ {a} → a
           error2 : ∀ {a} → a
 
-{-lamBody : Term → Term
-lamBody (var x args) = ?
-lamBody (con c args) = ?
-lamBody (def f args) = ?
-lamBody (app t args) = ?
-lamBody (lam v t) = ?
-lamBody (pat-lam cs args) = ?
-lamBody (pi t₁ t₂) = ?
-lamBody (sort s) = ?
-lamBody (lit l) = ?
-lamBody (quote-goal t) = ?
-lamBody (quote-term t) = ?
-lamBody quote-context = ?
-lamBody (unquote-term t args) = ?
-lamBody unknown = ?-}
 
 getHsTyNm : Term → Name
 getHsTyNm (con c args) with Fun.lookup 3 args
-getHsTyNm (con c args) | just (arg i (con c' args')) with Fun.lookup 3 args'
+getHsTyNm (con c args) | just (arg _ t) = g (lamBody t)
+  where g : Term → Name
+        g (con c₁ args₁) with Fun.lookup 3 args₁
+        ... | just (arg _ (def nm _)) = nm
+        ... | _ = error
+        g _ = error2
+getHsTyNm (con c args) | _ = error
+{-getHsTyNm (con c args) | just (arg _ t) with lamBody t
+... | (con c' args') with Fun.lookup 3 args'
+... | _ | lk = {!!} --with Fun.lookup 3 args'
+--... | lk2 = {!!}
+... | _ = error-}
+{-getHsTyNm (con c args) | just (arg i (con c' args')) with Fun.lookup 3 args'
 getHsTyNm (con c args) | just (arg i₁ (con c' args')) | just (arg i (def nm _)) = nm
 getHsTyNm (con c args) | just (arg i₁ (con c' args')) | just (arg i x) = error
-getHsTyNm (con c args) | just (arg i (con c' args')) | nothing = error2
-getHsTyNm (con c args) | just _ = error2
-getHsTyNm (con c args) | nothing = error2
+getHsTyNm (con c args) | just (arg i (con c' args')) | nothing = error2-}
+--getHsTyNm (con c args) | just _ = error2
+--getHsTyNm (con c args) | _ = error2
 getHsTyNm d = error
 
 getForeignData : Term → Name
@@ -254,7 +268,7 @@ list⇒vec xs | yes refl = just (Data.Vec.fromList xs)
 list⇒vec xs | no ¬p = nothing
 
 vec⇔list : (l : Level) → PartIsoInt {l}
-vec⇔list l = {!quoteTerm partIso!} -- toIntPartIso partIso (quoteTerm partIso) (quoteTerm blub)
+vec⇔list l = toIntPartIso partIso (quoteTerm partIso) (quoteTerm blub)
   where
     partIso = mkPartIso L.[ Set l ] L.[ (Lift ℕ) ]
       (λ a → record
@@ -270,7 +284,7 @@ gTy : ∀ {l} → T {l} 0
 gTy = π set 0 ⇒ (v (fromℕ 0) ∙ [])
 
 --fTy : T 0
---fTy = π (set 0) ⇒ (π (def (quote ℕ) ∙ []) ⇒ (π (π (v (fromℕ 1) ∙ []) ⇒ (v (fromℕ 2) ∙ [])) ⇒ (π (iso vec⇔list List.[ v (fromℕ 2) ∙ [] ] List.[ T.lift (v (fromℕ 1) ∙ []) ]) ⇒ (iso vec⇔list List.[ (v (fromℕ 3) ∙ []) ] List.[ T.lift (v (fromℕ 2) ∙ [] )]))))
+--fTy = π (set 0) ⇒ (π (def (quote ℕ) ∙ []) ⇒ (π (π (v (fromℕ 1) ∙ []) ⇒ (v (fromℕ 2) ∙ [])) ⇒ (π (iso vec⇔list List.[ v (fromℕ 2) ∙ [] ] List.[ (v (fromℕ 1) ∙ []) ]) ⇒ (iso vec⇔list List.[ (v (fromℕ 3) ∙ []) ] List.[ (v (fromℕ 2) ∙ [] )]))))
 
 --fTy2 : T 0
 --fTy2 = π (set 0) ⇒ (π (def (quote ℕ) ∙ []) ⇒ (π (π (v (fromℕ 1) ∙ []) ⇒ (v (fromℕ 2) ∙ [])) ⇒ (v (fromℕ 2) ∙ []))) -- ⇒ (π (iso vec⇔list List.[ v (fromℕ 2) ∙ [] ] List.[ T.lift (v (fromℕ 1) ∙ []) ]) ⇒ (iso vec⇔list List.[ (v (fromℕ 3) ∙ []) ] List.[ T.lift (v (fromℕ 2) ∙ [] )]))))
