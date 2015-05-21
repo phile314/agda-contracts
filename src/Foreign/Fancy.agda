@@ -18,15 +18,15 @@ data Conversion {a b} (A : Set a) (B : Set b) : Set (Level.suc (a Level.⊔ b)) 
   [] : ArgTys {c}
   _∷_ : (A : Set c) → ArgTys → ArgTys-}
 
-ArgTys : Set₁ --(L.suc c)
-ArgTys = List (Set)
+ArgTys : ∀ {l} → Set (Level.suc l)
+ArgTys {l} = List (Set l)
 
 -- if we want dependent args, we could make WithArgs into a dependent list (chained Σ)
 data WithArgs : (ArgTys ) → Set₁ where
   [] : WithArgs []
   _∷_ : {A : Set} → (a : A) → {AS : ArgTys} → WithArgs AS → WithArgs (A List.∷ AS)
 
-argsToTy : ∀ {b} → ArgTys → Set b → Set (b)
+argsToTy : ∀ {b} → ArgTys {b} → Set b → Set (b)
 argsToTy {b} [] f = f
 argsToTy {b} (x List.∷ a) f = x → argsToTy {b} a f
 
@@ -53,14 +53,14 @@ record PartIso' {l} (ALLₐ AGDAₐ : ArgTys) : Set (Level.suc l) where
         
 
 
-record PartIso : Set1 where
+record PartIso {l} : Set (Level.suc (Level.suc l)) where
   constructor mkPartIso
-  field ALLₐ : ArgTys
-        AGDAₐ : ArgTys
-        iso : argsToTy ALLₐ (PartIso' {Level.zero} ALLₐ AGDAₐ)
+  field ALLₐ : ArgTys {Level.suc l}
+        AGDAₐ : ArgTys {Level.suc l}
+        iso : argsToTy ALLₐ (PartIso' {l} ALLₐ AGDAₐ)
 
-record PartIsoInt : Set1 where
-  field wrapped : PartIso
+record PartIsoInt {l} : Set (Level.suc (Level.suc l)) where
+  field wrapped : PartIso {l}
 --        wrappedₙ : Name
         HSₙ : Name
         AGDAₙ : Name
@@ -72,28 +72,28 @@ record PartIsoInt : Set1 where
 open import Data.Fin
 open import Reflection
 
-data T : ℕ → Set₂ where
+data T {l} : ℕ → Set₂ where
   set : ∀ {n} → (l : ℕ) → T n
   -- var
   v_∙_ : ∀ {n}
     → (k : Fin n)
-    → List (T n) -- arguments
+    → List (T {l} n) -- arguments
     → T n
   -- term from outside
   def_∙_ : ∀ {n}
     → (nm : Name)
     → {{ f : Data.ForeignData HS-UHC nm}}
-    → List (T n)
+    → List (T {l} n)
     → T n
   π_⇒_ : ∀ {n}
-    → T n -- type of the arg
-    → T (ℕ.suc n) -- body
+    → T {l} n -- type of the arg
+    → T {l} (ℕ.suc n) -- body
     → T n
 
   iso : ∀ {n}
-    → PartIsoInt
-    → List (T n) -- argument for HSₐ
-    → List (T n) -- arguments for Agdaₐ
+    → PartIsoInt {l}
+    → List (T {l} n) -- argument for HSₐ
+    → List (T {l} n) -- arguments for Agdaₐ
     → T n
 
 def-argInfo : Arg-info
@@ -102,10 +102,10 @@ def-argInfo = arg-info visible relevant
 open Foreign.Base.Fun
 
 {-# TERMINATING #-}
-elArg : ∀ {n} → (t : T n) → Arg Term
+elArg : ∀ {l n} → (t : T {l} n) → Arg Term
 
 -- getting Agda type
-elAGDA : ∀ {n} → (t : T n) → Term
+elAGDA : ∀ {l n} → (t : T {l} n) → Term
 elAGDA (v k ∙ xs) = var (toℕ k) (List.map elArg xs)
 elAGDA (def x ∙ xs) = def x (List.map elArg xs)
 elAGDA (π t ⇒ t₁) = pi (arg def-argInfo (el unknown (elAGDA t))) (abs "" (el unknown (elAGDA t₁)))
@@ -119,7 +119,7 @@ elAGDA (iso i HSₐ AGDAₐ) = unquote-term {!!} {!!}
         isoWithAgdaArgs : Term
         isoWithAgdaArgs = app isoWithHsArgs (List.map (arg def-argInfo ∘ elAGDA) AGDAₐ)-}
 
-elArg t = arg def-argInfo (elAGDA t)
+elArg {l} t = arg def-argInfo (elAGDA t)
 
 open import Data.String
 open import Level
@@ -155,7 +155,7 @@ FAIL = def (quote SomethingBad) []
 import Data.List.Base
 -- off is the number of pis not introducting a forall
 {-# TERMINATING #-}
-elHS1 : {n : ℕ} (e : ℕ) → (t : T n) → Term
+elHS1 : ∀ {l} → {n : ℕ} (e : ℕ) → (t : T {l} n) → Term
 elHS1 e (set l) = FAIL
 elHS1 e (v k ∙ x) = con (quote τ-Hs.var) ( L.[ arg def-argInfo (lit (nat (toℕ k))) ])
 elHS1 e (def x ∙ xs) =
@@ -179,8 +179,8 @@ elHS1 e (iso x x₁ x₂) =
         mkList [] = con (quote Data.List.Base.List.[]) []
         hsArgs = mkList (L.map (elHS1 e) x₁)
 
-elHS : (t : T 0) → Term --(τ-Hs)
-elHS t = elHS1 {0} 0 t
+elHS : ∀ {l} → (t : T {l} 0) → Term --(τ-Hs)
+elHS t = elHS1 {_} {0} 0 t
 
 open import Data.Vec hiding (_>>=_)
 
@@ -191,8 +191,24 @@ open import Data.Integer as I
 postulate error : ∀ {a} → a
           error2 : ∀ {a} → a
 
+{-lamBody : Term → Term
+lamBody (var x args) = ?
+lamBody (con c args) = ?
+lamBody (def f args) = ?
+lamBody (app t args) = ?
+lamBody (lam v t) = ?
+lamBody (pat-lam cs args) = ?
+lamBody (pi t₁ t₂) = ?
+lamBody (sort s) = ?
+lamBody (lit l) = ?
+lamBody (quote-goal t) = ?
+lamBody (quote-term t) = ?
+lamBody quote-context = ?
+lamBody (unquote-term t args) = ?
+lamBody unknown = ?-}
+
 getHsTyNm : Term → Name
-getHsTyNm (con c args) with Fun.lookup 2 args
+getHsTyNm (con c args) with Fun.lookup 3 args
 getHsTyNm (con c args) | just (arg i (con c' args')) with Fun.lookup 3 args'
 getHsTyNm (con c args) | just (arg i₁ (con c' args')) | just (arg i (def nm _)) = nm
 getHsTyNm (con c args) | just (arg i₁ (con c' args')) | just (arg i x) = error
@@ -206,7 +222,7 @@ getForeignData (con c args) with Fun.lookup 2 args
 ... | l = {!!}
 getForeignData d = error
 
-toIntPartIso : PartIso → (t : Term)
+toIntPartIso : ∀ {l} → PartIso {l} → (t : Term)
   → {{fd : Data.ForeignData HS-UHC (getHsTyNm t)}}
   → Term -- quoted fd
   → PartIsoInt
@@ -232,15 +248,25 @@ instance
         partIso : PartIso
         partIso = mkPartIso [] [] (record { HSₜ = ℤ ; other = ℕ , ((withMaybe f) , (total (+_))) })
 
-vec⇔list : PartIsoInt
-vec⇔list = toIntPartIso partIso (quoteTerm partIso) (quoteTerm blub)
-  where partIso = mkPartIso L.[ {!!} ] L.[ ℕ ] {!!} --L.[ {!Set!} ] L.[ ℕ ] (λ x → record { HSₜ = {!!} ; other = {!!} })
+list⇒vec : ∀ {l} {n : ℕ} {A : Set l} → List A → Maybe (Vec A n)
+list⇒vec {_} {n} xs with n N.≟ L.length xs
+list⇒vec xs | yes refl = just (Data.Vec.fromList xs)
+list⇒vec xs | no ¬p = nothing
+
+vec⇔list : (l : Level) → PartIsoInt {l}
+vec⇔list l = {!quoteTerm partIso!} -- toIntPartIso partIso (quoteTerm partIso) (quoteTerm blub)
+  where
+    partIso = mkPartIso L.[ Set l ] L.[ (Lift ℕ) ]
+      (λ a → record
+        { HSₜ = L.List a
+        ; other = λ n → (Vec a (lower n)) , ( withMaybe list⇒vec , total Data.Vec.toList)})
+        
 --  { HSₐ = List.[ Set ]
 --  ; AGDAₐ = List.[ Lift ℕ ]
 --  ; iso = λ x → L.lift ((List (Lift x)) , (λ x₁ → L.lift (record { AGDA = Vec (Lift x) (lower x₁) })))
 --  }
 
-gTy : T  0
+gTy : ∀ {l} → T {l} 0
 gTy = π set 0 ⇒ (v (fromℕ 0) ∙ [])
 
 --fTy : T 0
