@@ -19,14 +19,16 @@ module Data where
 
   -- the mapping is not stored inside the ForeignSpec,
   -- the ForeignData is just used to servce as proof object.
-  data ForeignSpec : FFIWay → Set where
+  data ForeignSpec : FFIWay → AGDA-EntityName → Set where
     HS-UHC : HS-UHC-EntityName -- name is only used for debugging
-      → ForeignSpec HS-UHC
-  {- # BUILTIN FFIDATASPEC ForeignSpec # -}
-  {- # BUILTIN FFIDATASPECHSUHC HS-UHC # -}
+      → (nm : AGDA-EntityName)
+      → ForeignSpec HS-UHC nm
+  {-# BUILTIN FFIDATASPEC ForeignSpec #-}
+  {-# BUILTIN FFIDATASPECHSUHC HS-UHC #-}
 
-  record ForeignData (way : FFIWay) (nm : Name) : Set where
-    field foreign-spec : ForeignSpec way
+  record ForeignData (nm : Name) : Set where
+    -- TODO allow more than one FFI spec, eg List of Spec
+    field foreign-spec : ForeignSpec HS-UHC nm
   {-# BUILTIN FFIDATADATA ForeignData #-}
 
 module Fun where
@@ -39,7 +41,7 @@ module Fun where
     app : ∀ {way} → τ-Hs way → τ-Hs way → τ-Hs way
     ∀'  : ∀ {way} → τ-Hs way → τ-Hs way
     _⇒_ : ∀ {way} → τ-Hs way → τ-Hs way → τ-Hs way
-    ty  : ∀ {way} → (nm-Agda : Name) → (foreign-data : Data.ForeignData way nm-Agda) → τ-Hs way
+    ty  : ∀ {way} → (nm-Agda : Name) → (foreign-data : Data.ForeignSpec way nm-Agda) → τ-Hs way
   {-# BUILTIN FFIHSTY τ-Hs #-}
   {-# BUILTIN FFIHSTYVAR var #-}
   {-# BUILTIN FFIHSTYAPP app #-}
@@ -52,8 +54,9 @@ module Fun where
   {-# BUILTIN FFIFUNSPEC ForeignSpec #-}
   {-# BUILTIN FFIFUNSPECHSUHC HS-UHC #-}
 
-  record ForeignFun (way : FFIWay) : Set where
-    field foreign-spec : ForeignSpec way
+  record ForeignFun : Set where
+    -- TODO multi ffi specs
+    field foreign-spec : ForeignSpec HS-UHC
   {-# BUILTIN FFIFUNFUN ForeignFun #-}
 
   open import Data.List using (List; foldl)
