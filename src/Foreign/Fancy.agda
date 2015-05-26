@@ -12,6 +12,7 @@ lamBody (pi t₁ (abs s (el s₁ t))) = lamBody t
 lamBody t = t
 
 open import Foreign.Base
+open import Foreign.Show
 open import Level
 open import Relation.Nullary
 open import Data.Maybe
@@ -157,8 +158,8 @@ open import Level
 
 mapTy : ForeignSpec HS-UHC
 mapTy = HS-UHC "Data.List.map" (∀' (((var 0) ⇒ (var 0)) ⇒ ((app listTy (var 0)) ⇒ app listTy (var 0))))
-  where listTy : τ-Hs
-        listTy = ty (quote List) {{record { foreign-spec = Data.HS-UHC "Data.List" }}}
+  where listTy : τ-Hs HS-UHC
+        listTy = ty (quote List) (record { foreign-spec = Data.HS-UHC "Data.List" })
 
 open import Relation.Binary.PropositionalEquality
 
@@ -320,7 +321,7 @@ fTy3 = π pass - (iso ℕ⇔ℤ [] []) ⇒ (iso ℕ⇔ℤ [] [])
 fTy4 : HS-T
 fTy4 = iso ℕ⇔ℤ [] []
 
-x : τ-Hs {HS-UHC}
+x : τ-Hs HS-UHC
 x = {!show-τ-Hs {HS-UHC} L.[] (unquote (elHS fTy3))!} -- elHS gTy >>= (λ x₁ → {!unquote x!})
 {-... | just x = {!x!} --elHS gTy
 ... | nothing = error-}
