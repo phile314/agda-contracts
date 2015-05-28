@@ -76,10 +76,10 @@ record PartIso {l} : Set (Level.suc (Level.suc l)) where
 record PartIsoInt {l} : Set (Level.suc (Level.suc l)) where
   field wrapped : PartIso {l}
 --        wrappedₙ : Name
-        HSₙ : Name
-        AGDAₙ : Name
+        HSₙ : Name -- the low agda ty; name of the agda rep of the HS data
+        AGDAₙ : Name -- the high agda ty
 --        foreign-data : Term
-        foreign-data : Data.ForeignData HS-UHC AGDAₙ
+        foreign-data : Data.ForeignData HSₙ
         foreign-dataₜ : Term
 
 
@@ -91,76 +91,99 @@ data Discard : Set where
   pass : Discard
 
 -- TODO discard only makes sense in positive (or negative??) positions, we should enforce that it is only specified there
-data T {l} : {d : Discard} → ℕ → Set₂ where
-  set : ∀ {n} → {d : Discard} → (l : ℕ) → T {_} {d} n -- this get erased at runtime anyway, so it doesn't matter what value of discard they get
+data T {l} : ℕ → Set (Level.suc (Level.suc l)) where
+  set : ∀ {n} → (l : ℕ) → T n -- this get erased at runtime anyway, so it doesn't matter what value of discard they get
   -- var
-  v_-_∙_ : ∀ {n}
-    → (d : Discard) -- we don't enforce in the AST that the thing we pass on can actually be passed on. Should always be "discard" if args is not empty
+  v_∙_ : ∀ {n}
     → (k : Fin n)
-    → List (T {l} {d} n) -- arguments, we don't support keeping the arguments anyway, so just force discard here.
-    → T {_} {d} n
-  -- term from outside, getting discarded
-  def↯_∙_ : ∀ {n}
+    → List (T {l} n) -- arguments, we don't support keeping the arguments anyway, so just force discard here.
+    → T n
+  def_∙_ : ∀ {n}
     → (nm : Name)
-    → List (T {l} {discard} n)
-    → T {_} {discard} n
-  -- term from outside, getting passed to hs
-  def⇓_∙_ : ∀ {n}
-    → (nm : Name)
-    → {{ f : Data.ForeignData HS-UHC nm}}
-    → List (T {l} {pass} n)
-    → T {_} {pass} n
-  π_-_⇒_ : ∀ {n D} -- D = if the whole things gets discarded
-    → (d : Discard) -- if the arguments gets passed to the body
-    → T {l} {d} n -- type of the arg
-    → T {l} {D} (ℕ.suc n) -- body
-    → T {_} {D} n
+    → {{ f : Data.ForeignData nm}}
+    → List (T {l} n)
+    → T n
+  π_⇒_ : ∀ {n}
+    → T {l} n -- type of the arg
+    → T {l} (ℕ.suc n) -- body
+    → T {_} n
 
   iso : ∀ {n}
     → PartIsoInt {l}
-    → List (T {l} {pass} n) -- argument for HSₐ
-    → List (T {l} {discard} n) -- arguments for Agdaₐ
-    → T {_} {pass} n
+    → List (T {l} n) -- argument for HSₐ
+    → List (T {l} n) -- arguments for Agdaₐ
+    → T n
 
-  ⇓-to-↯_ : ∀ {n}
-    → T {l} {pass} n
-    → T {l} {discard} n
 
 def-argInfo : Arg-info
 def-argInfo = arg-info visible relevant
 
 open Foreign.Base.Fun
 
+postulate
+  error : {a : Set} → a
+  notImpl : {a : Set} → a
+
 {-# TERMINATING #-}
-elArg : ∀ {d l n} → (t : T {l} {d} n) → Arg Term
+elArg : ∀ {l n} → (t : T {l} n) → Arg Term
 
--- getting Agda type
-elAGDA : ∀ {d l n} → (t : T {l} {d}  n) → Term
-elAGDA (v d - k ∙ xs) = var (toℕ k) (List.map elArg xs)
-elAGDA (def↯ x ∙ xs) = {!!}
-elAGDA (def⇓ x ∙ xs) = def x (List.map elArg xs)
-elAGDA (π d - t ⇒ t₁) = pi (arg def-argInfo (el unknown (elAGDA t))) (abs "" (el unknown (elAGDA t₁)))
+-- getting Agda low type
+elAGDA : ∀ {l n} (t : T {l} n) → Term
+elAGDA (v k ∙ xs) = var (toℕ k) (List.map elArg xs)
+elAGDA (def x ∙ xs) = def x (List.map elArg xs)
+elAGDA (π  t ⇒ t₁) = pi (arg def-argInfo (el unknown (elAGDA t))) (abs "" (el unknown (elAGDA t₁)))
 elAGDA (set l) = sort (lit l)
-elAGDA (iso i HSₐ AGDAₐ) = unquote-term {!!} {!!}
-  where wr = PartIsoInt.wrapped i
-elAGDA (⇓-to-↯ t) = {!!}
-
-{-def (quote PartIso'.AGDA) [ arg def-argInfo isoWithAgdaArgs ]
-  where iso' = def (quote PartIso.iso) [ arg def-argInfo (def (PartIsoInt.AGDAₙ i) []) ]
-        isoWithHsArgs = def (quote proj₂) [ arg def-argInfo (app iso' (List.map (arg def-argInfo ∘ elAGDA) HSₐ)) ]
-        isoWithAgdaArgs : Term
-        isoWithAgdaArgs = app isoWithHsArgs (List.map (arg def-argInfo ∘ elAGDA) AGDAₐ)-}
+elAGDA (iso i HSₐ AGDAₐ) = def (PartIsoInt.HSₙ i) (List.map elArg HSₐ)
 
 elArg {l} t = arg def-argInfo (elAGDA t)
+
+
+getAgdaLowType : ∀ {l} → T {l} 0 → Term
+getAgdaLowType = elAGDA
+
+{-# TERMINATING #-}
+elArg2 : ∀ {l n} → (t : T {l} n) → Arg Term
+
+-- getting Agda low type
+elAGDA2 : ∀ {l n} (t : T {l} n) → Term
+elAGDA2 (v k ∙ xs) = var (toℕ k) (List.map elArg2 xs)
+elAGDA2 (def x ∙ xs) = def x (List.map elArg2 xs)
+elAGDA2 (π  t ⇒ t₁) = pi (arg def-argInfo (el unknown (elAGDA2 t))) (abs "" (el unknown (elAGDA2 t₁)))
+elAGDA2 (set l) = sort (lit l)
+elAGDA2 (iso i HSₐ AGDAₐ) = def (PartIsoInt.AGDAₙ i) (List.map elArg2 (HSₐ List.++ AGDAₐ))
+
+elArg2 {l} t = arg def-argInfo (elAGDA2 t)
+
+getAgdaHighType : ∀ {l} → T {l} 0 → Term
+getAgdaHighType = elAGDA2
+
+
+ffi_lift : ∀ {l} → (fde : T {l} 0) → Name {- name of the low level fun -} → Term
+ffi_lift (set l₁) nm = ?
+ffi_lift (v k ∙ x) nm = ?
+ffi_lift (def nm ∙ x) nm₁ = ?
+ffi_lift (π fde ⇒ fde₁) nm = ?
+ffi_lift (iso x x₁ x₂) nm = ?
+
+
+--postulate
+  -- returns the Agda type before applying the isos
+--  getAgdaLowType : ∀ {l} → T {l} 0 → Set l
+  -- after the isos
+--  getAgdaHighType : ∀ {l} → T {l} 0 → Term
+  -- converting low iso to high iso
+--  ffi_lift : ∀ {l} → (fde : T {l} 0) → Name {- name of the low level fun -} → Term --(unquote (getAgdaLowType {l} fde)) → (getAgdaHighType {l} fde)
+
 
 open import Data.String
 open import Level
 
+{-
 mapTy : ForeignSpec HS-UHC
 mapTy = HS-UHC "Data.List.map" (∀' (((var 0) ⇒ (var 0)) ⇒ ((app listTy (var 0)) ⇒ app listTy (var 0))))
   where listTy : τ-Hs HS-UHC
-        listTy = ty (quote List) (record { foreign-spec = Data.HS-UHC "Data.List" })
-
+        listTy = ty (quote List) (Data.HS-UHC "Data.List" (quote List) )
+-}
 open import Relation.Binary.PropositionalEquality
 
 open import Category.Monad
@@ -184,25 +207,28 @@ data SomethingBad : Set where
 FAIL : Term
 FAIL = def (quote SomethingBad) []
 
+hsUhcWay : Arg Term
+hsUhcWay = arg (arg-info hidden relevant) (con (quote FFIWay.HS-UHC) L.[] )
+
 import Data.List.Base
 -- off is the number of pis not introducting a forall
 {-# TERMINATING #-}
-elHS1 : ∀ {d l} → {n : ℕ} (e : ℕ) → (t : T {l} {d} n) → Term
-elHS1 e (set l) = FAIL
-elHS1 e (v d - k ∙ x) = con (quote τ-Hs.var) ( L.[ arg def-argInfo (lit (nat (toℕ k))) ])
-elHS1 e (def↯ x ∙ xs) = {!!}
-elHS1 e (def⇓ x ∙ xs) =
+getFFI1 : ∀ {l} → {n : ℕ} (e : ℕ) → (t : T {l} n) → Term
+getFFI1 e (set l) = FAIL
+getFFI1 e (v k ∙ x) = con (quote τ-Hs.var) ( hsUhcWay L.∷ L.[ arg def-argInfo (lit (nat (toℕ k))) ])
+getFFI1 e (def x ∙ xs) =
   def (quote apps) (((arg def-argInfo (quoteTerm (ty {way = HS-UHC} x)))) L.∷ xs')
-  where xs' = L.map (arg def-argInfo ∘ elHS1 e) xs
-elHS1 {n} e (π d - (set l) ⇒ t₁) =
-  con (quote ∀') L.[ arg def-argInfo (elHS1 e t₁) ]
-elHS1 e (π d - t ⇒ t₁) =
-  con (quote _⇒_) (arg def-argInfo (elHS1 e t) L.∷ L.[ arg def-argInfo (elHS1 (N.suc e) t₁) ])
+  where xs' = L.map (arg def-argInfo ∘ getFFI1 e) xs
+getFFI1 {n} e (π (set l) ⇒ t₁) =
+  con (quote ∀') L.[ arg def-argInfo (getFFI1 e t₁) ]
+getFFI1 e (π t ⇒ t₁) =
+  con (quote _⇒_) (arg def-argInfo (getFFI1 e t) L.∷ L.[ arg def-argInfo (getFFI1 (N.suc e) t₁) ])
 -- problem:  Name is not a literal => we cannot unquote here.
 -- solution 1: Return terms in elHS1, and unquote on top level.
-elHS1 e (iso x x₁ x₂) =
+getFFI1 e (iso x x₁ x₂) =
   def (quote apps)
-    ( arg def-argInfo  (con (quote ty) (arg def-argInfo (hsTy) L.∷ L.[] )) --L.∷ L.[ arg def-argInfo (PartIsoInt.foreign-dataₜ x)]))
+    (hsUhcWay
+    L.∷ arg def-argInfo  (con (quote ty) (arg def-argInfo (hsTy) L.∷ L.[ arg def-argInfo getForDat ] )) --L.∷ L.[ arg def-argInfo (PartIsoInt.foreign-dataₜ x)]))
     L.∷ (arg def-argInfo hsArgs)
     L.∷ L.[]
     )
@@ -210,11 +236,11 @@ elHS1 e (iso x x₁ x₂) =
         mkList : L.List Term → Term
         mkList (x L.∷ xs) = con (quote L._∷_) ((arg def-argInfo x) L.∷ L.[ arg def-argInfo (mkList xs) ])
         mkList [] = con (quote Data.List.Base.List.[]) []
-        hsArgs = mkList (L.map (elHS1 e) x₁)
-elHS1 e (⇓-to-↯ t) = {!!}
+        hsArgs = mkList (L.map (getFFI1 e) x₁)
+        getForDat = def (quote Data.ForeignData.foreign-spec) L.[ arg def-argInfo (PartIsoInt.foreign-dataₜ x) ]
 
-elHS : ∀ {l} → (t : T {l} {pass} 0) → Term --(τ-Hs)
-elHS t = elHS1 {pass} {_} {0} 0 t
+getFFI : ∀ {l} → (t : T {l} 0) → Term --(τ-Hs)
+getFFI t = getFFI1 {_} {0} 0 t
 
 open import Data.Vec hiding (_>>=_)
 
@@ -222,19 +248,26 @@ open import Data.Vec hiding (_>>=_)
 
 open import Data.Integer as I
 
-postulate error : ∀ {a} → a
-          error2 : ∀ {a} → a
+postulate error2 : ∀ {a : Set} → a
 
+postulate NoPI : Term
+
+getOtherPI : Term → Term
+getOtherPI (con c args) with Fun.lookup 3 args
+getOtherPI (con c args) | just (arg _ t) = lamBody t
+  where g : Term → Term
+        g t  = t
+getOtherPI (con c args) | _ = NoPI
+getOtherPI t = NoPI
 
 getHsTyNm : Term → Name
-getHsTyNm (con c args) with Fun.lookup 3 args
-getHsTyNm (con c args) | just (arg _ t) = g (lamBody t)
+getHsTyNm t with getOtherPI t
+... | ot = g ot
   where g : Term → Name
         g (con c₁ args₁) with Fun.lookup 3 args₁
         ... | just (arg _ (def nm _)) = nm
         ... | _ = error
         g _ = error2
-getHsTyNm (con c args) | _ = error
 {-getHsTyNm (con c args) | just (arg _ t) with lamBody t
 ... | (con c' args') with Fun.lookup 3 args'
 ... | _ | lk = {!!} --with Fun.lookup 3 args'
@@ -246,41 +279,43 @@ getHsTyNm (con c args) | just (arg i₁ (con c' args')) | just (arg i x) = error
 getHsTyNm (con c args) | just (arg i (con c' args')) | nothing = error2-}
 --getHsTyNm (con c args) | just _ = error2
 --getHsTyNm (con c args) | _ = error2
-getHsTyNm d = error
 
-getForeignData : Term → Name
-getForeignData (con c args) with Fun.lookup 2 args
-... | l = {!!}
-getForeignData d = error
+
+getAgdaTyNm : Term → Name
+getAgdaTyNm d with getOtherPI d
+... | (con c args) = g args
+  where h : Maybe (Arg Term) → Name
+        h (just (arg _ (def nm _))) = nm
+        h _ = error
+        g : List (Arg Term) → Name
+        g args with Fun.lookup 4 args
+        g args₁ | just (arg _ k) with lamBody k
+        ... | con _ args = h (Fun.lookup 4 args)
+        ... | _ = error
+        g args₁ | _ = error
+... | k = error
 
 toIntPartIso : ∀ {l} → PartIso {l} → (t : Term)
-  → {{fd : Data.ForeignData HS-UHC (getHsTyNm t)}}
+  → {{fd : Data.ForeignData (getHsTyNm t)}}
   → Term -- quoted fd
   → PartIsoInt
 toIntPartIso p t {{fd}} fdₜ = record
   { HSₙ = getHsTyNm t
-  ; AGDAₙ = {!!}
+  ; AGDAₙ = getAgdaTyNm t
   ; wrapped = p
   ; foreign-data = fd
   ; foreign-dataₜ = fdₜ
   }
 
+{-
 instance
-  bla : Data.ForeignData HS-UHC (quote ℤ)
-  bla = record { foreign-spec = Data.HS-UHC "Integer" }
-  blub : Data.ForeignData HS-UHC (quote L.List)
-  blub = record { foreign-spec = Data.HS-UHC "Data.List.List" }
+  blub : Data.ForeignData (quote L.List)
+  blub = record { foreign-spec = Data.HS-UHC "Data.List.List" (quote L.List) }
 
 HS-T : {l : Level} → Set (Level.suc (Level.suc Level.zero))
 HS-T {l} = T {l} {pass} 0
 
-ℕ⇔ℤ : PartIsoInt
-ℕ⇔ℤ = toIntPartIso partIso (quoteTerm partIso) (quoteTerm bla)
-  where f : ℤ → Maybe ℕ
-        f -[1+ n ] = nothing
-        f (+ n) = just n
-        partIso : PartIso
-        partIso = mkPartIso [] [] (record { HSₜ = ℤ ; other = ℕ , ((withMaybe f) , (total (+_))) })
+
 
 list⇒vec : ∀ {l} {n : ℕ} {A : Set l} → List A → Maybe (Vec A n)
 list⇒vec {_} {n} xs with n N.≟ L.length xs
@@ -349,3 +384,4 @@ g = {!!}
 
 --f : unquote (elAGDA fTy)
 --f = {!!}
+-}
