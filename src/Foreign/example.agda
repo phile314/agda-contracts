@@ -37,21 +37,20 @@ module Ex2 where
           partIso : PartIso
           partIso = mkPartIso [] [] (record { HSₜ = ℤ ; other = ℕ , ((withMaybe f) , (total (+_))) })
 
+-- the special type syntax for using isomorpisms.
 --  fty : Set
---  fty = {!!}
+--  fty = ⟨ ℕ⇔ℤ ⟩ → ⟨ ℕ⇔ℤ ⟩ → ⟨ ℕ⇔ℤ ⟩
 
-  ftq : T 0
-  ftq = π ( iso ℕ⇔ℤ [] [] ) ⇒ (π (iso ℕ⇔ℤ [] []) ⇒ (iso ℕ⇔ℤ [] []))
-
+  -- the special type syntax converted to the AST representation
   fde : T 0
-  fde = ftq
+  fde = π ( iso ℕ⇔ℤ [] [] ) ⇒ (π (iso ℕ⇔ℤ [] []) ⇒ (iso ℕ⇔ℤ [] []))
 
+  -- the ffi declaration, which has the type ℤ → ℤ → ℤ
   ffi : unquote (getAgdaLowType fde)
     using foreign (record { foreign-spec = (HS-UHC "(+)" (unquote (getFFI fde)))})
 
+  -- the wrapper, which has the type ℕ → ℕ → ℕ
+  -- this is the thing we want in the end.
   fhi : unquote (getAgdaHighType fde)
   fhi = {!fde!} --ffi_lift fde ffi
-
-  k : {!!}
-  k = {!fhi!}
 

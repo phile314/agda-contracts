@@ -157,14 +157,28 @@ elArg2 {l} t = arg def-argInfo (elAGDA2 t)
 getAgdaHighType : ∀ {l} → T {l} 0 → Term
 getAgdaHighType = elAGDA2
 
+data Position : Set where
+  Pos : Position
+  Neg : Position
+
+mkAbs : (n : ℕ) → Term → Term
+mkAbs ℕ.zero body = body
+mkAbs (ℕ.suc n) body = lam visible (abs "" (mkAbs n body))
+
+ffi_lift1 : ∀ {l n} → (fde : T {l} n) → Name {- name of the low level fun -} → Position → Term
+ffi_lift1 (set l₁) nm pos = {!!}
+ffi_lift1 (v k ∙ x) nm pos = {!!}
+ffi_lift1 (def nm ∙ x) nm₁ pos = {!!}
+ffi_lift1 {_} {n} (π fde ⇒ fde₁) nm Pos = quote-term
+  ((unquote (rs))
+  (unquote ({!!})))
+  where ls = ffi fde lift1 nm Pos
+        rs = mkAbs (ℕ.suc n) (ffi_lift1 fde₁ nm Neg)
+ffi_lift1 (π fde ⇒ fde₁) nm Neg = {!!}
+ffi_lift1 (iso x x₁ x₂) nm pos = {!!}
 
 ffi_lift : ∀ {l} → (fde : T {l} 0) → Name {- name of the low level fun -} → Term
-ffi_lift (set l₁) nm = ?
-ffi_lift (v k ∙ x) nm = ?
-ffi_lift (def nm ∙ x) nm₁ = ?
-ffi_lift (π fde ⇒ fde₁) nm = ?
-ffi_lift (iso x x₁ x₂) nm = ?
-
+ffi_lift fde nm  = ffi_lift1 fde nm Pos
 
 --postulate
   -- returns the Agda type before applying the isos
