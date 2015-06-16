@@ -75,7 +75,7 @@ record PartIso {l} : Set (Level.suc (Level.suc l)) where
 
 record PartIsoInt {l} : Set (Level.suc (Level.suc l)) where
   field wrapped : PartIso {l}
---        wrappedₙ : Name
+        wrappedₙ : Name
         HSₙ : Name -- the low agda ty; name of the agda rep of the HS data
         AGDAₙ : Name -- the high agda ty
 --        foreign-data : Term
@@ -101,6 +101,7 @@ data T {l} : ℕ → Set (Level.suc (Level.suc l)) where
   def_∙_ : ∀ {n}
     → (nm : Name)
     → {{ f : Data.ForeignData nm}}
+    → {fnm : Name} -- foreign data name
     → List (T {l} n)
     → T n
   π_⇒_ : ∀ {n}
@@ -144,7 +145,7 @@ getAgdaLowType = elAGDA
 {-# TERMINATING #-}
 elArg2 : ∀ {l n} → (t : T {l} n) → Arg Term
 
--- getting Agda low type
+-- getting Agda high type
 elAGDA2 : ∀ {l n} (t : T {l} n) → Term
 elAGDA2 (v k ∙ xs) = var (toℕ k) (List.map elArg2 xs)
 elAGDA2 (def x ∙ xs) = def x (List.map elArg2 xs)
@@ -165,20 +166,48 @@ mkAbs : (n : ℕ) → Term → Term
 mkAbs ℕ.zero body = body
 mkAbs (ℕ.suc n) body = lam visible (abs "" (mkAbs n body))
 
-ffi_lift1 : ∀ {l n} → (fde : T {l} n) → Name {- name of the low level fun -} → Position → Term
-ffi_lift1 (set l₁) nm pos = {!!}
-ffi_lift1 (v k ∙ x) nm pos = {!!}
-ffi_lift1 (def nm ∙ x) nm₁ pos = {!!}
-ffi_lift1 {_} {n} (π fde ⇒ fde₁) nm Pos = quote-term
-  ((unquote (rs))
-  (unquote ({!!})))
-  where ls = ffi fde lift1 nm Pos
-        rs = mkAbs (ℕ.suc n) (ffi_lift1 fde₁ nm Neg)
-ffi_lift1 (π fde ⇒ fde₁) nm Neg = {!!}
-ffi_lift1 (iso x x₁ x₂) nm pos = {!!}
+shift : ℕ → List ℕ → List ℕ
+shift k = List.map (N._+_ k)
 
-ffi_lift : ∀ {l} → (fde : T {l} 0) → Name {- name of the low level fun -} → Term
-ffi_lift fde nm  = ffi_lift1 fde nm Pos
+le_i_ : Term → Term → Term
+le_i_ t₁ t₂ = app (lam visible (abs "" t₂)) [ arg (arg-info visible relevant) t₁ ]
+
+open import Data.String
+postulate
+  conversionFailure : ∀ {a} → {A : Set a} → String → A
+
+unsafeConvert : ∀ {a b} {A : Set a} {B : Set b} → Conversion A B → A → B
+unsafeConvert (total x) x₁ = x x₁
+unsafeConvert (withDec x) x₁ with x x₁
+unsafeConvert (withDec x) x₁ | yes p = p
+unsafeConvert (withDec x) x₁ | no ¬p = conversionFailure ""
+unsafeConvert (withMaybe x) x₁ with x x₁
+unsafeConvert (withMaybe x) x₁ | just x₂ = x₂
+unsafeConvert (withMaybe x) x₁ | nothing = conversionFailure ""
+unsafeConvert fail x = conversionFailure ""
+
+ffi-lift1 : ∀ {l n}
+  → (fde : T {l} n)
+--  → Name {- name of the low level fun -}
+  → (List ℕ → Term) -- thing to wrap
+  → Position
+  → List ℕ -- environment
+  → Term
+ffi-lift1 (set l₁) wr pos Γ = wr Γ
+ffi-lift1 (v k ∙ x) wr pos Γ = wr Γ
+ffi-lift1 (def nm ∙ x) wr pos Γ  = wr Γ
+ffi-lift1 {_} {n} (π fde ⇒ fde₁) wr Pos Γ =
+  lam visible (abs "x" bd)
+  where ls = ffi-lift1 fde (λ _ → var 0 []) Neg Γ
+        rs = ffi-lift1 fde₁ wr Pos (0 ∷ shift 2 Γ)
+        bd = le ls i rs
+ffi-lift1 (π fde ⇒ fde₁) wr Neg Γ = error
+ffi-lift1 (iso x x₁ x₂) wr pos Γ = notImpl
+
+ffi-lift : ∀ {l} → (fde : T {l} 0) → Name {- name of the low level fun -} → Term
+ffi-lift fde nm  = ffi-lift1 fde (λ Γ → def nm (List.map mkArg (List.reverse Γ))) Pos []
+  where mkArg : ℕ → Arg Term
+        mkArg i = arg (arg-info visible relevant) (var i [])
 
 --postulate
   -- returns the Agda type before applying the isos
@@ -188,8 +217,6 @@ ffi_lift fde nm  = ffi_lift1 fde nm Pos
   -- converting low iso to high iso
 --  ffi_lift : ∀ {l} → (fde : T {l} 0) → Name {- name of the low level fun -} → Term --(unquote (getAgdaLowType {l} fde)) → (getAgdaHighType {l} fde)
 
-
-open import Data.String
 open import Level
 
 {-
@@ -230,9 +257,16 @@ import Data.List.Base
 getFFI1 : ∀ {l} → {n : ℕ} (e : ℕ) → (t : T {l} n) → Term
 getFFI1 e (set l) = FAIL
 getFFI1 e (v k ∙ x) = con (quote τ-Hs.var) ( hsUhcWay L.∷ L.[ arg def-argInfo (lit (nat (toℕ k))) ])
-getFFI1 e (def x ∙ xs) =
-  def (quote apps) (((arg def-argInfo (quoteTerm (ty {way = HS-UHC} x)))) L.∷ xs')
-  where xs' = L.map (arg def-argInfo ∘ getFFI1 e) xs
+getFFI1 e (def_∙_ x {{fd}} {fnm} []) =
+--  def (quote apps) (((arg def-argInfo (
+    con (quote ty) (arg (arg-info hidden relevant)
+      (con (quote Foreign.Base.FFIWay.HS-UHC) [])
+      L.∷ arg def-argInfo (lit (name x))
+      L.∷ arg def-argInfo (def (quote Data.ForeignData.foreign-spec) L.[ arg def-argInfo (def fnm []) ])
+      L.∷ [])
+  --    ))) L.∷ xs')
+--  where xs' = L.map (arg def-argInfo ∘ getFFI1 e) xs
+getFFI1 e (def_∙_ _ xs) = notImpl --see above
 getFFI1 {n} e (π (set l) ⇒ t₁) =
   con (quote ∀') L.[ arg def-argInfo (getFFI1 e t₁) ]
 getFFI1 e (π t ⇒ t₁) =
@@ -309,14 +343,18 @@ getAgdaTyNm d with getOtherPI d
         g args₁ | _ = error
 ... | k = error
 
-toIntPartIso : ∀ {l} → PartIso {l} → (t : Term)
+toIntPartIso : ∀ {l}
+  → PartIso {l}
+  → Name --part iso name
+  → (t : Term) -- quoted part iso
   → {{fd : Data.ForeignData (getHsTyNm t)}}
   → Term -- quoted fd
   → PartIsoInt
-toIntPartIso p t {{fd}} fdₜ = record
-  { HSₙ = getHsTyNm t
-  ; AGDAₙ = getAgdaTyNm t
+toIntPartIso p pₙ pₜ {{fd}} fdₜ = record
+  { HSₙ = getHsTyNm pₜ
+  ; AGDAₙ = getAgdaTyNm pₜ
   ; wrapped = p
+  ; wrappedₙ = pₙ
   ; foreign-data = fd
   ; foreign-dataₜ = fdₜ
   }

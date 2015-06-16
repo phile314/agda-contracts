@@ -24,13 +24,14 @@ module Ex2 where
   open import Data.Maybe
   open import Data.Product
   open import Data.List
+  import Level
 
   instance
     bla : Data.ForeignData (quote ℤ)
     bla = record { foreign-spec = Data.HS-UHC "Integer" (quote ℤ)}
 
   ℕ⇔ℤ : PartIsoInt
-  ℕ⇔ℤ = toIntPartIso partIso (quoteTerm partIso) (quoteTerm bla)
+  ℕ⇔ℤ = toIntPartIso partIso (quote partIso) (quoteTerm partIso) (quoteTerm bla)
     where f : ℤ → Maybe ℕ
           f -[1+ n ] = nothing
           f (+ n) = just n
@@ -42,15 +43,19 @@ module Ex2 where
 --  fty = ⟨ ℕ⇔ℤ ⟩ → ⟨ ℕ⇔ℤ ⟩ → ⟨ ℕ⇔ℤ ⟩
 
   -- the special type syntax converted to the AST representation
-  fde : T 0
-  fde = π ( iso ℕ⇔ℤ [] [] ) ⇒ (π (iso ℕ⇔ℤ [] []) ⇒ (iso ℕ⇔ℤ [] []))
+  fde : T {Level.zero} 0
+--  fde = π ( iso ℕ⇔ℤ [] [] ) ⇒ (π (iso ℕ⇔ℤ [] []) ⇒ (iso ℕ⇔ℤ [] []))
+  fde = π ( def_∙_ (quote ℤ) {quote bla} [] ) ⇒ (π (def_∙_ (quote ℤ) {quote bla} []) ⇒ (def_∙_ (quote ℤ) {quote bla} []))
 
   -- the ffi declaration, which has the type ℤ → ℤ → ℤ
   ffi : unquote (getAgdaLowType fde)
-    using foreign (record { foreign-spec = (HS-UHC "(+)" (unquote (getFFI fde)))})
+    using foreign (record { foreign-spec = (HS-UHC "Prelude.add" (unquote (getFFI fde)))})
 
   -- the wrapper, which has the type ℕ → ℕ → ℕ
   -- this is the thing we want in the end.
   fhi : unquote (getAgdaHighType fde)
-  fhi = {!fde!} --ffi_lift fde ffi
+  fhi = unquote (ffi-lift fde (quote ffi)) -- {!ffi-lift fde (quote ffi)!} --ffi_lift fde ffi
+
+  t : {!!}
+  t = {!!}
 
