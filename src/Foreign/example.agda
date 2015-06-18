@@ -153,16 +153,24 @@ module T3 where
 
   data AST {l m} : Set (Level.suc (Level.suc (l Level.⊔ m )))
 
-  getTy : ∀ {l m} → AST {l} {m} → Set l
+  getTy : ∀ {l} → AST {l} {l} → Set l --(l Level.⊔ m )
 
   data AST {l m} where
     pi : (a : AST {l} {l}) → (getTy a → AST {m} {m}) → AST
     ⟦_⟧ : (A : Set l) → AST
     ⟦_⇋_⟧ : (pi : PartIsoInt {l}) → getArgs pi → AST
 
-  getTy (pi a x) = {!getTy a!}
+  split++ : ∀ {l} {a : ArgTys {l}} → {b : ArgTys {l}} → (args : WithArgs (a L.++ b)) → (WithArgs a × WithArgs b)
+  split++ {a = []} args = [] , args
+  split++ {a = x ∷ a} (a₁ , args) = (a₁ , (proj₁ r)) , (proj₂ r)
+    where r = split++ args
+
+  getTy (pi a x) = (arg : getTy a) → (getTy (x arg))
   getTy (⟦ x ⟧) = x
-  getTy (⟦ x ⇋ x₁ ⟧) = {!!}
+  getTy (⟦ x ⇋ x₁ ⟧) = proj₁ (applyArgs (PartIso'.other g) (proj₂ k)) --(PartIso.iso h) x₁
+    where h = PartIsoInt.wrapped x
+          k = split++ {_} {PartIso.ALLₐ h} x₁
+          g = applyArgs (PartIso.iso h) (proj₁ k)
 
   id : ∀ {a} {A : Set a} → A → A
   id x = x
@@ -172,11 +180,12 @@ module T3 where
 --  syntax val e = ⟨ e ⟩
 --  syntax iso p xs = p ⇄ xs
 
-  f : AST
-  f = ⟨ a ∷ ⟦ Set ⟧ ⟩⇒
-    (⟨ x ∷ ⟦ ℕ ⟧ ⟩⇒
-    (⟨ y ∷ ⟦ vec⇔list Level.zero ⇋ a , ((lift x) , []) ⟧ ⟩⇒
-    (⟨ xs ∷ ⟦ List a ⟧ ⟩⇒ ⟨ {!!} ⟩ )))
+  ty' : AST
+  ty' = ⟨ a ∷ ⟦ Set ⟧ ⟩⇒
+    ⟨ x ∷ ⟦ ℕ⇔ℤ ⇋ [] ⟧ ⟩⇒
+    ⟨ y ∷ ⟦ vec⇔list Level.zero ⇋ a , ((lift x) , []) ⟧ ⟩⇒
+    ⟨ xs ∷ ⟦ List a ⟧ ⟩⇒
+    ⟨ ⟦ List a ⟧ ⟩
 
   open import Reflection
 --  f : Term

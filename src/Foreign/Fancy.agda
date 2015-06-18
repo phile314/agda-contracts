@@ -64,7 +64,7 @@ record PartIso' {l} (ALLₐ AGDAₐ : ArgTys) : Set (Level.suc l) where
   field HSₜ : Set l
         -- ... → (AgdaType, conversions)
         other : argsToTy AGDAₐ (Σ (Set l) (Conversions HSₜ))
-        
+{-# ETA PartIso' #-}
 
 
 record PartIso {l} : Set (Level.suc (Level.suc l)) where
@@ -72,6 +72,7 @@ record PartIso {l} : Set (Level.suc (Level.suc l)) where
   field ALLₐ : ArgTys {Level.suc l} -- this are the common arguments
         AGDAₐ : ArgTys {Level.suc l} -- agda only arguments
         iso : argsToTy ALLₐ (PartIso' {l} ALLₐ AGDAₐ)
+{-# ETA PartIso #-}
 
 record PartIsoInt {l} : Set (Level.suc (Level.suc l)) where
   field wrapped : PartIso {l}
@@ -81,6 +82,11 @@ record PartIsoInt {l} : Set (Level.suc (Level.suc l)) where
 --        foreign-data : Term
         foreign-data : Data.ForeignData HSₙ
         foreign-dataₜ : Term
+{-# ETA PartIsoInt #-}
+
+applyArgs : ∀ {l} → {aTys : ArgTys {l}} {A : Set l} → (f : argsToTy aTys A) → WithArgs aTys → A
+applyArgs {aTys = []} f [] = f
+applyArgs {aTys = A₁ ∷ aTys} f (a , args) = applyArgs (f a) args
 
 
 open import Data.Fin
