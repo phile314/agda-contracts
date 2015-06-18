@@ -36,9 +36,9 @@ ArgTys : ∀ {l} → Set (Level.suc l)
 ArgTys {l} = List (Set l)
 
 -- if we want dependent args, we could make WithArgs into a dependent list (chained Σ)
-data WithArgs : (ArgTys ) → Set₁ where
+data WithArgs {l} : (ArgTys {l}) → Set l where
   [] : WithArgs []
-  _∷_ : {A : Set} → (a : A) → {AS : ArgTys} → WithArgs AS → WithArgs (A List.∷ AS)
+  _,_ : {A : Set l} → (a : A) → {AS : ArgTys} → WithArgs AS → WithArgs (A List.∷ AS)
 
 argsToTy : ∀ {b} → ArgTys {b} → Set b → Set (b)
 argsToTy {b} [] f = f
@@ -69,8 +69,8 @@ record PartIso' {l} (ALLₐ AGDAₐ : ArgTys) : Set (Level.suc l) where
 
 record PartIso {l} : Set (Level.suc (Level.suc l)) where
   constructor mkPartIso
-  field ALLₐ : ArgTys {Level.suc l}
-        AGDAₐ : ArgTys {Level.suc l}
+  field ALLₐ : ArgTys {Level.suc l} -- this are the common arguments
+        AGDAₐ : ArgTys {Level.suc l} -- agda only arguments
         iso : argsToTy ALLₐ (PartIso' {l} ALLₐ AGDAₐ)
 
 record PartIsoInt {l} : Set (Level.suc (Level.suc l)) where
@@ -380,7 +380,7 @@ toIntPartIso p pₙ pₜ {{fd}} fdₜ = record
   ; AGDAₙ = getAgdaTyNm pₜ
   ; wrapped = p
   ; wrappedₙ = pₙ
-  ; foreign-data = fd
+  ; foreign-data = fd --unquote fdₜ --fd
   ; foreign-dataₜ = fdₜ
   }
 

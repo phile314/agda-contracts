@@ -81,3 +81,106 @@ open Ex2
 main : IO.Primitive.IO ⊤
 main = run (putStrLn (show k))
   where k = fhi 12 45
+
+
+module T3 where
+  open import Foreign.Fancy
+  open import Data.Nat as N
+  open import Level
+  
+{-  ⟨_∙_⟩ : ∀ {l} → PartIsoInt {l} → List ? → Set l
+  ⟨ p ⟩ = {!!}
+-}
+  open import Data.List as L
+  open import Data.Vec
+  open import Data.Maybe
+  open import Relation.Binary.PropositionalEquality
+  open import Relation.Nullary
+  open import Data.Product
+
+  instance
+    HSList-FD : Data.ForeignData (quote List)
+    HSList-FD = record { foreign-spec = Data.HS-UHC "Data.List.List" (quote List) }
+  
+  list⇒vec : ∀ {l} {n : ℕ} {A : Set l} → List A → Maybe (Vec A n)
+  list⇒vec {_} {n} xs with n N.≟ L.length xs
+  list⇒vec xs | yes refl = just (Data.Vec.fromList xs)
+  list⇒vec xs | no ¬p = nothing
+
+  vec⇔list : (l : Level) → PartIsoInt {l}
+  vec⇔list l = toIntPartIso partIso (quote partIso) (quoteTerm partIso) {{HSList-FD}} (quoteTerm HSList-FD)
+    where
+    partIso : PartIso
+    partIso = mkPartIso L.[ Set l ] L.[ (Lift ℕ) ]
+      (λ a → record
+        { HSₜ = L.List a
+        ; other = λ n → (Vec a (lower n)) , ( withMaybe list⇒vec , Conversion.total Data.Vec.toList)})
+        
+--  { HSₐ = List.[ Set ]
+--  ; AGDAₐ = List.[ Lift ℕ ]
+--  ; iso = λ x → L.lift ((List (Lift x)) , (λ x₁ → L.lift (record { AGDA = Vec (Lift x) (lower x₁) })))
+--  }
+ 
+{-  f : {n : ⟨ ℕ⇔ℤ ⟩} → {!!} → {!!}
+  f = {!!}-}
+{-  postulate
+    pi : (A : Set) → (A → Set) → Set
+    val : ∀ {a} {A : Set a} → A → Set-}
+
+{-  data HList : Set₁ where
+    nil : HList
+    cons : {A : Set} → A → HList → HList
+
+  data AST {l m} : Set (Level.suc (Level.suc (l Level.⊔ m))) where
+    pi : (A : Set l) → (A → AST {l} {m} ) → AST
+    val : {A : Set m} → A → AST
+    iso : PartIsoInt {m} → HList → AST
+    
+
+  syntax pi e₁ (λ x → e₂) = ⟨ x ∷ e₁ ⟩⇒ e₂
+  syntax val e = ⟨ e ⟩
+  syntax iso p xs = p ⇄ xs
+
+-}
+
+  data HList {l} : Set (Level.suc l) where
+    nil : HList
+    cons : Set l → HList → HList
+
+  getArgs : ∀ {l} → PartIsoInt {l} → Set (Level.suc l)
+  getArgs p = WithArgs ((PartIso.ALLₐ h) L.++ ( PartIso.AGDAₐ h))
+    where h = PartIsoInt.wrapped p
+
+  data AST {l m} : Set (Level.suc (Level.suc (l Level.⊔ m )))
+
+  getTy : ∀ {l m} → AST {l} {m} → Set l
+
+  data AST {l m} where
+    pi : (a : AST {l} {l}) → (getTy a → AST {m} {m}) → AST
+    ⟦_⟧ : (A : Set l) → AST
+    ⟦_⇋_⟧ : (pi : PartIsoInt {l}) → getArgs pi → AST
+
+  getTy (pi a x) = {!getTy a!}
+  getTy (⟦ x ⟧) = x
+  getTy (⟦ x ⇋ x₁ ⟧) = {!!}
+
+  id : ∀ {a} {A : Set a} → A → A
+  id x = x
+
+  syntax pi e₁ (λ x → e₂) = ⟨ x ∷ e₁ ⟩⇒ e₂
+  syntax id e = ⟨ e ⟩
+--  syntax val e = ⟨ e ⟩
+--  syntax iso p xs = p ⇄ xs
+
+  f : AST
+  f = ⟨ a ∷ ⟦ Set ⟧ ⟩⇒
+    (⟨ x ∷ ⟦ ℕ ⟧ ⟩⇒
+    (⟨ y ∷ ⟦ vec⇔list Level.zero ⇋ a , ((lift x) , []) ⟧ ⟩⇒
+    (⟨ xs ∷ ⟦ List a ⟧ ⟩⇒ ⟨ {!!} ⟩ )))
+
+  open import Reflection
+--  f : Term
+--  f = quoteTerm ( ⟨ n ∷ ℕ ⟩⇒ ( ⟨ x ∷ ℕ ⟩⇒ ⟨ (vec⇔list Level.zero ⇄ cons n nil) ⟩ ) )
+
+  g : {! definition (quote f)!}
+  g = {!!}
