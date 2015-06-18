@@ -54,22 +54,22 @@ module Ex2 where
 --  fty : Set
 --  fty = ⟨ ℕ⇔ℤ ⟩ → ⟨ ℕ⇔ℤ ⟩ → ⟨ ℕ⇔ℤ ⟩
 
-  -- the special type syntax converted to the AST representation
-  fde : T {Level.zero} 0
-  fde = π ( iso ℕ⇔ℤ [] [] ) ⇒ (π (iso ℕ⇔ℤ [] []) ⇒ (iso ℕ⇔ℤ [] []))
---  fde = π ( def_∙_ (quote ℤ) {quote bla} [] ) ⇒ (π (def_∙_ (quote ℤ) {quote bla} []) ⇒ (def_∙_ (quote ℤ) {quote bla} []))
+  -- the internal AST representation of the above notation
+  addType : T {Level.zero} 0
+  addType = π ( iso ℕ⇔ℤ [] [] ) ⇒ (π (iso ℕ⇔ℤ [] []) ⇒ (iso ℕ⇔ℤ [] []))
+--  addType = π ( def_∙_ (quote ℤ) {quote bla} [] ) ⇒ (π (def_∙_ (quote ℤ) {quote bla} []) ⇒ (def_∙_ (quote ℤ) {quote bla} []))
 
   -- the ffi declaration, which has the type ℤ → ℤ → ℤ
-  ffi : unquote (getAgdaLowType fde)
-    using foreign (record { foreign-spec = (HS-UHC "UHC.Agda.Builtins.primHsAdd" (unquote (getFFI fde)))})
+  -- this is not terribly interesting....
+  add' : unquote (getAgdaLowType addType)
+    using foreign (record { foreign-spec = (HS-UHC "UHC.Agda.Builtins.primHsAdd" (unquote (getFFI addType)))})
 
   -- the wrapper, which has the type ℕ → ℕ → ℕ
   -- this is the thing we want in the end.
-  fhi : unquote (getAgdaHighType fde)
-  fhi = unquote (ffi-lift fde (quote ffi)) -- {!ffi-lift fde (quote ffi)!} --ffi_lift fde ffi
-
---  t : {!!}
---  t = {!unquote (ffi-lift fde (quote ffi))!}
+  -- The ffi-lift function does the heavy lifting,
+  -- by producing a term which inserts the contracts checks where necessary.
+  add : unquote (getAgdaHighType addType)
+  add = unquote (ffi-lift addType (quote add'))
 
 open import IO
 import IO.Primitive
@@ -80,7 +80,7 @@ open Ex2
 
 main : IO.Primitive.IO ⊤
 main = run (putStrLn (show k))
-  where k = fhi 12 45
+  where k = add 12 45
 
 
 module T3 where
@@ -115,37 +115,6 @@ module T3 where
       (λ a → record
         { HSₜ = L.List a
         ; other = λ n → (Vec a (lower n)) , ( withMaybe list⇒vec , Conversion.total Data.Vec.toList)})
-        
---  { HSₐ = List.[ Set ]
---  ; AGDAₐ = List.[ Lift ℕ ]
---  ; iso = λ x → L.lift ((List (Lift x)) , (λ x₁ → L.lift (record { AGDA = Vec (Lift x) (lower x₁) })))
---  }
- 
-{-  f : {n : ⟨ ℕ⇔ℤ ⟩} → {!!} → {!!}
-  f = {!!}-}
-{-  postulate
-    pi : (A : Set) → (A → Set) → Set
-    val : ∀ {a} {A : Set a} → A → Set-}
-
-{-  data HList : Set₁ where
-    nil : HList
-    cons : {A : Set} → A → HList → HList
-
-  data AST {l m} : Set (Level.suc (Level.suc (l Level.⊔ m))) where
-    pi : (A : Set l) → (A → AST {l} {m} ) → AST
-    val : {A : Set m} → A → AST
-    iso : PartIsoInt {m} → HList → AST
-    
-
-  syntax pi e₁ (λ x → e₂) = ⟨ x ∷ e₁ ⟩⇒ e₂
-  syntax val e = ⟨ e ⟩
-  syntax iso p xs = p ⇄ xs
-
--}
-
-  data HList {l} : Set (Level.suc l) where
-    nil : HList
-    cons : Set l → HList → HList
 
   getArgs : ∀ {l} → PartIsoInt {l} → Set (Level.suc l)
   getArgs p = WithArgs ((PartIso.ALLₐ h) L.++ ( PartIso.AGDAₐ h))
@@ -157,8 +126,8 @@ module T3 where
 
   data AST {l m} where
     pi : (a : AST {l} {l}) → (getTy a → AST {m} {m}) → AST
-    ⟦_⟧ : (A : Set l) → AST
-    ⟦_⇋_⟧ : (pi : PartIsoInt {l}) → getArgs pi → AST
+    ⟦_⟧ : (A : Set l) → AST -- normal type (List, Nat, etc..)
+    ⟦_⇋_⟧ : (pi : PartIsoInt {l}) → getArgs pi → AST -- isomorphism
 
   split++ : ∀ {l} {a : ArgTys {l}} → {b : ArgTys {l}} → (args : WithArgs (a L.++ b)) → (WithArgs a × WithArgs b)
   split++ {a = []} args = [] , args
@@ -177,9 +146,9 @@ module T3 where
 
   syntax pi e₁ (λ x → e₂) = ⟨ x ∷ e₁ ⟩⇒ e₂
   syntax id e = ⟨ e ⟩
---  syntax val e = ⟨ e ⟩
---  syntax iso p xs = p ⇄ xs
 
+  -- an example how the contracts syntax could look like,
+  -- if implemented using normal Agda constructs.
   ty' : AST
   ty' = ⟨ a ∷ ⟦ Set ⟧ ⟩⇒
     ⟨ x ∷ ⟦ ℕ⇔ℤ ⇋ [] ⟧ ⟩⇒
@@ -191,5 +160,5 @@ module T3 where
 --  f : Term
 --  f = quoteTerm ( ⟨ n ∷ ℕ ⟩⇒ ( ⟨ x ∷ ℕ ⟩⇒ ⟨ (vec⇔list Level.zero ⇄ cons n nil) ⟩ ) )
 
-  g : {! definition (quote f)!}
+  g : {! definition (quote ty')!}
   g = {!!}
