@@ -75,7 +75,7 @@ record PartIso {l} : Set (Level.suc (Level.suc l)) where
 
 record PartIsoInt {l} : Set (Level.suc (Level.suc l)) where
   field wrapped : PartIso {l}
-        wrappedₙ : Name
+        wrappedₙ : Name -- name of the part iso
         HSₙ : Name -- the low agda ty; name of the agda rep of the HS data
         AGDAₙ : Name -- the high agda ty
 --        foreign-data : Term
@@ -202,7 +202,32 @@ ffi-lift1 {_} {n} (π fde ⇒ fde₁) wr Pos Γ =
         rs = ffi-lift1 fde₁ wr Pos (0 ∷ shift 2 Γ)
         bd = le ls i rs
 ffi-lift1 (π fde ⇒ fde₁) wr Neg Γ = error
-ffi-lift1 (iso x x₁ x₂) wr pos Γ = notImpl
+ffi-lift1 (iso {l} x [] []) wr pos Γ =
+  -- extract the conversion from the named iso
+  -- apply unsafeConvert
+  def (quote unsafeConvert) (lvl ∷ lvl ∷ tyFrom pos ∷ tyTo pos ∷ getConv pos ∷ arg def-argInfo (wr Γ) ∷ [])
+  where lvl : Arg Term
+        lvl = arg (arg-info hidden relevant) (quoteTerm Level.zero) -- TODO here we have to insert the proper level, not just 0....
+        iso' : Term
+        iso' = def (quote PartIso.iso) [ arg def-argInfo (def (PartIsoInt.wrappedₙ x) []) ]
+        other' : Term
+        other' = def (quote PartIso'.other) [ arg def-argInfo iso' ]
+        p2 : Term
+        p2 = def (quote proj₂) [ arg def-argInfo other' ]
+        getConv : Position → Arg Term
+        getConv Pos = arg def-argInfo (def (quote proj₁) [ arg def-argInfo p2 ])
+        getConv Neg = arg def-argInfo (def (quote proj₂) [ arg def-argInfo p2 ])
+        tyAgda : Term
+        tyAgda = def (PartIsoInt.AGDAₙ x) []
+        tyHs : Term
+        tyHs = def (PartIsoInt.HSₙ x) []
+        tyFrom : Position → Arg Term
+        tyFrom Pos = arg (arg-info hidden relevant) tyHs
+        tyFrom Neg = arg (arg-info hidden relevant) tyAgda
+        tyTo : Position → Arg Term
+        tyTo Pos = arg (arg-info hidden relevant) tyAgda
+        tyTo Neg = arg (arg-info hidden relevant) tyHs
+ffi-lift1 (iso x _ _) _ _ _ = notImpl
 
 ffi-lift : ∀ {l} → (fde : T {l} 0) → Name {- name of the low level fun -} → Term
 ffi-lift fde nm  = ffi-lift1 fde (λ Γ → def nm (List.map mkArg (List.reverse Γ))) Pos []

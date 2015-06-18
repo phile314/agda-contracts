@@ -65,3 +65,18 @@ module Fun where
 
 
 
+module HS where
+  open import Data.List
+  open import Reflection
+  postulate
+    HSInteger : Set
+    HSInt : Set
+    HSDouble : Set
+  instance
+    HSInteger-FD : Data.ForeignData (quote HSInteger)
+    HSInteger-FD = record { foreign-spec = Data.HS-UHC "Data.List" (quote HSInteger) }
+
+  HSList : ∀ {l} → Set l → Set l
+  HSList = Data.List.List
+
+  
