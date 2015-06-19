@@ -1,4 +1,4 @@
-module Foreign.Fancy where
+module Contracts.Base where
 
 
 open import Reflection
