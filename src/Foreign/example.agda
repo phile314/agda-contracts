@@ -4,6 +4,42 @@ open import Foreign.Base
 
 open Foreign.Base.Fun
 
+module Ta where
+  open import Data.List
+  open import Reflection
+
+  postulate notImpl : {A : Set} → A
+
+  wayArg : Arg Term
+  wayArg = (arg (arg-info hidden relevant) (quoteTerm FFIWay.HS-UHC))
+
+  
+
+  fromTy : List Term → Term → Term
+  fromTy env (var x []) = con (quote τ-Hs.var) (wayArg
+         ∷ arg (arg-info visible relevant) (lit (nat x))
+         ∷ [])
+  fromTy env (con c args) = {!!}
+  fromTy env (def f args) = def (quote ty) (wayArg
+         ∷ {!!}
+         ∷ {!!}
+         ∷ [])
+  fromTy env (app t args) = {!!}
+  fromTy env (lam v t) = {!!}
+  fromTy env (pat-lam cs args) = {!!}
+  fromTy env (pi (arg i (el s t)) (abs s₁ (el _ x₁))) = con (quote _⇒_) (wayArg
+         ∷ arg (arg-info visible relevant) (fromTy env t)
+         ∷ arg (arg-info visible relevant) (fromTy env x₁)
+         ∷ [])
+  fromTy env (sort s) = {!!}
+  fromTy env (lit l) = {!!}
+  fromTy env (quote-goal t) = {!!}
+  fromTy env (quote-term t) = {!!}
+  fromTy env quote-context = {!!}
+  fromTy env (unquote-term t args) = {!!}
+  fromTy env unknown = {!!}
+  fromTy _ _ = notImpl
+
 module Ex1 where
   data List (A : Set) : Set where
     nil : List A
@@ -162,3 +198,82 @@ module T3 where
 
   g : {! definition (quote ty')!}
   g = {!!}
+
+  postulate mkForeign : {a : Set} → a
+
+--  q : ℕ → ℕ
+--  q = tactic t
+
+  q' : ℕ → ℕ
+  q' = quoteGoal g in unquote {!g!}
+
+--  r : ℕ → ℕ
+--    using foreign (record {})
+
+module ReflTest where
+
+  open import Reflection
+  open import Data.List
+  open import Foreign.Base
+  open Foreign.Base.Data
+  open Foreign.Base.Fun
+  open import Function
+
+  unArg : Arg Term → Term
+  unArg (arg i x) = x
+
+  postulate IMPOSSIBLE : {A : Set} → A
+
+  {-# TERMINATING #-}
+  xTy : Term → List Name
+  xTy (var x args) = concat (map (xTy ∘ unArg) args)
+  xTy (con c args) = IMPOSSIBLE
+  xTy (def f args) =  f ∷ (concat (map (xTy ∘ unArg) args))
+  xTy (app t args) = IMPOSSIBLE
+  xTy (lam v t) = IMPOSSIBLE -- can this actually happen? Anyway, Haskell doesn't supprt lambdas in types, so just fail
+  xTy (pat-lam cs args) = IMPOSSIBLE
+  xTy (pi (arg i (el s t)) (abs s₁ (el s₂ t₁))) = xTy t ++ xTy t₁
+  xTy (sort s) = []
+  xTy (lit l) = IMPOSSIBLE
+  xTy (quote-goal t) = IMPOSSIBLE
+  xTy (quote-term t) = IMPOSSIBLE
+  xTy quote-context = IMPOSSIBLE
+  xTy (unquote-term t args) = IMPOSSIBLE
+  xTy unknown = IMPOSSIBLE
+
+  xTy' : Term → Set
+  xTy' t = g ns
+    where
+      ns = xTy t
+      g : List Name → Set
+      g [] = τ-Hs HS-UHC
+      g (x ∷ xs) = {{ fd : ForeignData x }} → g xs
+
+  x : (t : Term) → xTy' t
+  x (var x args) = {!!}
+  x (con c args) = IMPOSSIBLE
+  x (def f args) = λ {{fd}} → {!!} -- τ-Hs.ty f (ForeignData.foreign-spec fd) --(τ-Hs.ty {!τ-Hs.ty!} )
+  x (app t args) = {!!}
+  x (lam v t) = {!!}
+  x (pat-lam cs args) = {!!}
+  x (pi (arg i x) t₂) = {!!} -- here we need to check if t₁ is of type set.
+  x (sort s) = {!!}
+  x (lit l) = IMPOSSIBLE
+  x (quote-goal t) = IMPOSSIBLE
+  x (quote-term t) = IMPOSSIBLE
+  x quote-context = IMPOSSIBLE
+  x (unquote-term t args) = IMPOSSIBLE
+  x unknown = IMPOSSIBLE
+--  x _ = {!!}
+
+  open import Data.Nat
+  open import Data.Integer
+  open Foreign.Base.HS
+  k : Set
+  k = ℤ
+
+  m : τ-Hs HS-UHC
+  m = x (quoteTerm HSInteger)
+
+  y : {!quoteTerm ( { a : Set} → a )!}
+  y = {!!}
