@@ -37,8 +37,8 @@ module Ex2 where
   {-# COMPILED_UHC ℤ⇒HSInteger UHC.Agda.Builtins.primAgdaIntegerToHsInteger #-}
   {-# COMPILED_UHC HSInteger⇒ℤ UHC.Agda.Builtins.primHsIntegerToAgdaInteger #-}
 
-  ℕ⇔ℤ : PartIsoInt
-  ℕ⇔ℤ = toIntPartIso partIso (quote partIso) (quoteTerm partIso) (quoteTerm HSInteger-FD)
+  ℕ⇔Hsℤ : PartIsoInt
+  ℕ⇔Hsℤ = toIntPartIso partIso (quote partIso) (quoteTerm partIso) (quoteTerm HSInteger-FD)
     where f : HSInteger → Maybe ℕ
           f i with HSInteger⇒ℤ i
           ... | -[1+ n ] = nothing
@@ -56,48 +56,31 @@ module Ex2 where
 
   -- the internal AST representation of the above notation
   addType : T {Level.zero} 0
-  addType = π ( iso ℕ⇔ℤ [] [] ) ⇒ (π (iso ℕ⇔ℤ [] []) ⇒ (iso ℕ⇔ℤ [] []))
+  addType = π ( iso ℕ⇔Hsℤ [] [] ) ⇒ (π (iso ℕ⇔Hsℤ [] []) ⇒ (iso ℕ⇔Hsℤ [] []))
 --  addType = π ( def_∙_ (quote ℤ) {quote bla} [] ) ⇒ (π (def_∙_ (quote ℤ) {quote bla} []) ⇒ (def_∙_ (quote ℤ) {quote bla} []))
 
   -- the ffi declaration, which has the type ℤ → ℤ → ℤ
   -- this is not terribly interesting....
-  add' : unquote (getAgdaLowType addType)
-    using foreign (record { foreign-spec = (HS-UHC "UHC.Agda.Builtins.primHsAdd" (unquote (getFFI addType)))})
+--  add' : unquote (getAgdaLowType addType)
+--    using foreign (record { foreign-spec = (HS-UHC "UHC.Agda.Builtins.primHsAdd" (unquote (getFFI addType)))})
 
   -- the wrapper, which has the type ℕ → ℕ → ℕ
   -- this is the thing we want in the end.
   -- The ffi-lift function does the heavy lifting,
   -- by producing a term which inserts the contracts checks where necessary.
-  add : unquote (getAgdaHighType addType)
-  add = unquote (ffi-lift addType (quote add'))
-
-open import IO
-import IO.Primitive
-open import Data.Unit
-open import Data.Nat.Show
-
-open Ex2
-
-main : IO.Primitive.IO ⊤
-main = run (putStrLn (show k))
-  where k = add 12 45
+--  add : unquote (getAgdaHighType addType)
+--  add = unquote (ffi-lift addType (quote add'))
 
 
-
--- surface syntax tests
-module T3 where
-  open import Contracts.Base
-  open import Data.Nat as N
-  open import Level
-  
-{-  ⟨_∙_⟩ : ∀ {l} → PartIsoInt {l} → List ? → Set l
-  ⟨ p ⟩ = {!!}
--}
+module VecIso where
   open import Data.List as L
-  open import Data.Vec
+  open import Data.Nat as N
   open import Data.Maybe
-  open import Relation.Binary.PropositionalEquality
+  open import Data.Vec
   open import Relation.Nullary
+  open import Level
+  open import Contracts.Base
+  open import Relation.Binary.PropositionalEquality
   open import Data.Product
 
   instance
@@ -117,6 +100,78 @@ module T3 where
       (λ a → record
         { HSₜ = L.List a
         ; other = λ n → (Vec a (lower n)) , ( withMaybe list⇒vec , Conversion.total Data.Vec.toList)})
+
+module NatIntIso where
+  open import Contracts.Base
+  open import Data.Nat
+  open import Data.Integer
+  open import Data.Maybe
+  open import Data.List
+  open import Data.Product
+
+  -- NOT WOKRING - JUST TO GET STUFF TO TYPE CHECK!!!
+  instance
+    ℤ-FD : Data.ForeignData (quote ℤ)
+    ℤ-FD = record { foreign-spec = Data.HS-UHC "DUMMY NOT WORKING" (quote ℤ) }
+
+  ℕ⇔ℤ : PartIsoInt
+  ℕ⇔ℤ = toIntPartIso partIso (quote partIso) (quoteTerm partIso) (quoteTerm ℤ-FD)
+    where f : ℤ → Maybe ℕ
+          f -[1+ n ] = nothing
+          f (+ n) = just n
+          partIso : PartIso
+          partIso = mkPartIso [] [] (record { HSₜ = ℤ ; other = ℕ , ((withMaybe f) , (Conversion.total (+_))) })
+
+
+module MapEx where
+  open VecIso
+  open NatIntIso
+  open import Contracts.Base
+  open import Level
+  open import Data.List
+  open import Data.Integer
+  open import Data.Nat
+
+  mapImpl : (ℤ → ℤ) → List ℤ → List ℤ
+  mapImpl f [] = []
+  mapImpl f (x ∷ xs) = f x ∷ mapImpl f xs
+
+  -- map higher order fun, where we convert the inputs of the higher order thingie
+  mapNZType : T {Level.zero} 0
+  mapNZType =
+      π (
+        π (iso ℕ⇔ℤ [] []) ⇒ (iso ℕ⇔ℤ [] [])
+--        π (iso ℕ⇔ℤ [] []) ⇒ (def (quote ℤ) ∙ [])
+        )
+    ⇒ (π (def (quote List) ∙ [ (def (quote ℤ) ∙ []) ])
+    ⇒ (def (quote List) ∙ [ (def (quote ℤ) ∙ []) ]))
+
+--  k : {!!}
+--  k = {!unquote (ffi-lift mapNZType (quote mapImpl))!}
+
+  myMap : unquote (getAgdaHighType mapNZType)
+  myMap = unquote (ffi-lift mapNZType (quote mapImpl))
+
+--  k' : {!unquote (getAgdaHighType mapNZType)!}
+--  k' = {!myMap!}
+
+-- surface syntax tests
+module T3 where
+  open Ex2
+  open VecIso
+  open import Contracts.Base
+  open import Data.Nat as N
+  open import Level
+  
+{-  ⟨_∙_⟩ : ∀ {l} → PartIsoInt {l} → List ? → Set l
+  ⟨ p ⟩ = {!!}
+-}
+  open import Data.List as L
+  open import Data.Vec
+  open import Data.Maybe
+  open import Relation.Binary.PropositionalEquality
+  open import Relation.Nullary
+  open import Data.Product
 
   getArgs : ∀ {l} → PartIsoInt {l} → Set (Level.suc l)
   getArgs p = WithArgs ((PartIso.ALLₐ h) L.++ ( PartIso.AGDAₐ h))
@@ -153,7 +208,7 @@ module T3 where
   -- if implemented using normal Agda constructs.
   ty' : AST
   ty' = ⟨ a ∷ ⟦ Set ⟧ ⟩⇒
-    ⟨ x ∷ ⟦ ℕ⇔ℤ ⇋ [] ⟧ ⟩⇒
+    ⟨ x ∷ ⟦ ℕ⇔Hsℤ ⇋ [] ⟧ ⟩⇒
     ⟨ y ∷ ⟦ vec⇔list Level.zero ⇋ a , ((lift x) , []) ⟧ ⟩⇒
     ⟨ xs ∷ ⟦ List a ⟧ ⟩⇒
     ⟨ ⟦ List a ⟧ ⟩
@@ -162,17 +217,40 @@ module T3 where
 --  f : Term
 --  f = quoteTerm ( ⟨ n ∷ ℕ ⟩⇒ ( ⟨ x ∷ ℕ ⟩⇒ ⟨ (vec⇔list Level.zero ⇄ cons n nil) ⟩ ) )
 
-  g : {! definition (quote ty')!}
-  g = {!!}
+--  g : {! definition (quote ty')!}
+--  g = {!!}
 
   postulate mkForeign : {a : Set} → a
 
 --  q : ℕ → ℕ
 --  q = tactic t
 
-  q' : ℕ → ℕ
-  q' = quoteGoal g in unquote {!g!}
+--  q' : ℕ → ℕ
+--  q' = quoteGoal g in unquote {!g!}
 
 --  r : ℕ → ℕ
 --    using foreign (record {})
 
+
+
+open import IO
+import IO.Primitive
+open import Data.Unit
+open import Data.Nat.Show
+open import Data.List
+open import Data.Integer
+open import Data.Nat
+
+open MapEx
+
+postulate exError : {A : Set} → A
+
+main : IO.Primitive.IO ⊤
+main = run (putStrLn (Data.Integer.show q))
+  where p : List ℤ
+        p = [ + 14 ]
+        k = myMap (Data.Nat._+_ 34) p
+        q : ℤ
+        q with k
+        q | [] = exError
+        q | i ∷ _ = i

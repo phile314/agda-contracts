@@ -106,8 +106,8 @@ data T {l} : ℕ → Set (Level.suc (Level.suc l)) where
     → T n
   def_∙_ : ∀ {n}
     → (nm : Name)
-    → {{ f : Data.ForeignData nm}}
-    → {fnm : Name} -- foreign data name
+--    → {{ f : Data.ForeignData nm}}
+--    → {fnm : Name} -- foreign data name
     → List (T {l} n)
     → T n
   π_⇒_ : ∀ {n}
@@ -168,6 +168,10 @@ data Position : Set where
   Pos : Position
   Neg : Position
 
+invertPosition : Position → Position
+invertPosition Pos = Neg
+invertPosition Neg = Pos
+
 mkAbs : (n : ℕ) → Term → Term
 mkAbs ℕ.zero body = body
 mkAbs (ℕ.suc n) body = lam visible (abs "" (mkAbs n body))
@@ -175,8 +179,8 @@ mkAbs (ℕ.suc n) body = lam visible (abs "" (mkAbs n body))
 shift : ℕ → List ℕ → List ℕ
 shift k = List.map (N._+_ k)
 
-le_i_ : Term → Term → Term
-le_i_ t₁ t₂ = app (lam visible (abs "" t₂)) [ arg (arg-info visible relevant) t₁ ]
+lett_inn_ : Term → Term → Term
+lett_inn_ t₁ t₂ = app (lam visible (abs "" t₂)) [ arg (arg-info visible relevant) t₁ ]
 
 open import Data.String
 postulate
@@ -192,22 +196,30 @@ unsafeConvert (withMaybe x) x₁ | just x₂ = x₂
 unsafeConvert (withMaybe x) x₁ | nothing = conversionFailure ""
 unsafeConvert fail x = conversionFailure ""
 
+last : {A : Set} → List A → A
+last [] = error
+last (x ∷ []) = x
+last (x ∷ xs) = last xs
+
+mkArg : ℕ → Arg Term
+mkArg i = arg (arg-info visible relevant) (var i [])
+
 ffi-lift1 : ∀ {l n}
   → (fde : T {l} n)
 --  → Name {- name of the low level fun -}
   → (List ℕ → Term) -- thing to wrap
-  → Position
+  → Position -- seems to be only used to figure out in which directin to convert
   → List ℕ -- environment
   → Term
 ffi-lift1 (set l₁) wr pos Γ = wr Γ
 ffi-lift1 (v k ∙ x) wr pos Γ = wr Γ
 ffi-lift1 (def nm ∙ x) wr pos Γ  = wr Γ
-ffi-lift1 {_} {n} (π fde ⇒ fde₁) wr Pos Γ =
+ffi-lift1 {_} {n} (π fde ⇒ fde₁) wr pos Γ =
   lam visible (abs "x" bd)
-  where ls = ffi-lift1 fde (λ _ → var 0 []) Neg Γ
-        rs = ffi-lift1 fde₁ wr Pos (0 ∷ shift 2 Γ)
-        bd = le ls i rs
-ffi-lift1 (π fde ⇒ fde₁) wr Neg Γ = error
+  where ls = ffi-lift1 fde (λ env → var (length env * 2) (List.map mkArg (reverse env))) (invertPosition pos) []
+        rs = ffi-lift1 fde₁ wr pos (0 ∷ shift 2 Γ)
+        bd = lett ls inn rs
+--ffi-lift1 (π fde ⇒ fde₁) wr Neg Γ = {!!} --what do we have to do here?
 ffi-lift1 (iso {l} x [] []) wr pos Γ =
   -- extract the conversion from the named iso
   -- apply unsafeConvert
@@ -237,8 +249,7 @@ ffi-lift1 (iso x _ _) _ _ _ = notImpl
 
 ffi-lift : ∀ {l} → (fde : T {l} 0) → Name {- name of the low level fun -} → Term
 ffi-lift fde nm  = ffi-lift1 fde (λ Γ → def nm (List.map mkArg (List.reverse Γ))) Pos []
-  where mkArg : ℕ → Arg Term
-        mkArg i = arg (arg-info visible relevant) (var i [])
+
 
 --postulate
   -- returns the Agda type before applying the isos
@@ -272,8 +283,6 @@ open import Data.Nat.Properties.Simple
 
 open import Data.List as L
 
---apps :
-
 data SomethingBad : Set where
 
 FAIL : Term
@@ -282,13 +291,15 @@ FAIL = def (quote SomethingBad) []
 hsUhcWay : Arg Term
 hsUhcWay = arg (arg-info hidden relevant) (con (quote FFIWay.HS-UHC) L.[] )
 
+{-
 import Data.List.Base
+-- this is OUTDATED and should not be used anymore
 -- off is the number of pis not introducting a forall
 {-# TERMINATING #-}
 getFFI1 : ∀ {l} → {n : ℕ} (e : ℕ) → (t : T {l} n) → Term
 getFFI1 e (set l) = FAIL
 getFFI1 e (v k ∙ x) = con (quote τ-Hs.var) ( hsUhcWay L.∷ L.[ arg def-argInfo (lit (nat (toℕ k))) ])
-getFFI1 e (def_∙_ x {{fd}} {fnm} []) =
+getFFI1 e (def_∙_ x []) =
 --  def (quote apps) (((arg def-argInfo (
     con (quote ty) (arg (arg-info hidden relevant)
       (con (quote Foreign.Base.FFIWay.HS-UHC) [])
@@ -320,6 +331,7 @@ getFFI1 e (iso x x₁ x₂) =
 
 getFFI : ∀ {l} → (t : T {l} 0) → Term --(τ-Hs)
 getFFI t = getFFI1 {_} {0} 0 t
+-}
 
 open import Data.Vec hiding (_>>=_)
 
@@ -347,18 +359,6 @@ getHsTyNm t with getOtherPI t
         ... | just (arg _ (def nm _)) = nm
         ... | _ = error
         g _ = error2
-{-getHsTyNm (con c args) | just (arg _ t) with lamBody t
-... | (con c' args') with Fun.lookup 3 args'
-... | _ | lk = {!!} --with Fun.lookup 3 args'
---... | lk2 = {!!}
-... | _ = error-}
-{-getHsTyNm (con c args) | just (arg i (con c' args')) with Fun.lookup 3 args'
-getHsTyNm (con c args) | just (arg i₁ (con c' args')) | just (arg i (def nm _)) = nm
-getHsTyNm (con c args) | just (arg i₁ (con c' args')) | just (arg i x) = error
-getHsTyNm (con c args) | just (arg i (con c' args')) | nothing = error2-}
---getHsTyNm (con c args) | just _ = error2
---getHsTyNm (con c args) | _ = error2
-
 
 getAgdaTyNm : Term → Name
 getAgdaTyNm d with getOtherPI d
