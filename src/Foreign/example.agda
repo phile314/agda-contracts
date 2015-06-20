@@ -2,8 +2,8 @@ module Foreign.example where
 
 open import Foreign.Base
 
-open Foreign.Base.Fun
-
+open Foreign.Base.FunImport
+{-
 module Ta where
   open import Data.List
   open import Reflection
@@ -11,7 +11,7 @@ module Ta where
   postulate notImpl : {A : Set} → A
 
   wayArg : Arg Term
-  wayArg = (arg (arg-info hidden relevant) (quoteTerm FFIWay.HS-UHC))
+  wayArg = (arg (arg-info hidden relevant) (quoteTerm FFIWay.UHC-HS))
 
   
 
@@ -39,6 +39,7 @@ module Ta where
   fromTy env (unquote-term t args) = {!!}
   fromTy env unknown = {!!}
   fromTy _ _ = notImpl
+-}
 
 module Ex1 where
   data List (A : Set) : Set where
@@ -46,8 +47,9 @@ module Ex1 where
     cons : A → List A → List A
   {-# COMPILED_DATA_UHC List __LIST__ __NIL__ __CONS__ #-}
 
+  open import Data.Maybe
   blub : Data.ForeignData (quote List)
-  blub = record { foreign-spec = Data.HS-UHC "Data.List.List" (quote List) }
+  blub = record { uhc-hs = just (Data.UHC-HS "Data.List.List" (quote List)) ; uhc-c = nothing }
 
 
 --  head : ∀ {a} → List a → a
@@ -72,8 +74,32 @@ module Ex2 where
   {-# COMPILED_UHC ℤ⇒HSInteger UHC.Agda.Builtins.primAgdaIntegerToHsInteger #-}
   {-# COMPILED_UHC HSInteger⇒ℤ UHC.Agda.Builtins.primHsIntegerToAgdaInteger #-}
 
-  
+open Foreign.Base.HS
+open Ex2
+open import Data.Maybe
+import Foreign.Base
+open Foreign.Base.Data
 
+postulate err : {A : Set} → A
+fromJust : {A : Set} → Maybe A → A
+fromJust (just x) = x
+fromJust nothing = err
+
+
+hsIntTy : τ-Hs UHC-HS
+hsIntTy = ty (quote HSInteger) (fromJust (ForeignData.uhc-hs HSInteger-FD))
+
+add : HSInteger → HSInteger → HSInteger
+  using foreign (record { uhc-native = just (UHC-HS "UHC.Agda.Builtins.primHsAdd" (hsIntTy ⇒ (hsIntTy ⇒ hsIntTy))) } )
+
+import IO.Primitive
+open import IO
+open import Data.Unit
+open import Data.Integer
+main : IO.Primitive.IO ⊤
+main = run (putStrLn (Data.Integer.show (HSInteger⇒ℤ (add (ℤ⇒HSInteger (+ 32)) (ℤ⇒HSInteger (+ 54))))))
+
+{-
 -- test if we can use instance args with reflection.
 -- Solution: Produce a function which takes instance arguments
 module ReflTest where
@@ -82,7 +108,7 @@ module ReflTest where
   open import Data.List
   open import Foreign.Base
   open Foreign.Base.Data
-  open Foreign.Base.Fun
+  open Foreign.Base.FunImport
   open import Function
 
   unArg : Arg Term → Term
@@ -112,7 +138,7 @@ module ReflTest where
     where
       ns = xTy t
       g : List Name → Set
-      g [] = τ-Hs HS-UHC
+      g [] = τ-Hs UHC-HS
       g (x ∷ xs) = {{ fd : ForeignData x }} → g xs
 
   x : (t : Term) → xTy' t
@@ -138,8 +164,9 @@ module ReflTest where
   k : Set
   k = ℤ
 
-  m : τ-Hs HS-UHC
+  m : τ-Hs UHC-HS
   m = x (quoteTerm HSInteger)
 
   y : {!quoteTerm ( { a : Set} → a )!}
   y = {!!}
+-}
