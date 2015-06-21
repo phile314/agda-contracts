@@ -20,7 +20,7 @@ open import Data.Char
 k : HSInteger
 --  using foreign fdesc
 --  using foreign mkDesc
-  using foreign (mkHsUhc "UHC.Agda.Builtins.primHsAdd" (quoteTerm Char))
+  using foreign (mkUhcHs "UHC.Agda.Builtins.primHsAdd")
 
 
 open import Reflection

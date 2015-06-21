@@ -219,17 +219,24 @@ open Foreign.Base.FunImport
 open import Reflection
 open import Data.Maybe
 
-mkHsUhc : UHC-HS-EntityName → (t : Term) → tTy t ForeignFun
-mkHsUhc unm t = die t (λ x → (record { uhc-native = just (UHC-HS unm x) }))
+mkUhcHs : UHC-HS-EntityName → (t : Term) → tTy t ForeignFun
+mkUhcHs unm t = die t (λ x → (record { uhc-native = just (UHC-HS unm x) }))
 
-fdesc : ForeignFun
-fdesc = mkHsUhc "UHC.Agda.Builtins.primHsAdd" (quoteTerm (HSInteger → HSInteger → HSInteger))
+mkUhcC : UHC-C-EntityName → C-Safety → (t : Term) → tTy t ForeignFun
+mkUhcC cnm cs t = die t (λ x → record { uhc-native = just (UHC-C cnm cs) })
 
---add : HSInteger → HSInteger → HSInteger
+--fdesc : ForeignFun
+--fdesc = mkHsUhc "UHC.Agda.Builtins.primHsAdd" (quoteTerm (HSInteger → HSInteger → HSInteger))
+
+add : HSInteger → HSInteger → HSInteger
 --  using foreign fdesc
 --  using foreign (mkHsUhc "UHC.Agda.Builtins.primHsAdd" (quoteTerm (HSInteger → HSInteger → HSInteger)))
---  using foreign (quoteGoal g in (mkHsUhc "UHC.Agda.Builtins.primHsAdd" g))
+  using foreign (mkUhcHs "UHC.Agda.Builtins.primHsAdd")
 
+postulate CInt : Set
+
+--addC : CInt → CInt → CInt
+--  using foreign (mkUhcC "math.h add" safe)
 
 {-
 open Foreign.Base.HS
