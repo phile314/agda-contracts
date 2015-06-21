@@ -113,15 +113,17 @@ module ReflTest where
 
   postulate IMPOSSIBLE : ∀ {a} → {A : Set a} → A
 
+  open import Data.Nat
   tTy : Term → Set → Set
   tArgs : List (Arg Term) → Set → Set
 
   tTy (var x args) e = tArgs args e
   tTy (con c args) e = IMPOSSIBLE
-  tTy (def f args) e = {{ fd : ForeignData f }} → tArgs args e
+  tTy (def f args) e = {{_ : ForeignData f}} → tArgs args e
   tTy (app t args) e = IMPOSSIBLE
   tTy (lam v t) e = IMPOSSIBLE
   tTy (pat-lam cs args) e = IMPOSSIBLE
+--  tTy (pi (arg i (el s₁ (sort s))) (abs _ (el _ t₂))) e = tTy t₂ e
   tTy (pi (arg _ (el _ t₁)) (abs _ (el _ t₂))) e = tTy t₁ (tTy t₂ e)
   tTy (sort s) e = e
   tTy (lit l) e = IMPOSSIBLE
@@ -139,43 +141,87 @@ module ReflTest where
 
   open import Data.Maybe
   fromJust : {A : Set} → Maybe A → A
-  fromJust = {!!}
+  fromJust (just x) = x
+  fromJust nothing = IMPOSSIBLE -- error
 
   open import Data.List.NonEmpty
   
-  der : (t : Term) → (s : Set) → (τ → s) {- (k : τ → s)-} → tTy t s
-  das : (xs : List (Arg Term)) → (s : Set) → (τ → s) → τ → tArgs xs s
---  das : (xs : List⁺ (Arg Term)) → (s : Set) (k : τ)  → tArgs (toList xs) s
---  buildFun : (args : List (Arg Term)) → tArgs args
+  der : {s : Set} → (t : Term) → (τ → s) → tTy t s
+  das : {s : Set} → (xs : List (Arg Term)) → (τ → s) → τ → tArgs xs s
 
-  der (var x args) s e = das args s e (var x)
+  der (var x args) e = das args e (var x)
   der (con c args) e = IMPOSSIBLE
-  der (def f args) s e = λ {{fd}} → das args s e (ty f {!!}) -- {!!} (das args {!!}) --das args s (ty f (fromJust (ForeignData.uhc-hs fd))) --(ty f (fromJust (ForeignData.uhc-hs fd)))
-  der (app t args) e = {!!}
-  der (lam v t) e = {!!}
-  der (pat-lam cs args) e = {!!}
-  der (pi t₁ t₂) e = {!!}
-  der (sort s) e = {!!}
-  der (lit l) e = {!!}
-  der (quote-goal t) e = {!!}
-  der (quote-term t) e = {!!}
-  der quote-context e = {!!}
-  der (unquote-term t args) e = {!!}
-  der unknown e = {!!}
+  der (def f args) e = λ {{fd}} → das args e (ty f (fromJust (ForeignData.uhc-hs fd)))
+  der (app t args) e = IMPOSSIBLE
+  der (lam v t) e = IMPOSSIBLE
+  der (pat-lam cs args) e = IMPOSSIBLE
+  der (pi (arg i (el s₁ (sort s))) (abs _ (el _ t₂))) e = der t₂ (λ t₂' → e (∀' t₂'))
+  der (pi (arg i (el s₁ t)) (abs s₂ (el s₃ t₁))) e = der t (λ t' → der t₁ (λ t₁' → e (t' ⇒ t₁')))
+  der (sort s) e = IMPOSSIBLE
+  der (lit l) e = IMPOSSIBLE
+  der (quote-goal t) e = IMPOSSIBLE
+  der (quote-term t) e = IMPOSSIBLE
+  der quote-context e = IMPOSSIBLE
+  der (unquote-term t args) e = IMPOSSIBLE
+  der unknown e = IMPOSSIBLE
   
-  das [] s e τ = e τ
-  das (arg i x ∷ xs) s e τ = der x (tArgs xs s) (λ x' → das xs s e (app τ x'))
+  das [] e τ = e τ
+  das (arg i x ∷ xs) e τ = der x (λ x' → das xs e (app τ x'))
 
   die : (t : Term) → tTy t τ
-  die t = der t τ (λ x → x)
+  die t = der t (λ x → x)
 
   open import Data.Nat
   open import Data.Integer
-  ex1 : Term
-  ex1 = quoteTerm (ℕ → (ℤ → ℕ) → ℕ)
 
-  ex1' : {!tTy ex1 (τ-Hs UHC-HS)!}
-  ex1' = {!!}
+  instance
+    ℤ-FD : Data.ForeignData (quote ℤ)
+    ℤ-FD = record { uhc-hs = just (Data.UHC-HS "Data.List" (quote ℤ)) ; uhc-c = nothing }
+    ℕ-FD : Data.ForeignData (quote ℕ)
+    ℕ-FD = record { uhc-hs = just (Data.UHC-HS "Data.List" (quote ℕ)) ; uhc-c = nothing }
+    
+  ex1 : Term
+  ex1 = quoteTerm (ℕ → (ℤ → ℕ) → ℕ) -- (ℕ → (ℤ → ℕ) → ℕ)
+
+  l : {!tTy ex1 τ!}
+  l = {!!}
+
+  open Foreign.Base.HS
+  open import Data.Bool
+
+  ff : List Name → Set
+  ff [] = τ
+  ff (x ∷ b) = {{_ : ForeignData x}} → ff b
+
+  fg : List Name → Set
+  fg [] = τ
+  fg (x ∷ xs) = ForeignData x → fg xs
+
+  appInst : {n : List Name} → (fg n) → ff n
+  appInst {[]} x = x
+  appInst {x ∷ n} x₁ = λ {{x₂}} → appInst (x₁ x₂)
+
+--  derive : Term → τ
+--  derive = ?
+
+  ex1' : τ -- tTy ex1 τ -- {!tTy ex1 (τ-Hs UHC-HS)!}
+--  ex1' = λ {{a}} {{b}} → die ex1 {{a}} {{b}} --die ex1 -- die ex1  -- {!die ex1!}
+  ex1' = die ex1 -- appInst (die ex1)
+
+  ex1'' : τ
+  ex1'' = ex1'
+
+  q : {!tTy ex1 τ!}
+  q = {!definition (quote ex1')!}
+
+  f : Term → Set
+  f t = {{fd : Data.ForeignData (quote ℤ)}} → Term
+
+  ex2 : (t : Term) → f t
+  ex2 t {{fd}} = {!!}
+
+  ex3 : Term → Term
+  ex3 t = ex2 t
 
 --  {-# TERMINATING #-}
 {-  xTy : Term → List Name

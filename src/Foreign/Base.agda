@@ -119,5 +119,10 @@ module HS where
   HSList : ∀ {l} → Set l → Set l
   HSList = Data.List.List
 
+  open import Data.Nat
+  instance
+    ℕ-FD : ForeignData (quote ℕ)
+    ℕ-FD = record { uhc-hs = just (UHC-HS "NONE" (quote ℕ)); uhc-c = nothing }
+
   
 
