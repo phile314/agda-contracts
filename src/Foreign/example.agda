@@ -93,8 +93,8 @@ module IdrisTest where
 
   open FunImport
 
-  derive : ∀ {a} {A : Set a} {f : FFIDesc A} → ForeignFun
-  derive {_} {_} {desc} = {!desc!}
+--  derive : ∀ {a} {A : Set a} {f : FFIDesc A} → ForeignFun
+--  derive {_} {_} {desc} = {!desc!}
 
 
 -- test if we can use instance args with reflection.
@@ -168,8 +168,8 @@ module ReflTest where
   das [] e τ = e τ
   das (arg i x ∷ xs) e τ = der x (λ x' → das xs e (app τ x'))
 
-  die : (t : Term) → tTy t τ
-  die t = der t (λ x → x)
+  die : {s : Set} → (t : Term) → (τ → s) → tTy t s
+  die t cont = der t cont
 
   open import Data.Nat
   open import Data.Integer
@@ -181,139 +181,54 @@ module ReflTest where
     ℕ-FD = record { uhc-hs = just (Data.UHC-HS "Data.List" (quote ℕ)) ; uhc-c = nothing }
     
   ex1 : Term
-  ex1 = quoteTerm (ℕ → (ℤ → ℕ) → ℕ) -- (ℕ → (ℤ → ℕ) → ℕ)
+  ex1 = quoteTerm ({a : Set} → (a → a) → (List a → List a))-- (ℕ → (ℤ → ℕ) → ℕ) -- (ℕ → (ℤ → ℕ) → ℕ)
 
-  l : {!tTy ex1 τ!}
-  l = {!!}
+--  l : {!tTy ex1 τ!}
+--  l = {!!}
 
   open Foreign.Base.HS
   open import Data.Bool
 
-  ff : List Name → Set
-  ff [] = τ
-  ff (x ∷ b) = {{_ : ForeignData x}} → ff b
+  derive : {s : Set} → (t : Term) → (τ → s) → tTy t s
+  derive = die
 
-  fg : List Name → Set
-  fg [] = τ
-  fg (x ∷ xs) = ForeignData x → fg xs
-
-  appInst : {n : List Name} → (fg n) → ff n
-  appInst {[]} x = x
-  appInst {x ∷ n} x₁ = λ {{x₂}} → appInst (x₁ x₂)
-
---  derive : Term → τ
---  derive = ?
-
-  ex1' : τ -- tTy ex1 τ -- {!tTy ex1 (τ-Hs UHC-HS)!}
+{-  ex1' : τ -- tTy ex1 τ -- {!tTy ex1 (τ-Hs UHC-HS)!}
 --  ex1' = λ {{a}} {{b}} → die ex1 {{a}} {{b}} --die ex1 -- die ex1  -- {!die ex1!}
-  ex1' = die ex1 -- appInst (die ex1)
+  ex1' = {!!} --die ex1 -- appInst (die ex1)
 
   ex1'' : τ
   ex1'' = ex1'
 
-  q : {!tTy ex1 τ!}
-  q = {!definition (quote ex1')!}
+--  q : {!tTy ex1 τ!}
+--  q = {!definition (quote ex1')!}
 
   f : Term → Set
   f t = {{fd : Data.ForeignData (quote ℤ)}} → Term
 
   ex2 : (t : Term) → f t
-  ex2 t {{fd}} = {!!}
+  ex2 t {{fd}} = {!die ex1!}
 
   ex3 : Term → Term
-  ex3 t = ex2 t
+  ex3 t = ex2 t-}
 
---  {-# TERMINATING #-}
-{-  xTy : Term → List Name
-  xTy (var x args) = concat (map (xTy ∘ unArg) args)
-  xTy (con c args) = IMPOSSIBLE
-  xTy (def f args) =  f ∷ (concat (map (xTy ∘ unArg) args))
-  xTy (app t args) = IMPOSSIBLE
-  xTy (lam v t) = IMPOSSIBLE -- can this actually happen? Anyway, Haskell doesn't supprt lambdas in types, so just fail
-  xTy (pat-lam cs args) = IMPOSSIBLE
-  xTy (pi (arg i (el s t)) (abs s₁ (el s₂ t₁))) = xTy t ++ xTy t₁
-  xTy (sort s) = []
-  xTy (lit l) = IMPOSSIBLE
-  xTy (quote-goal t) = IMPOSSIBLE
-  xTy (quote-term t) = IMPOSSIBLE
-  xTy quote-context = IMPOSSIBLE
-  xTy (unquote-term t args) = IMPOSSIBLE
-  xTy unknown = IMPOSSIBLE
 
-  k : Term → Set → Set
-  k t f = g ns
-    where
-      ns = xTy t
-      g : List Name → Set
-      g [] = f
-      g (x ∷ xs) = {{ fd : ForeignData x}} → g xs
+open ReflTest
+open Foreign.Base.Data
+open Foreign.Base.HS
+open Foreign.Base.FunImport
+open import Reflection
+open import Data.Maybe
 
-  xTy' : Term → Set
-  xTy' t = g ns
-    where
-      ns = xTy t
-      g : List Name → Set
-      g [] = τ-Hs UHC-HS
-      g (x ∷ xs) = {{ fd : ForeignData x }} → g xs
+mkHsUhc : UHC-HS-EntityName → (t : Term) → tTy t ForeignFun
+mkHsUhc unm t = die t (λ x → (record { uhc-native = just (UHC-HS unm x) }))
 
-  xArgTy : List (Arg Term) → Set
-  xArgTy [] = τ-Hs UHC-HS
-  xArgTy ((arg _ x) ∷ xs) = k x (xArgTy xs)
+fdesc : ForeignFun
+fdesc = mkHsUhc "UHC.Agda.Builtins.primHsAdd" (quoteTerm (HSInteger → HSInteger → HSInteger))
 
-  args : Term → Set
-  args (var x args) = List (τ-Hs UHC-HS) -- the terms for the args
-  args (con c args) = IMPOSSIBLE
-  args (def f args) = List (τ-Hs UHC-HS) -- the terms for the args
-  args (app t args) = IMPOSSIBLE
-  args (lam v t) = IMPOSSIBLE
-  args (pat-lam cs args) = IMPOSSIBLE
-  args (pi t₁ t₂) = {!!}
-  args (sort s) = {!!}
-  args (lit l) = IMPOSSIBLE
-  args (quote-goal t) = IMPOSSIBLE
-  args (quote-term t) = IMPOSSIBLE
-  args quote-context = IMPOSSIBLE
-  args (unquote-term t args) = IMPOSSIBLE
-  args unknown = IMPOSSIBLE
-
-  x : (t : Term)
---    → (args t → τ-Hs UHC-HS)
-    → xTy' t
-  y : (args : List (Arg Term))
-    → τ-Hs UHC-HS -- function
-    → xArgTy args
-
-  x (var x args) = {!!}
-  x (con c args) = IMPOSSIBLE
-  x (def f args) = λ {{fd}} → y args {!!} -- τ-Hs.ty f (ForeignData.foreign-spec fd) --(τ-Hs.ty {!τ-Hs.ty!} )
-  x (app t args) = IMPOSSIBLE
-  x (lam v t) = IMPOSSIBLE
-  x (pat-lam cs args) = IMPOSSIBLE
-  x (pi (arg i (el s (sort s₁))) (abs s₂ x)) = {!!} -- forall
-  x (pi (arg i (el s t)) (abs s₁ x)) = {!!} -- recurse into both
-  x (sort s) = {!!}
-  x (lit l) = IMPOSSIBLE
-  x (quote-goal t) = IMPOSSIBLE
-  x (quote-term t) = IMPOSSIBLE
-  x quote-context = IMPOSSIBLE
-  x (unquote-term t args) = IMPOSSIBLE
-  x unknown = IMPOSSIBLE
---  x _ = {!!}
-
-  y = {!!}
-
-  open import Data.Nat
-  open import Data.Integer
-  open Foreign.Base.HS
-  l : Set
-  l = ℤ
-
-  m : τ-Hs UHC-HS
-  m = x (quoteTerm HSInteger)-}
-
---  y : {!quoteTerm ( { a : Set} → a )!}
---  y = {!!}
-
+--add : HSInteger → HSInteger → HSInteger
+--  using foreign fdesc
+--  using foreign (mkHsUhc "UHC.Agda.Builtins.primHsAdd" (quoteTerm (HSInteger → HSInteger → HSInteger)))
+--  using foreign (quoteGoal g in (mkHsUhc "UHC.Agda.Builtins.primHsAdd" g))
 
 
 {-
