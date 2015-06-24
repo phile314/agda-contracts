@@ -7,7 +7,7 @@ open import Data.List as L hiding (_++_)
 open import Data.String
 open import Data.Nat
 
-open Foreign.Base.Fun
+open Foreign.Base.FunImport
 open import Reflection
 
 module Fun where
@@ -25,6 +25,7 @@ module Fun where
   lookup ℕ.zero (x L.∷ xs) = just x
   lookup (ℕ.suc n) (x L.∷ xs) = lookup n xs
 
+{-
   show-τ-Hs : ∀ {way} {n : ℕ} → Γ → τ-Hs way → Maybe String
   show-τ-Hs c (var x) = lookup x c
   show-τ-Hs {_} {n} c (app t t₁) =
@@ -40,9 +41,10 @@ module Fun where
     show-τ-Hs {n = n} c t₁ >>= λ t₁' →
     return ("(" ++ t' ++ " → " ++ t₁' ++ ")")
   show-τ-Hs c (ty nm-Agda x) with x --with Data.ForeignData.foreign-spec x
-  show-τ-Hs c (ty nm-Agda x) | Data.HS-UHC x₁ .nm-Agda = just ("⟨" ++ showName nm-Agda ++ " as " ++ x₁ ++ "⟩")
-
-  showSpec : {way : FFIWay} → ForeignSpec way → Maybe String
+  show-τ-Hs c (ty nm-Agda x) | Data.UHC-HS x₁ .nm-Agda = {!!}
+  show-τ-Hs c (ty nm-Agda x) | Data.UHC-C x₁ .nm-Agda = {!!} -- just ("⟨" ++ showName nm-Agda ++ " as " ++ x₁ ++ "⟩")
+-}
+{-  showSpec : {way : FFIWay} → ForeignSpec way → Maybe String
   showSpec (HS-UHC x x₁) =
     show-τ-Hs {n = 0} L.[] x₁ >>= λ x₁' →
-    return (x ++ " :: " ++ x₁')
+    return (x ++ " :: " ++ x₁')-}

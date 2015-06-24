@@ -1,22 +1,5 @@
 module Contracts.example where
 
-open import Foreign.Base
-
-open Foreign.Base.Fun
-
-module Ex1 where
-  data List (A : Set) : Set where
-    nil : List A
-    cons : A → List A → List A
-  {-# COMPILED_DATA_UHC List __LIST__ __NIL__ __CONS__ #-}
-
-  blub : Data.ForeignData (quote List)
-  blub = record { foreign-spec = Data.HS-UHC "Data.List.List" (quote List) }
-
-
---  head : ∀ {a} → List a → a
---    using foreign (record { foreign-spec = (HS-UHC "Prelude.head" (∀' (( ty (quote List) (Data.ForeignData.foreign-spec blub) ) ⇒ (var 0)) )) } )
-
 module Ex2 where
   open import Data.Nat
   open import Data.Integer
@@ -24,29 +7,15 @@ module Ex2 where
   open import Data.Maybe
   open import Data.Product
   open import Data.List
-  open Foreign.Base.HS
   import Level
 
-{-  instance
-    bla : Data.ForeignData (quote ℤ)
-    bla = record { foreign-spec = Data.HS-UHC "Integer" (quote ℤ)}-}
-
-  postulate
-    ℤ⇒HSInteger : ℤ → HSInteger
-    HSInteger⇒ℤ : HSInteger → ℤ
-  {-# COMPILED_UHC ℤ⇒HSInteger UHC.Agda.Builtins.primAgdaIntegerToHsInteger #-}
-  {-# COMPILED_UHC HSInteger⇒ℤ UHC.Agda.Builtins.primHsIntegerToAgdaInteger #-}
-
-  ℕ⇔Hsℤ : PartIsoInt
-  ℕ⇔Hsℤ = toIntPartIso partIso (quote partIso) (quoteTerm partIso) (quoteTerm HSInteger-FD)
-    where f : HSInteger → Maybe ℕ
-          f i with HSInteger⇒ℤ i
-          ... | -[1+ n ] = nothing
-          ... | (+ n) = just n
-          g : ℕ → HSInteger
-          g n = ℤ⇒HSInteger (+ n)
+  ℕ⇔ℤ : PartIsoInt
+  ℕ⇔ℤ = toIntPartIso partIso (quote partIso) (quoteTerm partIso)
+    where f : ℤ → Maybe ℕ
+          f -[1+ n ] = nothing
+          f (+ n) = just n
           partIso : PartIso
-          partIso = mkPartIso [] [] (record { HSₜ = HSInteger ; other = ℕ , ((withMaybe f) , (total (g))) })
+          partIso = mkPartIso [] [] (record { HSₜ = ℤ ; other = ℕ , ((withMaybe f) , (total (+_))) })
 
   
 
@@ -56,7 +25,7 @@ module Ex2 where
 
   -- the internal AST representation of the above notation
   addType : T {Level.zero} 0
-  addType = π ( iso ℕ⇔Hsℤ [] [] ) ⇒ (π (iso ℕ⇔Hsℤ [] []) ⇒ (iso ℕ⇔Hsℤ [] []))
+  addType = π ( iso ℕ⇔ℤ [] [] ) ⇒ (π (iso ℕ⇔ℤ [] []) ⇒ (iso ℕ⇔ℤ [] []))
 --  addType = π ( def_∙_ (quote ℤ) {quote bla} [] ) ⇒ (π (def_∙_ (quote ℤ) {quote bla} []) ⇒ (def_∙_ (quote ℤ) {quote bla} []))
 
   -- the ffi declaration, which has the type ℤ → ℤ → ℤ
@@ -83,17 +52,13 @@ module VecIso where
   open import Relation.Binary.PropositionalEquality
   open import Data.Product
 
-  instance
-    HSList-FD : Data.ForeignData (quote List)
-    HSList-FD = record { foreign-spec = Data.HS-UHC "Data.List.List" (quote List) }
-  
   list⇒vec : ∀ {l} {n : ℕ} {A : Set l} → List A → Maybe (Vec A n)
   list⇒vec {_} {n} xs with n N.≟ L.length xs
   list⇒vec xs | yes refl = just (Data.Vec.fromList xs)
   list⇒vec xs | no ¬p = nothing
 
   vec⇔list : (l : Level) → PartIsoInt {l}
-  vec⇔list l = toIntPartIso partIso (quote partIso) (quoteTerm partIso) {{HSList-FD}} (quoteTerm HSList-FD)
+  vec⇔list l = toIntPartIso partIso (quote partIso) (quoteTerm partIso)
     where
     partIso : PartIso
     partIso = mkPartIso L.[ Set l ] L.[ (Lift ℕ) ]
@@ -109,13 +74,8 @@ module NatIntIso where
   open import Data.List
   open import Data.Product
 
-  -- NOT WOKRING - JUST TO GET STUFF TO TYPE CHECK!!!
-  instance
-    ℤ-FD : Data.ForeignData (quote ℤ)
-    ℤ-FD = record { foreign-spec = Data.HS-UHC "DUMMY NOT WORKING" (quote ℤ) }
-
   ℕ⇔ℤ : PartIsoInt
-  ℕ⇔ℤ = toIntPartIso partIso (quote partIso) (quoteTerm partIso) (quoteTerm ℤ-FD)
+  ℕ⇔ℤ = toIntPartIso partIso (quote partIso) (quoteTerm partIso)
     where f : ℤ → Maybe ℕ
           f -[1+ n ] = nothing
           f (+ n) = just n
@@ -152,6 +112,8 @@ module MapEx where
   myMap : unquote (getAgdaHighType mapNZType)
   myMap = unquote (ffi-lift mapNZType (quote mapImpl))
 
+  k : {!unquote (getAgdaHighType mapNZType)!}
+  k = {!unquote (ffi-lift mapNZType (quote mapImpl))!}
 --  k' : {!unquote (getAgdaHighType mapNZType)!}
 --  k' = {!myMap!}
 
@@ -208,7 +170,7 @@ module T3 where
   -- if implemented using normal Agda constructs.
   ty' : AST
   ty' = ⟨ a ∷ ⟦ Set ⟧ ⟩⇒
-    ⟨ x ∷ ⟦ ℕ⇔Hsℤ ⇋ [] ⟧ ⟩⇒
+    ⟨ x ∷ ⟦ ℕ⇔ℤ ⇋ [] ⟧ ⟩⇒
     ⟨ y ∷ ⟦ vec⇔list Level.zero ⇋ a , ((lift x) , []) ⟧ ⟩⇒
     ⟨ xs ∷ ⟦ List a ⟧ ⟩⇒
     ⟨ ⟦ List a ⟧ ⟩
@@ -249,8 +211,8 @@ main : IO.Primitive.IO ⊤
 main = run (putStrLn (Data.Integer.show q))
   where p : List ℤ
         p = [ + 14 ]
-        k = myMap (Data.Nat._+_ 34) p
+        kk = myMap (Data.Nat._+_ 34) p
         q : ℤ
-        q with k
+        q with kk
         q | [] = exError
         q | i ∷ _ = i

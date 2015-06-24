@@ -2,45 +2,6 @@ module Foreign.example where
 
 open import Foreign.Base
 
---open Foreign.Base.FunImport
-{-
-module Ta where
-  open import Data.List
-  open import Reflection
-
-  postulate notImpl : {A : Set} → A
-
-  wayArg : Arg Term
-  wayArg = (arg (arg-info hidden relevant) (quoteTerm FFIWay.UHC-HS))
-
-  
-
-  fromTy : List Term → Term → Term
-  fromTy env (var x []) = con (quote τ-Hs.var) (wayArg
-         ∷ arg (arg-info visible relevant) (lit (nat x))
-         ∷ [])
-  fromTy env (con c args) = {!!}
-  fromTy env (def f args) = def (quote ty) (wayArg
-         ∷ {!!}
-         ∷ {!!}
-         ∷ [])
-  fromTy env (app t args) = {!!}
-  fromTy env (lam v t) = {!!}
-  fromTy env (pat-lam cs args) = {!!}
-  fromTy env (pi (arg i (el s t)) (abs s₁ (el _ x₁))) = con (quote _⇒_) (wayArg
-         ∷ arg (arg-info visible relevant) (fromTy env t)
-         ∷ arg (arg-info visible relevant) (fromTy env x₁)
-         ∷ [])
-  fromTy env (sort s) = {!!}
-  fromTy env (lit l) = {!!}
-  fromTy env (quote-goal t) = {!!}
-  fromTy env (quote-term t) = {!!}
-  fromTy env quote-context = {!!}
-  fromTy env (unquote-term t args) = {!!}
-  fromTy env unknown = {!!}
-  fromTy _ _ = notImpl
--}
-
 module Ex1 where
   data List (A : Set) : Set where
     nil : List A
