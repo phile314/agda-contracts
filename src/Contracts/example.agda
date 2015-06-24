@@ -57,8 +57,8 @@ module VecIso where
   list⇒vec xs | yes refl = just (Data.Vec.fromList xs)
   list⇒vec xs | no ¬p = nothing
 
-  vec⇔list : (l : Level) → PartIsoInt {l}
-  vec⇔list l = toIntPartIso partIso (quote partIso) (quoteTerm partIso)
+  vec⇔list : {l : Level} → PartIsoInt {l}
+  vec⇔list {l} = toIntPartIso partIso (quote partIso) (quoteTerm partIso)
     where
     partIso : PartIso
     partIso = mkPartIso L.[ Set l ] L.[ (Lift ℕ) ]
@@ -117,6 +117,74 @@ module MapEx where
 --  k' : {!unquote (getAgdaHighType mapNZType)!}
 --  k' = {!myMap!}
 
+module DepCon1 where
+  open VecIso
+  open import Data.Nat
+  open import Contracts.Base
+  open import Level
+  open import Data.List as L
+  open import Data.Fin
+
+  mapImpl2 : (n : ℕ) (A : Set) (B : Set) → (A → B) → List A → List B
+  mapImpl2 n A B = L.map
+
+{-  mapNZType : T {Level.zero} 0
+  mapNZType =
+    π def quote ℕ ∙ [] -- n
+    ⇒ (π set 0 -- A
+    ⇒ (π set 0 -- B
+    ⇒ (π (
+      π var # 1 ∙ []
+      ⇒ (var # 1 ∙ [])) -- f
+    ⇒ (π iso vec⇔list [ var # 2 ∙ [] ] [ var # 3 ∙ [] ] -- vec
+    ⇒ iso vec⇔list [ var # 2 ∙ [] ] [ var # 4 ∙ [] ] ))))
+
+  lowType : Set (Level.suc Level.zero)
+  lowType = unquote (getAgdaLowType mapNZType)
+
+  lk : {!!}
+  lk = {!unquote (getAgdaHighType mapNZType)!}
+
+  myMap2 : unquote (getAgdaHighType mapNZType)
+  myMap2 = {!unquote (ffi-lift mapNZType (quote mapImpl2))!}
+  -}
+    
+module DepCon where
+  open VecIso
+  open import Data.Vec as Vec hiding ([_])
+  open import Data.Nat
+  open import Contracts.Base
+  open import Level
+  open import Data.List
+  open import Data.Fin
+
+  mapImpl2 : (n : ℕ) (A : Set) (B : Set) → (A → B) → Vec A n → Vec B n
+  mapImpl2 n A B = Vec.map
+
+--  lifth : ℕ → Lift ℕ
+--  lifth = {!!}
+
+  mapNZType : T {Level.zero} 0
+  mapNZType =
+    π def quote ℕ ∙ [] -- n
+    ⇒ (π set 0 -- A
+    ⇒ (π set 0 -- B
+    ⇒ (π (
+      π var # 1 ∙ []
+      ⇒ (var # 1 ∙ [])) -- f
+    ⇒ (π iso vec⇔list [ var # 2 ∙ [] ] [ var # 3 ∙ [] ] -- vec
+    ⇒ iso vec⇔list [ var # 2 ∙ [] ] [ var # 4 ∙ [] ] ))))
+
+  lowType : Set (Level.suc Level.zero)
+  lowType = unquote (getAgdaLowType mapNZType)
+
+  lk : {!!}
+  lk = {!unquote (getAgdaHighType mapNZType)!}
+
+  myMap2 : unquote (getAgdaHighType mapNZType)
+  myMap2 = {!unquote (ffi-lift mapNZType (quote mapImpl2))!}
+    
+
 -- surface syntax tests
 module T3 where
   open Ex2
@@ -171,7 +239,7 @@ module T3 where
   ty' : AST
   ty' = ⟨ a ∷ ⟦ Set ⟧ ⟩⇒
     ⟨ x ∷ ⟦ ℕ⇔ℤ ⇋ [] ⟧ ⟩⇒
-    ⟨ y ∷ ⟦ vec⇔list Level.zero ⇋ a , ((lift x) , []) ⟧ ⟩⇒
+    ⟨ y ∷ ⟦ vec⇔list ⇋ a , ((lift x) , []) ⟧ ⟩⇒
     ⟨ xs ∷ ⟦ List a ⟧ ⟩⇒
     ⟨ ⟦ List a ⟧ ⟩
 

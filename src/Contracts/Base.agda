@@ -18,6 +18,11 @@ open import Data.Nat as N
 open import Data.List as List
 open import Function
 
+-- TODO move to stdlib
+lookup : ∀ {a} {A : Set a} → ℕ → List A → Maybe A
+lookup i [] = nothing
+lookup ℕ.zero (x ∷ xs) = just x
+lookup (ℕ.suc i) (x ∷ xs) = lookup i xs
 
 
 data Conversion {a b} (A : Set a) (B : Set b) : Set (Level.suc (a Level.⊔ b)) where
@@ -87,7 +92,7 @@ invertPosition Neg = Pos
 data T {l} : ℕ → Set (Level.suc (Level.suc l)) where
   set : ∀ {n} → (l : ℕ) → T n -- this get erased at runtime anyway, so it doesn't matter what value of discard they get
   -- var
-  v_∙_ : ∀ {n}
+  var_∙_ : ∀ {n}
     → (k : Fin n)
     → List (T {l} n) -- arguments, we don't support keeping the arguments anyway, so just force discard here.
     → T n
@@ -114,6 +119,7 @@ def-argInfo = arg-info visible relevant
 
 postulate
   error : {a : Set} → a
+  error2 : {a : Set} → a
   notImpl : {a : Set} → a
 
 {-# TERMINATING #-}
@@ -121,7 +127,7 @@ elArg : ∀ {l n} → (t : T {l} n) → Arg Term
 
 -- getting Agda low type
 elAGDA : ∀ {l n} (t : T {l} n) → Term
-elAGDA (v k ∙ xs) = var (toℕ k) (List.map elArg xs)
+elAGDA (var k ∙ xs) = var (toℕ k) (List.map elArg xs)
 elAGDA (def x ∙ xs) = def x (List.map elArg xs)
 elAGDA (π  t ⇒ t₁) = pi (arg def-argInfo (el unknown (elAGDA t))) (abs "" (el unknown (elAGDA t₁)))
 elAGDA (set l) = sort (lit l)
@@ -138,7 +144,7 @@ elArg2 : ∀ {l n} → (t : T {l} n) → Arg Term
 
 -- getting Agda high type
 elAGDA2 : ∀ {l n} (t : T {l} n) → Term
-elAGDA2 (v k ∙ xs) = var (toℕ k) (List.map elArg2 xs)
+elAGDA2 (var k ∙ xs) = var (toℕ k) (List.map elArg2 xs)
 elAGDA2 (def x ∙ xs) = def x (List.map elArg2 xs)
 elAGDA2 (π  t ⇒ t₁) = pi (arg def-argInfo (el unknown (elAGDA2 t))) (abs "" (el unknown (elAGDA2 t₁)))
 elAGDA2 (set l) = sort (lit l)
@@ -181,6 +187,18 @@ last (x ∷ xs) = last xs
 mkArg : ℕ → Arg Term
 mkArg i = arg (arg-info visible relevant) (var i [])
 
+postulate error5 : Term
+
+{-# TERMINATING #-}
+substTerm : ∀ {l n} → List ℕ → (fde : T {l} n)  → Term
+substTerm Γ (set l₁) = notImpl
+substTerm Γ (var k ∙ x) with lookup (toℕ k) Γ
+substTerm Γ (var k ∙ x₁) | just x = var x (List.map (arg def-argInfo ∘ substTerm Γ) x₁)
+substTerm Γ (var k ∙ x) | nothing = error5
+substTerm Γ (def nm ∙ x) = def nm (List.map (arg def-argInfo ∘ substTerm Γ) x)
+substTerm Γ (π fde ⇒ fde₁) = error
+substTerm Γ (iso x HSₐ AGDAₐ) = error
+
 ffi-lift1 : ∀ {l n}
   → (fde : T {l} n)
   → (List ℕ → Term) -- thing to wrap
@@ -188,39 +206,46 @@ ffi-lift1 : ∀ {l n}
   → List ℕ -- environment
   → Term
 ffi-lift1 (set l₁) wr pos Γ = wr Γ
-ffi-lift1 (v k ∙ x) wr pos Γ = wr Γ
+ffi-lift1 (var k ∙ x) wr pos Γ = wr Γ
 ffi-lift1 (def nm ∙ x) wr pos Γ  = wr Γ
 ffi-lift1 {_} {n} (π fde ⇒ fde₁) wr pos Γ =
   lam visible (abs "x" bd)
-  where ls = ffi-lift1 fde (λ env → var (length env * 2) (List.map mkArg (reverse env))) (invertPosition pos) []
+  where ls = ffi-lift1 fde (λ env → var ((length env ∸ length Γ) * 2) (List.map mkArg (reverse env))) (invertPosition pos) Γ
         rs = ffi-lift1 fde₁ wr pos (0 ∷ shift 2 Γ)
         bd = lett ls inn rs
-ffi-lift1 (iso {l} x [] []) wr pos Γ =
+ffi-lift1 (iso {l} x HSₐ AGDAₐ) wr pos Γ =
   -- extract the conversion from the named iso
   -- apply unsafeConvert
-  def (quote unsafeConvert) (lvl ∷ lvl ∷ tyFrom pos ∷ tyTo pos ∷ getConv pos ∷ arg def-argInfo (wr Γ) ∷ [])
+  def (quote unsafeConvert) (lvl ∷ lvl ∷ tyFrom pos ∷ tyTo pos ∷ getConv2 pos ∷ arg def-argInfo (wr Γ) ∷ [])
   where lvl : Arg Term
         lvl = arg (arg-info hidden relevant) (quoteTerm Level.zero) -- TODO here we have to insert the proper level, not just 0....
         iso' : Term
-        iso' = def (quote PartIso.iso) [ arg def-argInfo (def (PartIsoInt.wrappedₙ x) []) ]
+        iso' = app (def (quote PartIso.iso) [ arg def-argInfo (def (PartIsoInt.wrappedₙ x) []) ])
+          (List.map (arg def-argInfo ∘ substTerm Γ) (HSₐ))
         other' : Term
-        other' = def (quote PartIso'.other) [ arg def-argInfo iso' ]
+        other' = app (def (quote PartIso'.other) [ arg def-argInfo iso' ])
+          (List.map (arg def-argInfo ∘ substTerm Γ) (AGDAₐ))
         p2 : Term
         p2 = def (quote proj₂) [ arg def-argInfo other' ]
-        getConv : Position → Arg Term
-        getConv Pos = arg def-argInfo (def (quote proj₁) [ arg def-argInfo p2 ])
-        getConv Neg = arg def-argInfo (def (quote proj₂) [ arg def-argInfo p2 ])
+        getConv : Position → Term
+        getConv Pos = (def (quote proj₁) [ arg def-argInfo p2 ])
+        getConv Neg = (def (quote proj₂) [ arg def-argInfo p2 ])
+        allArgs = HSₐ List.++ AGDAₐ
+        trArgs : List Term
+        trArgs = List.map (substTerm Γ) allArgs
+        getConv2 : Position → Arg Term
+        getConv2 pos = arg def-argInfo (app (getConv pos) (List.map (arg def-argInfo) trArgs))
         tyAgda : Term
-        tyAgda = def (PartIsoInt.AGDAₙ x) []
+        tyAgda = def (PartIsoInt.AGDAₙ x) (List.map (arg def-argInfo ∘ substTerm Γ) (HSₐ List.++ AGDAₐ))
         tyHs : Term
-        tyHs = def (PartIsoInt.HSₙ x) []
+        tyHs = def (PartIsoInt.HSₙ x) (List.map (arg def-argInfo ∘ substTerm Γ) HSₐ)
         tyFrom : Position → Arg Term
         tyFrom Pos = arg (arg-info hidden relevant) tyHs
         tyFrom Neg = arg (arg-info hidden relevant) tyAgda
         tyTo : Position → Arg Term
         tyTo Pos = arg (arg-info hidden relevant) tyAgda
         tyTo Neg = arg (arg-info hidden relevant) tyHs
-ffi-lift1 (iso x _ _) _ _ _ = notImpl
+--ffi-lift1 (iso x _ _) _ _ _ = notImpl
 
 ffi-lift : ∀ {l} → (fde : T {l} 0) → Name {- name of the low level fun -} → Term
 ffi-lift fde nm  = ffi-lift1 fde (λ Γ → def nm (List.map mkArg (List.reverse Γ))) Pos []
@@ -234,14 +259,7 @@ FAIL : Term
 FAIL = def (quote SomethingBad) []
 
 
-postulate error2 : ∀ {a : Set} → a
 postulate NoPI : Term
-
--- TODO move to stdlib
-lookup : ∀ {a} {A : Set a} → ℕ → List A → Maybe A
-lookup i [] = nothing
-lookup ℕ.zero (x ∷ xs) = just x
-lookup (ℕ.suc i) (x ∷ xs) = lookup i xs
 
 getOtherPI : Term → Term
 getOtherPI (con c args) with lookup 3 args
