@@ -24,6 +24,11 @@ lookup i [] = nothing
 lookup ℕ.zero (x ∷ xs) = just x
 lookup (ℕ.suc i) (x ∷ xs) = lookup i xs
 
+postulate OutOfBounds : ∀ {a} {A : Set a} → A
+lookup' : ∀ {a} {A : Set a} → ℕ → List A → A
+lookup' i xs with lookup i xs
+lookup' i xs | just x = x
+lookup' i xs | nothing = OutOfBounds
 
 data Conversion {a b} (A : Set a) (B : Set b) : Set (Level.suc (a Level.⊔ b)) where
   total : (A → B) → Conversion A B
@@ -210,7 +215,8 @@ ffi-lift1 (var k ∙ x) wr pos Γ = wr Γ
 ffi-lift1 (def nm ∙ x) wr pos Γ  = wr Γ
 ffi-lift1 {_} {n} (π fde ⇒ fde₁) wr pos Γ =
   lam visible (abs "x" bd)
-  where ls = ffi-lift1 fde (λ env → var ((length env ∸ length Γ) * 2) (List.map mkArg (reverse env))) (invertPosition pos) Γ
+  where ls = ffi-lift1 fde (λ env → let nVars = length env ∸ length Γ
+           in var (nVars * 2) (List.map mkArg (reverse (take nVars env)))) (invertPosition pos) Γ
         rs = ffi-lift1 fde₁ wr pos (0 ∷ shift 2 Γ)
         bd = lett ls inn rs
 ffi-lift1 (iso {l} x HSₐ AGDAₐ) wr pos Γ =

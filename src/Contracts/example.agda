@@ -100,8 +100,8 @@ module MapEx where
   mapNZType : T {Level.zero} 0
   mapNZType =
       π (
-        π (iso ℕ⇔ℤ [] []) ⇒ (iso ℕ⇔ℤ [] [])
---        π (iso ℕ⇔ℤ [] []) ⇒ (def (quote ℤ) ∙ [])
+--        π (iso ℕ⇔ℤ [] []) ⇒ (iso ℕ⇔ℤ [] [])
+        π (def (quote ℤ) ∙ []) ⇒ (def (quote ℤ) ∙ [])
         )
     ⇒ (π (def (quote List) ∙ [ (def (quote ℤ) ∙ []) ])
     ⇒ (def (quote List) ∙ [ (def (quote ℤ) ∙ []) ]))
@@ -113,7 +113,7 @@ module MapEx where
   myMap = unquote (ffi-lift mapNZType (quote mapImpl))
 
   k : {!unquote (getAgdaHighType mapNZType)!}
-  k = {!unquote (ffi-lift mapNZType (quote mapImpl))!}
+  k = {! unquote (ffi-lift mapNZType (quote mapImpl))!}
 --  k' : {!unquote (getAgdaHighType mapNZType)!}
 --  k' = {!myMap!}
 
@@ -275,6 +275,7 @@ open MapEx
 
 postulate exError : {A : Set} → A
 
+{-
 main : IO.Primitive.IO ⊤
 main = run (putStrLn (Data.Integer.show q))
   where p : List ℤ
@@ -284,3 +285,4 @@ main = run (putStrLn (Data.Integer.show q))
         q with kk
         q | [] = exError
         q | i ∷ _ = i
+-}
