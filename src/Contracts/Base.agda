@@ -216,6 +216,7 @@ ffi-lift1 (def nm ∙ x) wr pos Γ  = wr Γ
 ffi-lift1 {_} {n} (π fde ⇒ fde₁) wr pos Γ =
   lam visible (abs "x" bd)
   where ls = ffi-lift1 fde (λ env → let nVars = length env ∸ length Γ
+           -- TODO should we really apply the whole new env here?
            in var (nVars * 2) (List.map mkArg (reverse (take nVars env)))) (invertPosition pos) Γ
         rs = ffi-lift1 fde₁ wr pos (0 ∷ shift 2 Γ)
         bd = lett ls inn rs
@@ -234,11 +235,13 @@ ffi-lift1 (iso {l} x HSₐ AGDAₐ) wr pos Γ =
         p2 : Term
         p2 = def (quote proj₂) [ arg def-argInfo other' ]
         getConv : Position → Term
-        getConv Pos = (def (quote proj₁) [ arg def-argInfo p2 ])
+        getConv Pos = (def (quote proj₁) [ arg def-argInfo p2 ]) 
         getConv Neg = (def (quote proj₂) [ arg def-argInfo p2 ])
         allArgs = HSₐ List.++ AGDAₐ
+        mkLift : Term → Term
+        mkLift t = con (quote Level.lift) [ arg def-argInfo t ]
         trArgs : List Term
-        trArgs = List.map (substTerm Γ) allArgs
+        trArgs = List.map (mkLift ∘ substTerm Γ) allArgs
         getConv2 : Position → Arg Term
         getConv2 pos = arg def-argInfo (app (getConv pos) (List.map (arg def-argInfo) trArgs))
         tyAgda : Term
