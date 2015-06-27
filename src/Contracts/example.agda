@@ -1,5 +1,23 @@
 module Contracts.example where
 
+module NatIntIso where
+  open import Contracts.Base
+  open import Data.Nat
+  open import Data.Integer
+  open import Data.Maybe
+  open import Data.List
+  open import Data.Product
+
+  ℕ⇔ℤ : PartIsoInt
+  ℕ⇔ℤ = record --toIntPartIso partIso (quote partIso) (quoteTerm partIso)
+    { wrappedₙ = quote partIso ; wrapped = partIso ; HSₙ = quote ℤ ; AGDAₙ = quote ℕ}
+    where f : ℤ → Maybe ℕ
+          f -[1+ n ] = nothing
+          f (+ n) = just n
+          partIso : PartIso
+          partIso = mkPartIso [] [] (ℤ , (ℕ , ((withMaybe f) , (total (ℤ.+_)))))
+
+
 module Ex2 where
   open import Data.Nat
   open import Data.Integer
@@ -7,17 +25,9 @@ module Ex2 where
   open import Data.Maybe
   open import Data.Product
   open import Data.List
+  open NatIntIso
   import Level
 
-  ℕ⇔ℤ : PartIsoInt
-  ℕ⇔ℤ = toIntPartIso partIso (quote partIso) (quoteTerm partIso)
-    where f : ℤ → Maybe ℕ
-          f -[1+ n ] = nothing
-          f (+ n) = just n
-          partIso : PartIso
-          partIso = mkPartIso [] [] (record { HSₜ = ℤ ; other = ℕ , ((withMaybe f) , (total (+_))) })
-
-  
 
 -- the special type syntax for using isomorpisms.
 --  fty : Set
@@ -58,29 +68,15 @@ module VecIso where
   list⇒vec xs | no ¬p = nothing
 
   vec⇔list : {l : Level} → PartIsoInt {l}
-  vec⇔list {l} = toIntPartIso partIso (quote partIso) (quoteTerm partIso)
+  vec⇔list {l} = record --toIntPartIso partIso (quote partIso) (quoteTerm partIso)
+    { wrappedₙ = quote partIso ; HSₙ = quote List ; AGDAₙ = quote Vec ; wrapped = partIso }
     where
     partIso : PartIso
     partIso = mkPartIso L.[ Lift {_} {l} (Set l) ] L.[ (Lift ℕ) ]
-      (λ a → record
+      (λ x → (List (lower x)) , (λ x₁ → (Vec (lower x) (lower x₁)) , ((withMaybe list⇒vec) , (total Data.Vec.toList))))
+{-      (λ a → record
         { HSₜ = L.List (lower a)
-        ; other = λ n → (Vec (lower a) (lower n)) , ( withMaybe list⇒vec , Conversion.total Data.Vec.toList)})
-
-module NatIntIso where
-  open import Contracts.Base
-  open import Data.Nat
-  open import Data.Integer
-  open import Data.Maybe
-  open import Data.List
-  open import Data.Product
-
-  ℕ⇔ℤ : PartIsoInt
-  ℕ⇔ℤ = toIntPartIso partIso (quote partIso) (quoteTerm partIso)
-    where f : ℤ → Maybe ℕ
-          f -[1+ n ] = nothing
-          f (+ n) = just n
-          partIso : PartIso
-          partIso = mkPartIso [] [] (record { HSₜ = ℤ ; other = ℕ , ((withMaybe f) , (Conversion.total (+_))) })
+        ; other = λ n → (Vec (lower a) (lower n)) , ( withMaybe list⇒vec , Conversion.total Data.Vec.toList)})-}
 
 
 module MapEx where
@@ -100,8 +96,8 @@ module MapEx where
   mapNZType : T {Level.zero} 0
   mapNZType =
       π (
---        π (iso ℕ⇔ℤ [] []) ⇒ (iso ℕ⇔ℤ [] [])
-        π (def (quote ℤ) ∙ []) ⇒ (def (quote ℤ) ∙ [])
+        π (iso ℕ⇔ℤ [] []) ⇒ (iso ℕ⇔ℤ [] [])
+--        π (def (quote ℤ) ∙ []) ⇒ (def (quote ℤ) ∙ [])
         )
     ⇒ (π (def (quote List) ∙ [ (def (quote ℤ) ∙ []) ])
     ⇒ (def (quote List) ∙ [ (def (quote ℤ) ∙ []) ]))
@@ -113,7 +109,7 @@ module MapEx where
   myMap = unquote (ffi-lift mapNZType (quote mapImpl))
 
   k : {!unquote (getAgdaHighType mapNZType)!}
-  k = {! unquote (ffi-lift mapNZType (quote mapImpl))!}
+  k = {!pretty (ffi-lift mapNZType (quote mapImpl))!}
 --  k' : {!unquote (getAgdaHighType mapNZType)!}
 --  k' = {!myMap!}
 
@@ -170,11 +166,11 @@ module DepCon where
     π def quote ℕ ∙ [] -- n
     ⇒ (π set 0 -- A
 --    ⇒ (π set 0 -- B
-    ⇒ (π (
-      π var # 0 ∙ []
-      ⇒ (var # 1 ∙ [])) -- f
-    ⇒ (π iso vec⇔list [ var # 1 ∙ [] ] [ var # 2 ∙ [] ] -- vec A n
-    ⇒ iso vec⇔list [ var # 2 ∙ [] ] [ var # 3 ∙ [] ] ))) -- ) vec B n
+--    ⇒ (π (
+--      π var # 0 ∙ []
+--      ⇒ (var # 1 ∙ [])) -- f
+--    ⇒ (π iso vec⇔list [ var # 1 ∙ [] ] [ var # 2 ∙ [] ] -- vec A n
+    ⇒ iso vec⇔list [ var # 0 ∙ [] ] [ var # 1 ∙ [] ] ) -- ))) vec B n
 
   lowType : Set (Level.suc Level.zero)
   lowType = unquote (getAgdaLowType mapNZType)
@@ -188,19 +184,20 @@ module DepCon where
   k n A = {!!}
     where 
 
-  myMap2' : unquote (getAgdaHighType mapNZType)
+{-  myMap2' : unquote (getAgdaHighType mapNZType)
   myMap2' = λ n → λ A → λ f → let f' : (x : A) → A
                                   f' = λ x → f x
                                in λ xs → let xs' = unsafeConvert {!!} xs
-                                            in {!!}
+                                            in {!!}-}
 
   myMap2 : unquote (getAgdaHighType mapNZType)
+--  myMap2 = unquote (ffi-lift mapNZType (quote mapImpl2))
   myMap2 = {!pretty (ffi-lift mapNZType (quote mapImpl2))!}
     
 
 -- surface syntax tests
 module T3 where
-  open Ex2
+  open NatIntIso
   open VecIso
   open import Contracts.Base
   open import Data.Nat as N
@@ -217,7 +214,7 @@ module T3 where
   open import Data.Product
 
   getArgs : ∀ {l} → PartIsoInt {l} → Set (Level.suc l)
-  getArgs p = WithArgs ((PartIso.ALLₐ h) L.++ ( PartIso.AGDAₐ h))
+  getArgs p = WithArgs ((PartIso.LOWₐ h) L.++ ( PartIso.HIGHₐ h))
     where h = PartIsoInt.wrapped p
 
   data AST {l m} : Set (Level.suc (Level.suc (l Level.⊔ m )))
@@ -236,9 +233,9 @@ module T3 where
 
   getTy (pi a x) = (arg : getTy a) → (getTy (x arg))
   getTy (⟦ x ⟧) = x
-  getTy (⟦ x ⇋ x₁ ⟧) = proj₁ (applyArgs (PartIso'.other g) (proj₂ k)) --(PartIso.iso h) x₁
+  getTy (⟦ x ⇋ x₁ ⟧) = proj₁ (applyArgs (proj₂ g) (proj₂ k)) --(PartIso.iso h) x₁
     where h = PartIsoInt.wrapped x
-          k = split++ {_} {PartIso.ALLₐ h} x₁
+          k = split++ {_} {PartIso.LOWₐ h} x₁
           g = applyArgs (PartIso.iso h) (proj₁ k)
 
   id : ∀ {a} {A : Set a} → A → A

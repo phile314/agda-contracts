@@ -1,4 +1,15 @@
+{-# OPTIONS --no-termination-check #-}
+
 module Contracts.Base where
+
+open import Data.List as List
+open import Data.Nat
+open import Data.Maybe
+-- TODO move to stdlib
+lookup : ∀ {a} {A : Set a} → ℕ → List A → Maybe A
+lookup i [] = nothing
+lookup ℕ.zero (x ∷ xs) = just x
+lookup (ℕ.suc i) (x ∷ xs) = lookup i xs
 
 
 open import Reflection
@@ -15,14 +26,8 @@ open import Level
 open import Relation.Nullary
 open import Data.Maybe
 open import Data.Nat as N
-open import Data.List as List
+--open import Data.List as List
 open import Function
-
--- TODO move to stdlib
-lookup : ∀ {a} {A : Set a} → ℕ → List A → Maybe A
-lookup i [] = nothing
-lookup ℕ.zero (x ∷ xs) = just x
-lookup (ℕ.suc i) (x ∷ xs) = lookup i xs
 
 postulate OutOfBounds : ∀ {a} {A : Set a} → A
 lookup' : ∀ {a} {A : Set a} → ℕ → List A → A
@@ -54,18 +59,21 @@ open import Data.Product
 open import Reflection
 
 Conversions : ∀ {l} → Set l → Set l → Set (Level.suc l)
-Conversions HSₜ AGDAₜ = Conversion HSₜ AGDAₜ × Conversion AGDAₜ HSₜ
+Conversions Aₜ Bₜ = Conversion Aₜ Bₜ × Conversion Bₜ Aₜ
 
-record PartIso' {l} (ALLₐ AGDAₐ : ArgTys) : Set (Level.suc l) where
+{-
+record PartIso' {l} (LOWₐ HIGHₐ : ArgTys) : Set (Level.suc l) where
   field HSₜ : Set l
         -- ... → (AgdaType, conversions)
-        other : argsToTy AGDAₐ (Σ (Set l) (Conversions HSₜ))
-
+        other : argsToTy HIGHₐ (Σ (Set l) (Conversions HSₜ))
+-}
 record PartIso {l} : Set (Level.suc (Level.suc l)) where
   constructor mkPartIso
-  field ALLₐ : ArgTys {Level.suc l} -- this are the common arguments
-        AGDAₐ : ArgTys {Level.suc l} -- agda only arguments
-        iso : argsToTy ALLₐ (PartIso' {l} ALLₐ AGDAₐ)
+  field LOWₐ : ArgTys {Level.suc l} -- this are the common arguments
+        HIGHₐ : ArgTys {Level.suc l} -- agda only arguments
+--        iso : argsToTy LOWₐ (PartIso' {l} LOWₐ HIGHₐ)
+        iso : argsToTy LOWₐ (Σ (Set l) (λ HSₜ →
+                       argsToTy HIGHₐ (Σ (Set l) (Conversions HSₜ))))
 
 record PartIsoInt {l} : Set (Level.suc (Level.suc l)) where
   field wrapped : PartIso {l}
@@ -95,7 +103,7 @@ invertPosition Neg = Pos
 
 -- TODO discard only makes sense in negative positions, we should enforce that it is only specified there
 data T {l} : ℕ → Set (Level.suc (Level.suc l)) where
-  set : ∀ {n} → (l : ℕ) → T n -- this get erased at runtime anyway, so it doesn't matter what value of discard they get
+  set : ∀ {n} → (l : ℕ) → T n
   -- var
   var_∙_ : ∀ {n}
     → (k : Fin n)
@@ -220,7 +228,7 @@ ffi-lift1 {_} {n} (π fde ⇒ fde₁) wr pos Γ =
            in var (nVars * 2) (List.map mkArg (reverse (take nVars env)))) (invertPosition pos) Γ
         rs = ffi-lift1 fde₁ wr pos (0 ∷ shift 2 Γ)
         bd = lett ls inn rs
-ffi-lift1 (iso {l} x HSₐ AGDAₐ) wr pos Γ =
+ffi-lift1 (iso {l} x LOWₐ HIGHₐ) wr pos Γ =
   -- extract the conversion from the named iso
   -- apply unsafeConvert
   def (quote unsafeConvert) (lvl ∷ lvl ∷ tyFrom pos ∷ tyTo pos ∷ getConv2 pos ∷ arg def-argInfo (wr Γ) ∷ [])
@@ -228,16 +236,16 @@ ffi-lift1 (iso {l} x HSₐ AGDAₐ) wr pos Γ =
         lvl = arg (arg-info hidden relevant) (quoteTerm Level.zero) -- TODO here we have to insert the proper level, not just 0....
         iso' : Term
         iso' = app (def (quote PartIso.iso) [ arg def-argInfo (def (PartIsoInt.wrappedₙ x) []) ])
-          (List.map (arg def-argInfo ∘ substTerm Γ) (HSₐ))
+          (List.map (arg def-argInfo ∘ substTerm Γ) (LOWₐ))
         other' : Term
-        other' = app (def (quote PartIso'.other) [ arg def-argInfo iso' ])
-          (List.map (arg def-argInfo ∘ substTerm Γ) (AGDAₐ))
+        other' = app ( def (quote proj₂) [ arg def-argInfo iso' ] )
+          (List.map (arg def-argInfo ∘ substTerm Γ) (HIGHₐ))
         p2 : Term
         p2 = def (quote proj₂) [ arg def-argInfo other' ]
         getConv : Position → Term
         getConv Pos = (def (quote proj₁) [ arg def-argInfo p2 ]) 
         getConv Neg = (def (quote proj₂) [ arg def-argInfo p2 ])
-        allArgs = HSₐ List.++ AGDAₐ
+        allArgs = LOWₐ List.++ HIGHₐ
         mkLift : Term → Term
         mkLift t = con (quote Level.lift) [ arg def-argInfo t ]
         trArgs : List Term
@@ -245,9 +253,9 @@ ffi-lift1 (iso {l} x HSₐ AGDAₐ) wr pos Γ =
         getConv2 : Position → Arg Term
         getConv2 pos = arg def-argInfo (app (getConv pos) (List.map (arg def-argInfo) trArgs))
         tyAgda : Term
-        tyAgda = def (PartIsoInt.AGDAₙ x) (List.map (arg def-argInfo ∘ substTerm Γ) (HSₐ List.++ AGDAₐ))
+        tyAgda = def (PartIsoInt.AGDAₙ x) (List.map (arg def-argInfo ∘ substTerm Γ) (LOWₐ List.++ HIGHₐ))
         tyHs : Term
-        tyHs = def (PartIsoInt.HSₙ x) (List.map (arg def-argInfo ∘ substTerm Γ) HSₐ)
+        tyHs = def (PartIsoInt.HSₙ x) (List.map (arg def-argInfo ∘ substTerm Γ) LOWₐ)
         tyFrom : Position → Arg Term
         tyFrom Pos = arg (arg-info hidden relevant) tyHs
         tyFrom Neg = arg (arg-info hidden relevant) tyAgda
