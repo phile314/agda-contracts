@@ -234,24 +234,24 @@ ffi-lift1 (iso {l} x LOWₐ HIGHₐ) wr pos Γ =
   def (quote unsafeConvert) (lvl ∷ lvl ∷ tyFrom pos ∷ tyTo pos ∷ getConv2 pos ∷ arg def-argInfo (wr Γ) ∷ [])
   where lvl : Arg Term
         lvl = arg (arg-info hidden relevant) (quoteTerm Level.zero) -- TODO here we have to insert the proper level, not just 0....
+        mkLift : Term → Term
+        mkLift t = con (quote Level.lift) [ arg def-argInfo t ]
         iso' : Term
         iso' = app (def (quote PartIso.iso) [ arg def-argInfo (def (PartIsoInt.wrappedₙ x) []) ])
-          (List.map (arg def-argInfo ∘ substTerm Γ) (LOWₐ))
+          (List.map (arg def-argInfo ∘ mkLift ∘ substTerm Γ) (LOWₐ))
         other' : Term
         other' = app ( def (quote proj₂) [ arg def-argInfo iso' ] )
-          (List.map (arg def-argInfo ∘ substTerm Γ) (HIGHₐ))
+          (List.map (arg def-argInfo ∘ mkLift ∘ substTerm Γ) (HIGHₐ))
         p2 : Term
         p2 = def (quote proj₂) [ arg def-argInfo other' ]
         getConv : Position → Term
         getConv Pos = (def (quote proj₁) [ arg def-argInfo p2 ]) 
         getConv Neg = (def (quote proj₂) [ arg def-argInfo p2 ])
-        allArgs = LOWₐ List.++ HIGHₐ
-        mkLift : Term → Term
-        mkLift t = con (quote Level.lift) [ arg def-argInfo t ]
+{-        allArgs = LOWₐ List.++ HIGHₐ
         trArgs : List Term
-        trArgs = List.map (mkLift ∘ substTerm Γ) allArgs
+        trArgs = List.map (mkLift ∘ substTerm Γ) allArgs-}
         getConv2 : Position → Arg Term
-        getConv2 pos = arg def-argInfo (app (getConv pos) (List.map (arg def-argInfo) trArgs))
+        getConv2 pos = arg def-argInfo (app (getConv pos) []) -- (List.map (arg def-argInfo) trArgs))
         tyAgda : Term
         tyAgda = def (PartIsoInt.AGDAₙ x) (List.map (arg def-argInfo ∘ substTerm Γ) (LOWₐ List.++ HIGHₐ))
         tyHs : Term
