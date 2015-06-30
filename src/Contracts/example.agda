@@ -124,6 +124,7 @@ module DepCon1 where
   open import Data.List as L
   open import Data.Fin
   import Data.Vec as V
+  open import Reflection
 
   mapImpl2 : (n : ℕ) (A : Set) (B : Set) → (A → B) → List A → List B
   mapImpl2 n A B = L.map
@@ -143,9 +144,9 @@ module DepCon1 where
   lowType = {!!} --unquote (getAgdaLowType mapNZType)
 
   lk : {!!}
-  lk = {!unquote (getAgdaHighType mapNZType)!}
+  lk = {!unquote (getAgdaLowType mapNZType)!}
 
-  myMap2 : {!unquote (getAgdaHighType mapNZType)!} --unquote (getAgdaHighType mapNZType)
+  myMap2 : unquote (getAgdaHighType mapNZType) --unquote (getAgdaHighType mapNZType)
   myMap2 = {!unquote (ffi-lift mapNZType (quote mapImpl2))!}
   
     

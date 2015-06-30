@@ -164,7 +164,10 @@ elArg h t = arg def-argInfo (elAGDA h t)
 mkArgs : ∀ {l n} → (as : ArgTys {Level.suc l}) → V.Vec (T {l} n) (length as) → Term
 mkArgs [] V.[] = con (quote WithArgs.[]) []
 mkArgs (x ∷ as₁) (x₁ V.∷ ts) = con (quote WithArgs._,_)
-  ( arg def-argInfo (elAGDA (UnexpectedIsoInIsoArgs) x₁)
+  ( arg def-argInfo
+    (con (quote Level.lift)
+      [ arg def-argInfo (elAGDA UnexpectedIsoInIsoArgs x₁) ]
+    )
   ∷ arg def-argInfo (mkArgs as₁ ts)
   ∷ [])
 
