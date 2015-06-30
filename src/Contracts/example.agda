@@ -10,7 +10,7 @@ module NatIntIso where
 
   ℕ⇔ℤ : PartIsoInt
   ℕ⇔ℤ = record --toIntPartIso partIso (quote partIso) (quoteTerm partIso)
-    { wrappedₙ = quote partIso ; wrapped = partIso ; HSₙ = quote ℤ ; AGDAₙ = quote ℕ}
+    { wrappedₙ = quote partIso ; wrapped = partIso}
     where f : ℤ → Maybe ℕ
           f -[1+ n ] = nothing
           f (+ n) = just n
@@ -70,7 +70,7 @@ module VecIso where
 
   vec⇔list : {l : Level} → PartIsoInt {l}
   vec⇔list {l} = record --toIntPartIso partIso (quote partIso) (quoteTerm partIso)
-    { wrappedₙ = quote partIso ; HSₙ = quote List ; AGDAₙ = quote Vec ; wrapped = partIso }
+    { wrappedₙ = quote partIso ; wrapped = partIso }
     where
     partIso : PartIso
     partIso = mkPartIso L.[ Lift {_} {l} (Set l) ] L.[ (Lift ℕ) ]

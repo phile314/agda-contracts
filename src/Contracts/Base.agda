@@ -78,8 +78,6 @@ record PartIso {l} : Set (Level.suc (Level.suc l)) where
 record PartIsoInt {l} : Set (Level.suc (Level.suc l)) where
   field wrapped : PartIso {l}
         wrappedₙ : Name -- name of the part iso
-        HSₙ : Name -- the low agda ty; name of the agda rep of the HS data
-        AGDAₙ : Name -- the high agda ty
 
 applyArgs : ∀ {l} → {aTys : ArgTys {l}} {A : Set l} → (f : argsToTy aTys A) → WithArgs aTys → A
 applyArgs {aTys = []} f [] = f
@@ -186,6 +184,7 @@ getIsoLow p as =
       [ arg def-argInfo (def (PartIsoInt.wrappedₙ p) [] ) ]
     atys = PartIso.LOWₐ (PartIsoInt.wrapped p)
 
+-- gets the iso high pair
 getIsoHigh : ∀ {l n}
   → Term -- the term representing ISO Low
   → (p : PartIsoInt {l})
@@ -200,13 +199,12 @@ getIsoHigh lw p as =
     atys = PartIso.HIGHₐ (PartIsoInt.wrapped p)
     high = def (quote proj₂) [ arg def-argInfo lw ]
 
+getIsoLowType : ∀ {l} → IsoHandler {l}
+getIsoLowType p LOWₐ HIGHₐ = def (quote proj₁)
+  [ arg def-argInfo (getIsoLow p LOWₐ ) ]
 
 getAgdaLowType : ∀ {l} → T {l} 0 → Term
-getAgdaLowType t = elAGDA handleIso t
-  where
-    handleIso : IsoHandler
-    handleIso p LOWₐ HIGHₐ = def (quote proj₁)
-      [ arg def-argInfo (getIsoLow p LOWₐ) ]
+getAgdaLowType t = elAGDA getIsoLowType t
 
 getAgdaHighType : ∀ {l} → T {l} 0 → Term
 getAgdaHighType t = elAGDA handleIso t
@@ -264,6 +262,29 @@ substTerm Γ (def nm ∙ x) = def nm (List.map (arg def-argInfo ∘ substTerm Γ
 substTerm Γ (π fde ⇒ fde₁) = error
 substTerm Γ (iso x HSₐ AGDAₐ) = error
 
+-- substitution
+subst : List ℕ -- new index, if missing no substition
+  → Term
+  → Term
+substArgs : List ℕ → Arg Term → Arg Term
+
+subst σ (var x args) = error
+subst σ (con c args) = con c (List.map (substArgs σ) args)
+subst σ (def f args) = def f (List.map (substArgs σ) args)
+subst σ (app t args) = app (subst σ t) (List.map (substArgs σ) args)
+subst σ (lam v t) = error
+subst σ (pat-lam cs args) = notImpl
+subst σ (pi t₁ t₂) = notImpl
+subst σ (sort s) = notImpl
+subst σ (lit l) = notImpl
+subst σ (quote-goal t) = notImpl
+subst σ (quote-term t) = notImpl
+subst σ quote-context = notImpl
+subst σ (unquote-term t args) = notImpl
+subst σ unknown = notImpl
+
+substArgs σ (arg i x) = arg i (subst σ x)
+
 ffi-lift1 : ∀ {l n}
   → (fde : T {l} n)
   → (List ℕ → Term) -- thing to wrap
@@ -275,6 +296,7 @@ ffi-lift1 (var k ∙ x) wr pos Γ = wr Γ
 ffi-lift1 (def nm ∙ x) wr pos Γ  = wr Γ
 ffi-lift1 {_} {n} (π fde ⇒ fde₁) wr pos Γ =
   lam visible (abs "x" bd)
+  -- TODO substitute variables in recursive cases as necessary!!
   where ls = ffi-lift1 fde (λ env → let nVars = length env ∸ length Γ
            -- TODO should we really apply the whole new env here?
            in var (nVars * 2) (List.map mkArg (reverse (take nVars env)))) (invertPosition pos) (shift 1 Γ)
@@ -283,40 +305,38 @@ ffi-lift1 {_} {n} (π fde ⇒ fde₁) wr pos Γ =
 ffi-lift1 (iso {l} x LOWₐ HIGHₐ) wr pos Γ =
   -- extract the conversion from the named iso
   -- apply unsafeConvert
-  def (quote unsafeConvert) (lvl ∷ lvl ∷ tyFrom pos ∷ tyTo pos ∷ getConv2 pos ∷ arg def-argInfo (wr Γ) ∷ [])
+  def (quote unsafeConvert)
+    (lvl
+    ∷ lvl
+    ∷ arg def-argInfo (tyFrom pos)
+    ∷ arg def-argInfo (tyTo pos)
+    ∷ arg def-argInfo conv
+    ∷ arg def-argInfo (wr Γ) ∷ [])
   where lvl : Arg Term
         lvl = arg (arg-info visible relevant) (quoteTerm Level.zero) -- TODO here we have to insert the proper level, not just 0....
-        mkLift : Term → Term
-        mkLift t = con (quote Level.lift) ({- arg (arg-info hidden relevant) {!!}
-          ∷ arg (arg-info hidden relevant) {!!}
-          ∷ arg (arg-info hidden relevant) {!!} -- type
-          ∷-} arg def-argInfo t ∷ [] )
-        iso' : Term
-        iso' = app (def (quote PartIso.iso) [ arg def-argInfo (def (PartIsoInt.wrappedₙ x) []) ])
-          (List.map (arg def-argInfo ∘ mkLift ∘ substTerm Γ) (V.toList LOWₐ))
-        other' : Term
-        other' = app ( def (quote proj₂) [ arg def-argInfo iso' ] )
-          (List.map (arg def-argInfo ∘ mkLift ∘ substTerm Γ) (V.toList HIGHₐ))
-        p2 : Term
-        p2 = def (quote proj₂) [ arg def-argInfo other' ]
-        getConv : Position → Term
-        getConv Pos = (def (quote proj₁) [ arg def-argInfo p2 ]) 
-        getConv Neg = (def (quote proj₂) [ arg def-argInfo p2 ])
-{-        allArgs = LOWₐ List.++ HIGHₐ
-        trArgs : List Term
-        trArgs = List.map (mkLift ∘ substTerm Γ) allArgs-}
-        getConv2 : Position → Arg Term
-        getConv2 pos = arg def-argInfo (app (getConv pos) []) -- (List.map (arg def-argInfo) trArgs))
-        tyAgda : Term
-        tyAgda = def (PartIsoInt.AGDAₙ x) (List.map (arg def-argInfo ∘ substTerm Γ) (V.toList LOWₐ List.++ V.toList HIGHₐ))
-        tyHs : Term
-        tyHs = def (PartIsoInt.HSₙ x) (List.map (arg def-argInfo ∘ substTerm Γ) (V.toList LOWₐ))
-        tyFrom : Position → Arg Term
-        tyFrom Pos = arg (arg-info visible relevant) tyHs
-        tyFrom Neg = arg (arg-info visible relevant) tyAgda
-        tyTo : Position → Arg Term
-        tyTo Pos = arg (arg-info visible relevant) tyAgda
-        tyTo Neg = arg (arg-info visible relevant) tyHs
+        
+        getConv : Position → Term → Term
+        getConv Pos t = (def (quote proj₁) [ arg def-argInfo t ]) 
+        getConv Neg t = (def (quote proj₂) [ arg def-argInfo t ])
+        
+        isoLow : Term
+        isoLow = getIsoLow x LOWₐ
+        isoHigh : Term
+        isoHigh = getIsoHigh isoLow x HIGHₐ
+        
+        tyLow = def (quote proj₁) [ arg def-argInfo isoLow ]
+        tyHigh = def (quote proj₁) [ arg def-argInfo isoHigh ]
+        tyFrom : Position → Term
+        tyFrom Pos = tyLow
+        tyFrom Neg = tyHigh
+        tyTo : Position → Term
+        tyTo Pos = tyHigh
+        tyTo Neg = tyLow
+
+        conv : Term
+        conv = getConv pos (def (quote proj₂) [ arg def-argInfo isoHigh ])
+        
+
 --ffi-lift1 (iso x _ _) _ _ _ = notImpl
 
 ffi-lift : ∀ {l} → (fde : T {l} 0) → Name {- name of the low level fun -} → Term
@@ -370,8 +390,6 @@ toIntPartIso : ∀ {l}
   → (t : Term) -- quoted part iso
   → PartIsoInt
 toIntPartIso p pₙ pₜ = record
-  { HSₙ = getHsTyNm pₜ
-  ; AGDAₙ = getAgdaTyNm pₜ
-  ; wrapped = p
+  { wrapped = p
   ; wrappedₙ = pₙ
   }
