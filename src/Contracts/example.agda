@@ -158,8 +158,8 @@ module DepCon where
 --  mapImpl2 : (n : ℕ) (A : Set) (B : Set) → (A → B) → Vec A n → Vec B n
 --  mapImpl2 n A B = Vec.map
 
-  mapImpl2 : (n : ℕ) (A : Set) (B : Set) → (A → B) → List B
-  mapImpl2 _ _ _ _ = []
+  mapImpl2 : (n : ℕ) (A : Set) (B : Set) → (A → B) → List A → List B
+  mapImpl2 _ _ _ _ _ = []
 
 --  lifth : ℕ → Lift ℕ
 --  lifth = {!!}
@@ -170,10 +170,10 @@ module DepCon where
     ⇒ (π set 0 -- A
     ⇒ (π set 0 -- B
     ⇒ (π (
-      π var # 0 ∙ []
+      π var # 1 ∙ []
       ⇒ (var # 1 ∙ [])) -- f
---    ⇒ (π iso vec⇔list [ var # 1 ∙ [] ] [ var # 2 ∙ [] ] -- vec A n
-    ⇒ iso vec⇔list [ var # 1 ∙ [] ] [ var # 3 ∙ [] ] ))) -- ) vec B n
+    ⇒ (π iso vec⇔list [ var # 2 ∙ [] ] [ var # 3 ∙ [] ] -- vec A n
+    ⇒ iso vec⇔list [ var # 2 ∙ [] ] [ var # 4 ∙ [] ] )))) -- ) vec B n
 
   lowType : Set (Level.suc Level.zero)
   lowType = unquote (getAgdaLowType mapNZType)
@@ -194,8 +194,8 @@ module DepCon where
                                             in {!!}-}
 
   myMap2 : unquote (getAgdaHighType mapNZType)
-  myMap2 = unquote (ffi-lift mapNZType (quote mapImpl2))
---  myMap2 = {!pretty (ffi-lift mapNZType (quote mapImpl2))!}
+--  myMap2 = unquote (ffi-lift mapNZType (quote mapImpl2))
+  myMap2 = {!pretty (ffi-lift mapNZType (quote mapImpl2))!}
     
 
 -- surface syntax tests

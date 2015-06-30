@@ -225,7 +225,7 @@ ffi-lift1 {_} {n} (π fde ⇒ fde₁) wr pos Γ =
   lam visible (abs "x" bd)
   where ls = ffi-lift1 fde (λ env → let nVars = length env ∸ length Γ
            -- TODO should we really apply the whole new env here?
-           in var (nVars * 2) (List.map mkArg (reverse (take nVars env)))) (invertPosition pos) Γ
+           in var (nVars * 2) (List.map mkArg (reverse (take nVars env)))) (invertPosition pos) (shift 1 Γ)
         rs = ffi-lift1 fde₁ wr pos (0 ∷ shift 2 Γ)
         bd = lett ls inn rs
 ffi-lift1 (iso {l} x LOWₐ HIGHₐ) wr pos Γ =
