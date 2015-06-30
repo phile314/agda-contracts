@@ -101,6 +101,8 @@ invertPosition : Position → Position
 invertPosition Pos = Neg
 invertPosition Neg = Pos
 
+import Data.Vec as V
+
 -- TODO discard only makes sense in negative positions, we should enforce that it is only specified there
 data T {l} : ℕ → Set (Level.suc (Level.suc l)) where
   set : ∀ {n} → (l : ℕ) → T n
@@ -119,9 +121,9 @@ data T {l} : ℕ → Set (Level.suc (Level.suc l)) where
     → T {_} n
 
   iso : ∀ {n}
-    → PartIsoInt {l}
-    → List (T {l} n) -- argument for HSₐ
-    → List (T {l} n) -- arguments for Agdaₐ
+    → (p : PartIsoInt {l})
+    → V.Vec (T {l} n) (length (PartIso.LOWₐ (PartIsoInt.wrapped p))) -- LOW arguments
+    → V.Vec (T {l} n) (length (PartIso.HIGHₐ (PartIsoInt.wrapped p))) -- HIGH arguments
     → T n
 
 
@@ -130,43 +132,87 @@ def-argInfo = arg-info visible relevant
 
 --open Foreign.Base.Fun
 
+partIsoLowTy : ∀ {l} → (p : PartIso {l}) → WithArgs (PartIso.LOWₐ p) → Set l
+partIsoLowTy p args = proj₁ (applyArgs (PartIso.iso p) args)
+
+
 postulate
   error : {a : Set} → a
   error2 : {a : Set} → a
   notImpl : {a : Set} → a
+  UnexpectedIsoInIsoArgs : ∀ {a} {A : Set a} → A
 
-{-# TERMINATING #-}
-elArg : ∀ {l n} → (t : T {l} n) → Arg Term
+IsoHandler : ∀ {l} → Set (Level.suc (Level.suc l))
+IsoHandler {l} = {n : ℕ} → (p : PartIsoInt {l})
+  → V.Vec (T {l} n) (length (PartIso.LOWₐ (PartIsoInt.wrapped p))) -- LOW arguments
+  → V.Vec (T {l} n) (length (PartIso.HIGHₐ (PartIsoInt.wrapped p))) -- HIGH arguments
+  → Term
 
--- getting Agda low type
-elAGDA : ∀ {l n} (t : T {l} n) → Term
-elAGDA (var k ∙ xs) = var (toℕ k) (List.map elArg xs)
-elAGDA (def x ∙ xs) = def x (List.map elArg xs)
-elAGDA (π  t ⇒ t₁) = pi (arg def-argInfo (el unknown (elAGDA t))) (abs "" (el unknown (elAGDA t₁)))
-elAGDA (set l) = sort (lit l)
-elAGDA (iso i HSₐ AGDAₐ) = def (PartIsoInt.HSₙ i) (List.map elArg HSₐ)
 
-elArg {l} t = arg def-argInfo (elAGDA t)
+elAGDA : ∀ {l n} → IsoHandler {l} → (t : T {l} n) → Term
+elArg : ∀ {l n} → IsoHandler {l} → (t : T {l} n) → Arg Term
+
+elAGDA h (var k ∙ xs) = var (toℕ k) (List.map (elArg h) xs)
+elAGDA h (def x ∙ xs) = def x (List.map (elArg h) xs)
+elAGDA h (π  t ⇒ t₁) = pi (arg def-argInfo (el unknown (elAGDA h t))) (abs "" (el unknown (elAGDA h t₁)))
+elAGDA h (set l) = sort (lit l)
+elAGDA h (iso i HSₐ AGDAₐ) = h i HSₐ AGDAₐ
+
+elArg h t = arg def-argInfo (elAGDA h t)
+
+
+mkArgs : ∀ {l n} → (as : ArgTys {Level.suc l}) → V.Vec (T {l} n) (length as) → Term
+mkArgs [] V.[] = con (quote WithArgs.[]) []
+mkArgs (x ∷ as₁) (x₁ V.∷ ts) = con (quote WithArgs._,_)
+  ( arg def-argInfo (elAGDA (UnexpectedIsoInIsoArgs) x₁)
+  ∷ arg def-argInfo (mkArgs as₁ ts)
+  ∷ [])
+
+
+getIsoLow : ∀ {l n}
+  → (p : PartIsoInt {l})
+  → V.Vec (T {l} n) (length (PartIso.LOWₐ (PartIsoInt.wrapped p))) -- LOW Args
+  → Term
+getIsoLow p as =
+  def (quote applyArgs)
+    (arg def-argInfo (tiso)
+    ∷ (arg def-argInfo (mkArgs atys as))
+    ∷ [])
+  where
+    tiso = def (quote PartIso.iso)
+      [ arg def-argInfo (def (PartIsoInt.wrappedₙ p) [] ) ]
+    atys = PartIso.LOWₐ (PartIsoInt.wrapped p)
+
+getIsoHigh : ∀ {l n}
+  → Term -- the term representing ISO Low
+  → (p : PartIsoInt {l})
+  → V.Vec (T {l} n) (length (PartIso.HIGHₐ (PartIsoInt.wrapped p))) -- HIGH Args
+  → Term
+getIsoHigh lw p as =
+  def (quote applyArgs)
+    (arg def-argInfo high
+    ∷ arg def-argInfo (mkArgs atys as)
+    ∷ [])
+  where
+    atys = PartIso.HIGHₐ (PartIsoInt.wrapped p)
+    high = def (quote proj₂) [ arg def-argInfo lw ]
 
 
 getAgdaLowType : ∀ {l} → T {l} 0 → Term
-getAgdaLowType = elAGDA
-
-{-# TERMINATING #-}
-elArg2 : ∀ {l n} → (t : T {l} n) → Arg Term
-
--- getting Agda high type
-elAGDA2 : ∀ {l n} (t : T {l} n) → Term
-elAGDA2 (var k ∙ xs) = var (toℕ k) (List.map elArg2 xs)
-elAGDA2 (def x ∙ xs) = def x (List.map elArg2 xs)
-elAGDA2 (π  t ⇒ t₁) = pi (arg def-argInfo (el unknown (elAGDA2 t))) (abs "" (el unknown (elAGDA2 t₁)))
-elAGDA2 (set l) = sort (lit l)
-elAGDA2 (iso i HSₐ AGDAₐ) = def (PartIsoInt.AGDAₙ i) (List.map elArg2 (HSₐ List.++ AGDAₐ))
-
-elArg2 {l} t = arg def-argInfo (elAGDA2 t)
+getAgdaLowType t = elAGDA handleIso t
+  where
+    handleIso : IsoHandler
+    handleIso p LOWₐ HIGHₐ = def (quote proj₁)
+      [ arg def-argInfo (getIsoLow p LOWₐ) ]
 
 getAgdaHighType : ∀ {l} → T {l} 0 → Term
-getAgdaHighType = elAGDA2
+getAgdaHighType t = elAGDA handleIso t
+  where
+    handleIso : IsoHandler
+    handleIso p LOWₐ HIGHₐ =
+      let low = getIsoLow p LOWₐ
+       in def (quote proj₁)
+            [ arg def-argInfo (getIsoHigh low p HIGHₐ) ]
 
 mkAbs : (n : ℕ) → Term → Term
 mkAbs ℕ.zero body = body
@@ -182,15 +228,18 @@ open import Data.String
 postulate
   conversionFailure : ∀ {a} → {A : Set a} → String → A
 
-unsafeConvert : ∀ {a b} {A : Set a} {B : Set b} → Conversion A B → A → B
-unsafeConvert (total x) x₁ = x x₁
-unsafeConvert (withDec x) x₁ with x x₁
-unsafeConvert (withDec x) x₁ | yes p = p
-unsafeConvert (withDec x) x₁ | no ¬p = conversionFailure ""
-unsafeConvert (withMaybe x) x₁ with x x₁
-unsafeConvert (withMaybe x) x₁ | just x₂ = x₂
-unsafeConvert (withMaybe x) x₁ | nothing = conversionFailure ""
-unsafeConvert fail x = conversionFailure ""
+unsafeConvert : (a b : Level) (A : Set a) (B : Set b) → Conversion A B → A → B
+unsafeConvert _ _ _ _ (total x) x₁ = x x₁
+unsafeConvert _ _ _ _ (withDec x) x₁ with x x₁
+unsafeConvert _ _ _ _ (withDec x) x₁ | yes p = p
+unsafeConvert _ _ _ _ (withDec x) x₁ | no ¬p = conversionFailure ""
+unsafeConvert _ _ _ _ (withMaybe x) x₁ with x x₁
+unsafeConvert _ _ _ _ (withMaybe x) x₁ | just x₂ = x₂
+unsafeConvert _ _ _ _ (withMaybe x) x₁ | nothing = conversionFailure ""
+unsafeConvert _ _ _ _ fail x = conversionFailure ""
+
+--convert⇓ : ∀ {l} → (PartIso {l}) → {!!}
+--convert⇓ = {!!}
 
 last : {A : Set} → List A → A
 last [] = error
@@ -233,15 +282,18 @@ ffi-lift1 (iso {l} x LOWₐ HIGHₐ) wr pos Γ =
   -- apply unsafeConvert
   def (quote unsafeConvert) (lvl ∷ lvl ∷ tyFrom pos ∷ tyTo pos ∷ getConv2 pos ∷ arg def-argInfo (wr Γ) ∷ [])
   where lvl : Arg Term
-        lvl = arg (arg-info hidden relevant) (quoteTerm Level.zero) -- TODO here we have to insert the proper level, not just 0....
+        lvl = arg (arg-info visible relevant) (quoteTerm Level.zero) -- TODO here we have to insert the proper level, not just 0....
         mkLift : Term → Term
-        mkLift t = con (quote Level.lift) [ arg def-argInfo t ]
+        mkLift t = con (quote Level.lift) ({- arg (arg-info hidden relevant) {!!}
+          ∷ arg (arg-info hidden relevant) {!!}
+          ∷ arg (arg-info hidden relevant) {!!} -- type
+          ∷-} arg def-argInfo t ∷ [] )
         iso' : Term
         iso' = app (def (quote PartIso.iso) [ arg def-argInfo (def (PartIsoInt.wrappedₙ x) []) ])
-          (List.map (arg def-argInfo ∘ mkLift ∘ substTerm Γ) (LOWₐ))
+          (List.map (arg def-argInfo ∘ mkLift ∘ substTerm Γ) (V.toList LOWₐ))
         other' : Term
         other' = app ( def (quote proj₂) [ arg def-argInfo iso' ] )
-          (List.map (arg def-argInfo ∘ mkLift ∘ substTerm Γ) (HIGHₐ))
+          (List.map (arg def-argInfo ∘ mkLift ∘ substTerm Γ) (V.toList HIGHₐ))
         p2 : Term
         p2 = def (quote proj₂) [ arg def-argInfo other' ]
         getConv : Position → Term
@@ -253,15 +305,15 @@ ffi-lift1 (iso {l} x LOWₐ HIGHₐ) wr pos Γ =
         getConv2 : Position → Arg Term
         getConv2 pos = arg def-argInfo (app (getConv pos) []) -- (List.map (arg def-argInfo) trArgs))
         tyAgda : Term
-        tyAgda = def (PartIsoInt.AGDAₙ x) (List.map (arg def-argInfo ∘ substTerm Γ) (LOWₐ List.++ HIGHₐ))
+        tyAgda = def (PartIsoInt.AGDAₙ x) (List.map (arg def-argInfo ∘ substTerm Γ) (V.toList LOWₐ List.++ V.toList HIGHₐ))
         tyHs : Term
-        tyHs = def (PartIsoInt.HSₙ x) (List.map (arg def-argInfo ∘ substTerm Γ) LOWₐ)
+        tyHs = def (PartIsoInt.HSₙ x) (List.map (arg def-argInfo ∘ substTerm Γ) (V.toList LOWₐ))
         tyFrom : Position → Arg Term
-        tyFrom Pos = arg (arg-info hidden relevant) tyHs
-        tyFrom Neg = arg (arg-info hidden relevant) tyAgda
+        tyFrom Pos = arg (arg-info visible relevant) tyHs
+        tyFrom Neg = arg (arg-info visible relevant) tyAgda
         tyTo : Position → Arg Term
-        tyTo Pos = arg (arg-info hidden relevant) tyAgda
-        tyTo Neg = arg (arg-info hidden relevant) tyHs
+        tyTo Pos = arg (arg-info visible relevant) tyAgda
+        tyTo Neg = arg (arg-info visible relevant) tyHs
 --ffi-lift1 (iso x _ _) _ _ _ = notImpl
 
 ffi-lift : ∀ {l} → (fde : T {l} 0) → Name {- name of the low level fun -} → Term

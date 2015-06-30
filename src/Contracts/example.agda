@@ -25,6 +25,7 @@ module Ex2 where
   open import Data.Maybe
   open import Data.Product
   open import Data.List
+  open import Data.Vec
   open NatIntIso
   import Level
 
@@ -84,28 +85,30 @@ module MapEx where
   open NatIntIso
   open import Contracts.Base
   open import Level
-  open import Data.List
+  open import Data.List as L
   open import Data.Integer
   open import Data.Nat
+  import Data.Vec as V
+  open import Reflection
 
-  mapImpl : (ℤ → ℤ) → List ℤ → List ℤ
-  mapImpl f [] = []
-  mapImpl f (x ∷ xs) = f x ∷ mapImpl f xs
+  mapImpl : (ℤ → ℤ) → L.List ℤ → L.List ℤ
+  mapImpl f L.[] = L.[]
+  mapImpl f (x L.∷ xs) = f x L.∷ mapImpl f xs
 
   -- map higher order fun, where we convert the inputs of the higher order thingie
   mapNZType : T {Level.zero} 0
   mapNZType =
       π (
-        π (iso ℕ⇔ℤ [] []) ⇒ (iso ℕ⇔ℤ [] [])
+        π (iso ℕ⇔ℤ V.[] V.[]) ⇒ (iso ℕ⇔ℤ V.[] V.[])
 --        π (def (quote ℤ) ∙ []) ⇒ (def (quote ℤ) ∙ [])
         )
-    ⇒ (π (def (quote List) ∙ [ (def (quote ℤ) ∙ []) ])
-    ⇒ (def (quote List) ∙ [ (def (quote ℤ) ∙ []) ]))
+    ⇒ (π (def (quote L.List) ∙ [ (def (quote ℤ) ∙ []) ])
+    ⇒ (def (quote L.List) ∙ [ (def (quote ℤ) ∙ []) ]))
 
 --  k : {!!}
 --  k = {!unquote (ffi-lift mapNZType (quote mapImpl))!}
 
-  myMap : unquote (getAgdaHighType mapNZType)
+  myMap : unquote (getAgdaHighType mapNZType) --unquote (getAgdaHighType mapNZType)
   myMap = unquote (ffi-lift mapNZType (quote mapImpl))
 
   k : {!unquote (getAgdaHighType mapNZType)!}
@@ -120,11 +123,12 @@ module DepCon1 where
   open import Level
   open import Data.List as L
   open import Data.Fin
+  import Data.Vec as V
 
   mapImpl2 : (n : ℕ) (A : Set) (B : Set) → (A → B) → List A → List B
   mapImpl2 n A B = L.map
 
-{-  mapNZType : T {Level.zero} 0
+  mapNZType : T {Level.zero} 0
   mapNZType =
     π def quote ℕ ∙ [] -- n
     ⇒ (π set 0 -- A
@@ -132,18 +136,18 @@ module DepCon1 where
     ⇒ (π (
       π var # 1 ∙ []
       ⇒ (var # 1 ∙ [])) -- f
-    ⇒ (π iso vec⇔list [ var # 2 ∙ [] ] [ var # 3 ∙ [] ] -- vec
-    ⇒ iso vec⇔list [ var # 2 ∙ [] ] [ var # 4 ∙ [] ] ))))
+    ⇒ (π iso vec⇔list V.[ var # 2 ∙ [] ] V.[ var # 3 ∙ [] ] -- vec
+    ⇒ iso vec⇔list V.[ var # 2 ∙ [] ] V.[ var # 4 ∙ [] ] ))))
 
   lowType : Set (Level.suc Level.zero)
-  lowType = unquote (getAgdaLowType mapNZType)
+  lowType = {!!} --unquote (getAgdaLowType mapNZType)
 
   lk : {!!}
   lk = {!unquote (getAgdaHighType mapNZType)!}
 
-  myMap2 : unquote (getAgdaHighType mapNZType)
+  myMap2 : {!unquote (getAgdaHighType mapNZType)!} --unquote (getAgdaHighType mapNZType)
   myMap2 = {!unquote (ffi-lift mapNZType (quote mapImpl2))!}
-  -}
+  
     
 module DepCon where
   open VecIso
@@ -163,7 +167,7 @@ module DepCon where
 
 --  lifth : ℕ → Lift ℕ
 --  lifth = {!!}
-
+{-
   mapNZType : T {Level.zero} 0
   mapNZType =
     π def quote ℕ ∙ [] -- n
@@ -179,7 +183,7 @@ module DepCon where
   lowType = unquote (getAgdaLowType mapNZType)
 
   lk : {!pretty (quoteTerm (ℕ → (A B : Set) → (f : A -> B) -> List A -> List B))!}
-  lk = {!unquote (getAgdaLowType mapNZType)!}
+  lk = {!unquote (getAgdaHighType mapNZType)!}
   open import Data.Product
   open import Function
 
@@ -197,7 +201,7 @@ module DepCon where
 --  myMap2 = unquote (ffi-lift mapNZType (quote mapImpl2))
   myMap2 = {!pretty (ffi-lift mapNZType (quote mapImpl2))!}
     
-
+-}
 -- surface syntax tests
 module T3 where
   open NatIntIso
