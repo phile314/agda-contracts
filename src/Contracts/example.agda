@@ -143,11 +143,11 @@ module DepCon1 where
   lowType : Set (Level.suc Level.zero)
   lowType = {!!} --unquote (getAgdaLowType mapNZType)
 
-  lk : {!!}
-  lk = {!unquote (getAgdaLowType mapNZType)!}
+  lk : {!List ℕ!}
+  lk = {!unquote (getAgdaHighType mapNZType)!}
 
   myMap2 : unquote (getAgdaHighType mapNZType) --unquote (getAgdaHighType mapNZType)
-  myMap2 = {!unquote (ffi-lift mapNZType (quote mapImpl2))!}
+  myMap2 = unquote (ffi-lift mapNZType (quote mapImpl2))
   
     
 module DepCon where

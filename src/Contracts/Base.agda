@@ -263,12 +263,12 @@ substTerm Γ (π fde ⇒ fde₁) = error
 substTerm Γ (iso x HSₐ AGDAₐ) = error
 
 -- substitution
-subst : List ℕ -- new index, if missing no substition
+subst : (ℕ → ℕ) -- substitution function
   → Term
   → Term
-substArgs : List ℕ → Arg Term → Arg Term
+substArgs : (ℕ → ℕ) → Arg Term → Arg Term
 
-subst σ (var x args) = error
+subst σ (var x args) = var (σ x) (List.map (substArgs σ) args)
 subst σ (con c args) = con c (List.map (substArgs σ) args)
 subst σ (def f args) = def f (List.map (substArgs σ) args)
 subst σ (app t args) = app (subst σ t) (List.map (substArgs σ) args)
@@ -312,7 +312,9 @@ ffi-lift1 (iso {l} x LOWₐ HIGHₐ) wr pos Γ =
     ∷ arg def-argInfo (tyTo pos)
     ∷ arg def-argInfo conv
     ∷ arg def-argInfo (wr Γ) ∷ [])
-  where lvl : Arg Term
+  where
+        s = subst (λ x → lookup' x Γ)
+        lvl : Arg Term
         lvl = arg (arg-info visible relevant) (quoteTerm Level.zero) -- TODO here we have to insert the proper level, not just 0....
         
         getConv : Position → Term → Term
@@ -324,8 +326,8 @@ ffi-lift1 (iso {l} x LOWₐ HIGHₐ) wr pos Γ =
         isoHigh : Term
         isoHigh = getIsoHigh isoLow x HIGHₐ
         
-        tyLow = def (quote proj₁) [ arg def-argInfo isoLow ]
-        tyHigh = def (quote proj₁) [ arg def-argInfo isoHigh ]
+        tyLow = s $ def (quote proj₁) [ arg def-argInfo isoLow ]
+        tyHigh = s $ def (quote proj₁) [ arg def-argInfo isoHigh ]
         tyFrom : Position → Term
         tyFrom Pos = tyLow
         tyFrom Neg = tyHigh
@@ -334,7 +336,7 @@ ffi-lift1 (iso {l} x LOWₐ HIGHₐ) wr pos Γ =
         tyTo Neg = tyLow
 
         conv : Term
-        conv = getConv pos (def (quote proj₂) [ arg def-argInfo isoHigh ])
+        conv = s $ getConv pos (def (quote proj₂) [ arg def-argInfo isoHigh ])
         
 
 --ffi-lift1 (iso x _ _) _ _ _ = notImpl
