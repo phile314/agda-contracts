@@ -77,9 +77,6 @@ module VecIso where
     partIso : PartIso
     partIso = mkPartIso L.[ Lift {_} {l} (Set l) ] L.[ (Lift ℕ) ]
       (λ x → (List (lower x)) , (λ x₁ → (Vec (lower x) (lower x₁)) , ((withMaybe list⇒vec) , (total Data.Vec.toList))))
-{-      (λ a → record
-        { HSₜ = L.List (lower a)
-        ; other = λ n → (Vec (lower a) (lower n)) , ( withMaybe list⇒vec , Conversion.total Data.Vec.toList)})-}
 
 
 module MapEx where

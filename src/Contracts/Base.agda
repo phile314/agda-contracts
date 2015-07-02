@@ -194,10 +194,6 @@ getAgdaHighType t = elAGDA handleIso t
        in def (quote proj₁)
             [ arg def-argInfo (getIsoHigh low p HIGHₐ) ]
 
-mkAbs : (n : ℕ) → Term → Term
-mkAbs ℕ.zero body = body
-mkAbs (ℕ.suc n) body = lam visible (abs "" (mkAbs n body))
-
 shift : ℕ → List ℕ → List ℕ
 shift k = List.map (N._+_ k)
 
@@ -205,15 +201,15 @@ open import Data.String
 postulate
   conversionFailure : ∀ {a} → {A : Set a} → String → A
 
-unsafeConvert : (a b : Level) (A : Set a) (B : Set b) → Conversion A B → A → B
-unsafeConvert _ _ _ _ (total x) x₁ = x x₁
-unsafeConvert _ _ _ _ (withDec x) x₁ with x x₁
-unsafeConvert _ _ _ _ (withDec x) x₁ | yes p = p
-unsafeConvert _ _ _ _ (withDec x) x₁ | no ¬p = conversionFailure ""
-unsafeConvert _ _ _ _ (withMaybe x) x₁ with x x₁
-unsafeConvert _ _ _ _ (withMaybe x) x₁ | just x₂ = x₂
-unsafeConvert _ _ _ _ (withMaybe x) x₁ | nothing = conversionFailure ""
-unsafeConvert _ _ _ _ fail x = conversionFailure ""
+unsafeConvert : {a b : Level} (A : Set a) (B : Set b) → Conversion A B → A → B
+unsafeConvert _ _ (total x) x₁ = x x₁
+unsafeConvert _ _ (withDec x) x₁ with x x₁
+unsafeConvert _ _ (withDec x) x₁ | yes p = p
+unsafeConvert _ _ (withDec x) x₁ | no ¬p = conversionFailure ""
+unsafeConvert _ _ (withMaybe x) x₁ with x x₁
+unsafeConvert _ _ (withMaybe x) x₁ | just x₂ = x₂
+unsafeConvert _ _ (withMaybe x) x₁ | nothing = conversionFailure ""
+unsafeConvert _ _ fail x = conversionFailure ""
 
 
 mkArg : ℕ → Arg Term
@@ -276,16 +272,12 @@ ffi-lift1 (iso {l} x LOWₐ HIGHₐ) wr pos Γ =
   -- extract the conversion from the named iso
   -- apply unsafeConvert
   def (quote unsafeConvert)
-    (lvl
-    ∷ lvl
-    ∷ arg def-argInfo (tyFrom pos)
+    ( arg def-argInfo (tyFrom pos)
     ∷ arg def-argInfo (tyTo pos)
     ∷ arg def-argInfo conv
     ∷ arg def-argInfo (wr Γ) ∷ [])
   where
         s = subst (λ x → lookup' x Γ)
-        lvl : Arg Term
-        lvl = arg (arg-info visible relevant) (quoteTerm Level.zero) -- TODO here we have to insert the proper level, not just 0....
         
         getConv : Position → Term → Term
         getConv Pos t = (def (quote proj₁) [ arg def-argInfo t ]) 
