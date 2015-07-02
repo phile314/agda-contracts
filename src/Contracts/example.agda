@@ -111,8 +111,8 @@ module MapEx where
   myMap : unquote (getAgdaHighType mapNZType) --unquote (getAgdaHighType mapNZType)
   myMap = unquote (ffi-lift mapNZType (quote mapImpl))
 
-  k : {!unquote (getAgdaHighType mapNZType)!}
-  k = {!pretty (ffi-lift mapNZType (quote mapImpl))!}
+--  k : {!unquote (getAgdaHighType mapNZType)!}
+--  k = {!pretty (ffi-lift mapNZType (quote mapImpl))!}
 --  k' : {!unquote (getAgdaHighType mapNZType)!}
 --  k' = {!myMap!}
 
@@ -140,14 +140,75 @@ module DepCon1 where
     ⇒ (π iso vec⇔list V.[ var # 2 ∙ [] ] V.[ var # 3 ∙ [] ] -- vec
     ⇒ iso vec⇔list V.[ var # 2 ∙ [] ] V.[ var # 4 ∙ [] ] ))))
 
-  lowType : Set (Level.suc Level.zero)
-  lowType = {!!} --unquote (getAgdaLowType mapNZType)
+--  lowType : Set (Level.suc Level.zero)
+--  lowType = {!!} --unquote (getAgdaLowType mapNZType)
 
-  lk : {!List ℕ!}
-  lk = {!unquote (getAgdaHighType mapNZType)!}
+--  lk : {!!}
+--  lk = {!pretty (ffi-lift mapNZType (quote mapImpl2))!}
 
-  myMap2 : unquote (getAgdaHighType mapNZType) --unquote (getAgdaHighType mapNZType)
-  myMap2 = unquote (ffi-lift mapNZType (quote mapImpl2))
+  import Agda.Primitive
+  import Data.Product
+
+  partIso : PartIso {Level.zero}
+  partIso = PartIsoInt.wrapped VecIso.vec⇔list
+
+  fixType : ∀ {a} (A : Set a) → A → A
+  fixType _ x = x
+
+  t : unquote (getAgdaHighType mapNZType)
+  t =
+    (λ x0 → -- n
+      (λ x1 →
+        (λ x2 → -- A
+          (λ x3 →
+            (λ x4 → -- B
+              (λ x5 →
+                (λ (x6 : x3 → x5) → -- f
+                  (λ x7 →
+                    (λ x8 → -- xs
+                      (λ x9 →
+                        Contracts.Base.unsafeConvert (Agda.Primitive.lzero) (Agda.Primitive.lzero)
+                          (Data.Product.Σ.proj₁ (Contracts.Base.applyArgs (Contracts.Base.PartIso.iso (partIso)) (Contracts.Base.WithArgs._,_ (Level.Lift.lift (x5)) (Contracts.Base.WithArgs.[]))))
+                          (Data.Product.Σ.proj₁ (Contracts.Base.applyArgs
+                            (Data.Product.Σ.proj₂
+                              (Contracts.Base.applyArgs (Contracts.Base.PartIso.iso (partIso)) (Contracts.Base.WithArgs._,_ (Level.Lift.lift (x5)) (Contracts.Base.WithArgs.[])))
+                            )
+                            (Contracts.Base.WithArgs._,_ (Level.Lift.lift (x1)) (Contracts.Base.WithArgs.[]))))
+                          (Data.Product.Σ.proj₁ (Data.Product.Σ.proj₂ (Contracts.Base.applyArgs
+                            (Data.Product.Σ.proj₂
+                              (Contracts.Base.applyArgs (Contracts.Base.PartIso.iso (partIso)) (Contracts.Base.WithArgs._,_ (Level.Lift.lift (x5)) (Contracts.Base.WithArgs.[])))
+                            )
+                            (Contracts.Base.WithArgs._,_ (Level.Lift.lift (x1)) (Contracts.Base.WithArgs.[]))))
+                          )
+                          (mapImpl2 (x1) (x3) (x5) (x7) (x9))
+                        )
+                        (Contracts.Base.unsafeConvert (Agda.Primitive.lzero) (Agda.Primitive.lzero)
+                          (Data.Product.Σ.proj₁ (Contracts.Base.applyArgs (Data.Product.Σ.proj₂ (Contracts.Base.applyArgs (Contracts.Base.PartIso.iso (partIso)) (Contracts.Base.WithArgs._,_ (Level.Lift.lift (x3)) (Contracts.Base.WithArgs.[])))) (Contracts.Base.WithArgs._,_ (Level.Lift.lift (x1)) (Contracts.Base.WithArgs.[]))))
+                          (Data.Product.Σ.proj₁ (Contracts.Base.applyArgs (Contracts.Base.PartIso.iso (partIso)) (Contracts.Base.WithArgs._,_ (Level.Lift.lift (x3)) (Contracts.Base.WithArgs.[]))))
+                          (Data.Product.Σ.proj₂ (Data.Product.Σ.proj₂ (Contracts.Base.applyArgs (Data.Product.Σ.proj₂ (Contracts.Base.applyArgs (Contracts.Base.PartIso.iso (partIso)) (Contracts.Base.WithArgs._,_ (Level.Lift.lift (x3)) (Contracts.Base.WithArgs.[])))) (Contracts.Base.WithArgs._,_ (Level.Lift.lift (x1)) (Contracts.Base.WithArgs.[])))))
+                          (x8)
+                        )
+                      )
+                    )
+                    (
+                      -- if we just put x6 here, no metas are created!?
+                      (λ x10 →
+                        (λ x11 → x6 (x11)) (x10)
+                      )
+                    )
+                  )
+                )
+                (x4)
+              )
+            )
+            (x2)
+          )
+        )
+        (x0)
+      )
+
+--  myMap2 : unquote (getAgdaHighType mapNZType) --unquote (getAgdaHighType mapNZType)
+--  myMap2 = unquote (ffi-lift mapNZType (quote mapImpl2))
   
     
 module DepCon where

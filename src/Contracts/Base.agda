@@ -285,6 +285,11 @@ subst σ unknown = notImpl
 
 substArgs σ (arg i x) = arg i (subst σ x)
 
+data TLift : Set where
+  Def : Name → List (Arg TLift) → TLift
+  Var : ℕ → List (Arg TLift) → TLift
+  Let : TLift → TLift → TLift
+
 ffi-lift1 : ∀ {l n}
   → (fde : T {l} n)
   → (List ℕ → Term) -- thing to wrap
