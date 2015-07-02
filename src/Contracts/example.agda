@@ -152,7 +152,7 @@ module DepCon1 where
 
   myMap2 : unquote (getAgdaHighType mapNZType) --unquote (getAgdaHighType mapNZType)
 --  myMap2 =  {!pretty (elimLets (ffi-lift mapNZType (quote mapImpl2)))!}
-  myMap2 = unquote (elimLets (ffi-lift mapNZType (quote mapImpl2))) -- unquote (ffi-lift mapNZType (quote mapImpl2))
+  myMap2 = unquote (ffi-lift mapNZType (quote mapImpl2)) -- unquote (ffi-lift mapNZType (quote mapImpl2))
   
     
 module DepCon where
