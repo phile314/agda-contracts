@@ -155,11 +155,7 @@ module DepCon1 where
   fixType : ∀ {a} (A : Set a) → A → A
   fixType _ x = x
 
-{-
-  t : unquote (getAgdaHighType mapNZType)
-  t =
-    (λ x0 → (λ x1 → (λ x2 → (λ x3 → (λ x4 → (λ x5 → (λ x6 → Contracts.Base.unsafeConvert (Agda.Primitive.lzero) (Agda.Primitive.lzero) (Data.Product.Σ.proj₁ (Contracts.Base.applyArgs (Contracts.Base.PartIso.iso (partIso)) (Contracts.Base.WithArgs._,_ (Level.Lift.lift (x2)) (Contracts.Base.WithArgs.[])))) (Data.Product.Σ.proj₁ (Contracts.Base.applyArgs (Data.Product.Σ.proj₂ (Contracts.Base.applyArgs (Contracts.Base.PartIso.iso (partIso)) (Contracts.Base.WithArgs._,_ (Level.Lift.lift (x2)) (Contracts.Base.WithArgs.[])))) (Contracts.Base.WithArgs._,_ (Level.Lift.lift (x0)) (Contracts.Base.WithArgs.[])))) (Data.Product.Σ.proj₁ (Data.Product.Σ.proj₂ (Contracts.Base.applyArgs (Data.Product.Σ.proj₂ (Contracts.Base.applyArgs (Contracts.Base.PartIso.iso (partIso)) (Contracts.Base.WithArgs._,_ (Level.Lift.lift (x2)) (Contracts.Base.WithArgs.[])))) (Contracts.Base.WithArgs._,_ (Level.Lift.lift (x0)) (Contracts.Base.WithArgs.[]))))) (mapImpl2 (x0) (x1) (x2) (x4) (x6))) (Contracts.Base.unsafeConvert (Agda.Primitive.lzero) (Agda.Primitive.lzero) (Data.Product.Σ.proj₁ (Contracts.Base.applyArgs (Data.Product.Σ.proj₂ (Contracts.Base.applyArgs (Contracts.Base.PartIso.iso (partIso)) (Contracts.Base.WithArgs._,_ (Level.Lift.lift (x1)) (Contracts.Base.WithArgs.[])))) (Contracts.Base.WithArgs._,_ (Level.Lift.lift (x0)) (Contracts.Base.WithArgs.[])))) (Data.Product.Σ.proj₁ (Contracts.Base.applyArgs (Contracts.Base.PartIso.iso (partIso)) (Contracts.Base.WithArgs._,_ (Level.Lift.lift (x1)) (Contracts.Base.WithArgs.[])))) (Data.Product.Σ.proj₂ (Data.Product.Σ.proj₂ (Contracts.Base.applyArgs (Data.Product.Σ.proj₂ (Contracts.Base.applyArgs (Contracts.Base.PartIso.iso (partIso)) (Contracts.Base.WithArgs._,_ (Level.Lift.lift (x1)) (Contracts.Base.WithArgs.[])))) (Contracts.Base.WithArgs._,_ (Level.Lift.lift (x0)) (Contracts.Base.WithArgs.[]))))) (x5)))) ((λ x7 → x3 (x7)))))))
--}
+
   myMap2 : unquote (getAgdaHighType mapNZType) --unquote (getAgdaHighType mapNZType)
 --  myMap2 =  {!pretty (elimLets (ffi-lift mapNZType (quote mapImpl2)))!}
   myMap2 = unquote (elimLets (ffi-lift mapNZType (quote mapImpl2))) -- unquote (ffi-lift mapNZType (quote mapImpl2))
@@ -175,11 +171,8 @@ module DepCon where
   open import Data.Fin
   open import Reflection
 
---  mapImpl2 : (n : ℕ) (A : Set) (B : Set) → (A → B) → Vec A n → Vec B n
---  mapImpl2 n A B = Vec.map
-
-  mapImpl2 : (n : ℕ) (A : Set) (B : Set) → (A → B) → List A → List B
-  mapImpl2 _ _ _ _ _ = []
+  mapImpl2 : (n : ℕ) (A : Set) (B : Set) → (A → B) → Vec A n → Vec B n
+  mapImpl2 n A B = Vec.map
 
 --  lifth : ℕ → Lift ℕ
 --  lifth = {!!}

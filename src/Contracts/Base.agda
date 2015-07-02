@@ -12,15 +12,6 @@ lookup ℕ.zero (x ∷ xs) = just x
 lookup (ℕ.suc i) (x ∷ xs) = lookup i xs
 
 
-open import Reflection
-
-data PatLamNotAllowed : Set where
-
-lamBody : Term → Term
-lamBody (lam v (abs s x)) = lamBody x
-lamBody (pat-lam cs args) = quoteTerm PatLamNotAllowed
-lamBody (pi t₁ (abs s (el s₁ t))) = lamBody t
-lamBody t = t
 
 open import Level
 open import Relation.Nullary
@@ -61,17 +52,10 @@ open import Reflection
 Conversions : ∀ {l} → Set l → Set l → Set (Level.suc l)
 Conversions Aₜ Bₜ = Conversion Aₜ Bₜ × Conversion Bₜ Aₜ
 
-{-
-record PartIso' {l} (LOWₐ HIGHₐ : ArgTys) : Set (Level.suc l) where
-  field HSₜ : Set l
-        -- ... → (AgdaType, conversions)
-        other : argsToTy HIGHₐ (Σ (Set l) (Conversions HSₜ))
--}
 record PartIso {l} : Set (Level.suc (Level.suc l)) where
   constructor mkPartIso
   field LOWₐ : ArgTys {Level.suc l} -- this are the common arguments
         HIGHₐ : ArgTys {Level.suc l} -- agda only arguments
---        iso : argsToTy LOWₐ (PartIso' {l} LOWₐ HIGHₐ)
         iso : argsToTy LOWₐ (Σ (Set l) (λ HSₜ →
                        argsToTy HIGHₐ (Σ (Set l) (Conversions HSₜ))))
 
@@ -86,10 +70,6 @@ applyArgs {aTys = A₁ ∷ aTys} f (a , args) = applyArgs (f a) args
 
 open import Data.Fin
 open import Reflection
-
-data Discard : Set where
-  discard : Discard
-  pass : Discard
 
 data Position : Set where
   Pos : Position
@@ -127,8 +107,6 @@ data T {l} : ℕ → Set (Level.suc (Level.suc l)) where
 
 def-argInfo : Arg-info
 def-argInfo = arg-info visible relevant
-
---open Foreign.Base.Fun
 
 partIsoLowTy : ∀ {l} → (p : PartIso {l}) → WithArgs (PartIso.LOWₐ p) → Set l
 partIsoLowTy p args = proj₁ (applyArgs (PartIso.iso p) args)
@@ -239,13 +217,6 @@ unsafeConvert _ _ _ _ (withMaybe x) x₁ | just x₂ = x₂
 unsafeConvert _ _ _ _ (withMaybe x) x₁ | nothing = conversionFailure ""
 unsafeConvert _ _ _ _ fail x = conversionFailure ""
 
---convert⇓ : ∀ {l} → (PartIso {l}) → {!!}
---convert⇓ = {!!}
-
-last : {A : Set} → List A → A
-last [] = error
-last (x ∷ []) = x
-last (x ∷ xs) = last xs
 
 mkArg : ℕ → Arg Term
 mkArg i = arg (arg-info visible relevant) (var i [])
@@ -378,49 +349,12 @@ open import Data.List as L
 
 data SomethingBad : Set where
 
-FAIL : Term
-FAIL = def (quote SomethingBad) []
-
-
-postulate NoPI : Term
-
-getOtherPI : Term → Term
-getOtherPI (con c args) with lookup 3 args
-getOtherPI (con c args) | just (arg _ t) = lamBody t
-  where g : Term → Term
-        g t  = t
-getOtherPI (con c args) | _ = NoPI
-getOtherPI t = NoPI
-
-getHsTyNm : Term → Name
-getHsTyNm t with getOtherPI t
-... | ot = g ot
-  where g : Term → Name
-        g (con c₁ args₁) with lookup 3 args₁
-        ... | just (arg _ (def nm _)) = nm
-        ... | _ = error
-        g _ = error2
-
-getAgdaTyNm : Term → Name
-getAgdaTyNm d with getOtherPI d
-... | (con c args) = g args
-  where h : Maybe (Arg Term) → Name
-        h (just (arg _ (def nm _))) = nm
-        h _ = error
-        g : List (Arg Term) → Name
-        g args with lookup 4 args
-        g args₁ | just (arg _ k) with lamBody k
-        ... | con _ args = h (lookup 4 args)
-        ... | _ = error
-        g args₁ | _ = error
-... | k = error
 
 toIntPartIso : ∀ {l}
   → PartIso {l}
   → Name --part iso name
-  → (t : Term) -- quoted part iso
   → PartIsoInt
-toIntPartIso p pₙ pₜ = record
+toIntPartIso p pₙ = record
   { wrapped = p
   ; wrappedₙ = pₙ
   }
