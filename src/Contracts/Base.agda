@@ -272,7 +272,11 @@ subst σ (var x args) = var (σ x) (List.map (substArgs σ) args)
 subst σ (con c args) = con c (List.map (substArgs σ) args)
 subst σ (def f args) = def f (List.map (substArgs σ) args)
 subst σ (app t args) = app (subst σ t) (List.map (substArgs σ) args)
-subst σ (lam v t) = error
+subst σ (lam v (abs x t)) = lam v (abs x (subst σ' t))
+  where
+    σ' : ℕ → ℕ
+    σ' ℕ.zero = ℕ.zero -- the given var is not free, so just return it unchanged
+    σ' (ℕ.suc i) = ℕ.suc (σ i)
 subst σ (pat-lam cs args) = notImpl
 subst σ (pi t₁ t₂) = notImpl
 subst σ (sort s) = notImpl
@@ -285,10 +289,6 @@ subst σ unknown = notImpl
 
 substArgs σ (arg i x) = arg i (subst σ x)
 
-data TLift : Set where
-  Def : Name → List (Arg TLift) → TLift
-  Var : ℕ → List (Arg TLift) → TLift
-  Let : TLift → TLift → TLift
 
 ffi-lift1 : ∀ {l n}
   → (fde : T {l} n)
@@ -342,7 +342,31 @@ ffi-lift1 (iso {l} x LOWₐ HIGHₐ) wr pos Γ =
 
         conv : Term
         conv = s $ getConv pos (def (quote proj₂) [ arg def-argInfo isoHigh ])
-        
+
+elimLets : Term → Term
+elimArg : Arg Term → Arg Term
+
+import Data.Bool as B
+open import Relation.Nullary.Decidable
+
+elimLets (var x args) = var x (List.map elimArg args)
+elimLets (con c args) = con c (List.map elimArg args)
+elimLets (def f args) = def f (List.map elimArg args)
+elimLets (app (lam visible (abs _ t)) ((arg (arg-info visible _) (var x [])) ∷ []))
+  = subst (λ x₁ → B.if ⌊ x₁ N.≟ 0 ⌋ then x else (x₁ ∸ 1)) (elimLets t)
+elimLets (app t args) = app (elimLets t) (List.map elimArg args)
+elimLets (lam v (abs s t)) = lam v (abs s (elimLets t))
+elimLets (pat-lam cs args) = error
+elimLets (pi (arg i (el s t)) (abs s₁ (el s₂ t₁))) = pi (arg i (el s (elimLets t))) (abs s₁ (el s₂ (elimLets t₁)))
+elimLets (sort s) = sort s
+elimLets (lit l) = lit l
+elimLets (quote-goal t) = error
+elimLets (quote-term t) = error
+elimLets quote-context = error
+elimLets (unquote-term t args) = error
+elimLets unknown = error
+
+elimArg (arg i x) = arg i (elimLets x)
 
 --ffi-lift1 (iso x _ _) _ _ _ = notImpl
 
