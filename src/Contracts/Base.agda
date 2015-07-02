@@ -17,14 +17,15 @@ open import Level
 open import Relation.Nullary
 open import Data.Maybe
 open import Data.Nat as N
---open import Data.List as List
 open import Function
+
 
 postulate OutOfBounds : ∀ {a} {A : Set a} → A
 lookup' : ∀ {a} {A : Set a} → ℕ → List A → A
 lookup' i xs with lookup i xs
 lookup' i xs | just x = x
 lookup' i xs | nothing = OutOfBounds
+
 
 data Conversion {a b} (A : Set a) (B : Set b) : Set (Level.suc (a Level.⊔ b)) where
   total : (A → B) → Conversion A B
@@ -200,9 +201,6 @@ mkAbs (ℕ.suc n) body = lam visible (abs "" (mkAbs n body))
 shift : ℕ → List ℕ → List ℕ
 shift k = List.map (N._+_ k)
 
-lett_inn_ : Term → Term → Term
-lett_inn_ t₁ t₂ = app (lam visible (abs "" t₂)) [ arg (arg-info visible relevant) t₁ ]
-
 open import Data.String
 postulate
   conversionFailure : ∀ {a} → {A : Set a} → String → A
@@ -221,24 +219,13 @@ unsafeConvert _ _ _ _ fail x = conversionFailure ""
 mkArg : ℕ → Arg Term
 mkArg i = arg (arg-info visible relevant) (var i [])
 
-postulate error5 : Term
-
-{-# TERMINATING #-}
-substTerm : ∀ {l n} → List ℕ → (fde : T {l} n)  → Term
-substTerm Γ (set l₁) = notImpl
-substTerm Γ (var k ∙ x) with lookup (toℕ k) Γ
-substTerm Γ (var k ∙ x₁) | just x = var x (List.map (arg def-argInfo ∘ substTerm Γ) x₁)
-substTerm Γ (var k ∙ x) | nothing = error5
-substTerm Γ (def nm ∙ x) = def nm (List.map (arg def-argInfo ∘ substTerm Γ) x)
-substTerm Γ (π fde ⇒ fde₁) = error
-substTerm Γ (iso x HSₐ AGDAₐ) = error
-
 -- substitution
 subst : (ℕ → ℕ) -- substitution function
   → Term
   → Term
 substArgs : (ℕ → ℕ) → Arg Term → Arg Term
 
+-- substitute free variables
 subst σ (var x args) = var (σ x) (List.map (substArgs σ) args)
 subst σ (con c args) = con c (List.map (substArgs σ) args)
 subst σ (def f args) = def f (List.map (substArgs σ) args)
@@ -260,6 +247,15 @@ subst σ unknown = notImpl
 
 substArgs σ (arg i x) = arg i (subst σ x)
 
+import Data.Bool as B
+open import Relation.Nullary.Decidable
+
+lett_inn_ : Term → Term → Term
+lett_inn_ (var x []) t₂ = subst (λ x₁ → B.if ⌊ x₁ N.≟ 0 ⌋ then x else x₁ ∸ 1) t₂
+lett_inn_ t₁ t₂ = def (quote _$_)
+          ( arg def-argInfo (lam visible (abs "" t₂))
+          ∷ arg def-argInfo t₁
+          ∷ [])
 
 ffi-lift1 : ∀ {l n}
   → (fde : T {l} n)
@@ -272,7 +268,6 @@ ffi-lift1 (var k ∙ x) wr pos Γ = wr Γ
 ffi-lift1 (def nm ∙ x) wr pos Γ  = wr Γ
 ffi-lift1 {_} {n} (π fde ⇒ fde₁) wr pos Γ =
   lam visible (abs "x" bd)
-  -- TODO substitute variables in recursive cases as necessary!!
   where ls = ffi-lift1 fde (λ env → let nVars = length env ∸ length Γ
            -- TODO should we really apply the whole new env here?
            in var (nVars * 2) (List.map mkArg (reverse (take nVars env)))) (invertPosition pos) (shift 1 Γ)
@@ -339,15 +334,10 @@ elimLets unknown = error
 
 elimArg (arg i x) = arg i (elimLets x)
 
---ffi-lift1 (iso x _ _) _ _ _ = notImpl
-
 ffi-lift : ∀ {l} → (fde : T {l} 0) → Name {- name of the low level fun -} → Term
 ffi-lift fde nm  = ffi-lift1 fde (λ Γ → def nm (List.map mkArg (List.reverse Γ))) Pos []
 
 open import Level
-open import Data.List as L
-
-data SomethingBad : Set where
 
 
 toIntPartIso : ∀ {l}

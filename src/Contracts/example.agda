@@ -43,13 +43,15 @@ module Ex2 where
   -- this is not terribly interesting....
 --  add' : unquote (getAgdaLowType addType)
 --    using foreign (record { foreign-spec = (HS-UHC "UHC.Agda.Builtins.primHsAdd" (unquote (getFFI addType)))})
+  add' : ℤ → ℤ → ℤ
+  add' = Data.Integer._+_
 
   -- the wrapper, which has the type ℕ → ℕ → ℕ
   -- this is the thing we want in the end.
   -- The ffi-lift function does the heavy lifting,
   -- by producing a term which inserts the contracts checks where necessary.
---  add : unquote (getAgdaHighType addType)
---  add = unquote (ffi-lift addType (quote add'))
+  add : unquote (getAgdaHighType addType)
+  add = unquote (ffi-lift addType (quote add'))
 
 
 module VecIso where
@@ -105,16 +107,8 @@ module MapEx where
     ⇒ (π (def (quote L.List) ∙ [ (def (quote ℤ) ∙ []) ])
     ⇒ (def (quote L.List) ∙ [ (def (quote ℤ) ∙ []) ]))
 
---  k : {!!}
---  k = {!unquote (ffi-lift mapNZType (quote mapImpl))!}
-
   myMap : unquote (getAgdaHighType mapNZType) --unquote (getAgdaHighType mapNZType)
   myMap = unquote (ffi-lift mapNZType (quote mapImpl))
-
---  k : {!unquote (getAgdaHighType mapNZType)!}
---  k = {!pretty (ffi-lift mapNZType (quote mapImpl))!}
---  k' : {!unquote (getAgdaHighType mapNZType)!}
---  k' = {!myMap!}
 
 module DepCon1 where
   open VecIso
