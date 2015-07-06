@@ -284,22 +284,23 @@ open import IO
 import IO.Primitive
 open import Data.Unit
 open import Data.Nat.Show
-open import Data.List
+import Data.List
 open import Data.Integer
 open import Data.Nat
 
-open MapEx
+--open MapEx
+open DepCon1
+open import Data.Vec
 
 postulate exError : {A : Set} → A
 
-{-
+
 main : IO.Primitive.IO ⊤
-main = run (putStrLn (Data.Integer.show q))
-  where p : List ℤ
-        p = [ + 14 ]
-        kk = myMap (Data.Nat._+_ 34) p
-        q : ℤ
-        q with kk
-        q | [] = exError
-        q | i ∷ _ = i
--}
+main = run (putStrLn (Data.Nat.Show.show s))
+  where n = 3
+        p : Vec ℤ n
+        p = + 0 ∷ (-[1+ 48 ] ∷ (+ 13 ∷ []))
+        kk = myMap2 n ℤ ℕ (∣_∣) p
+
+        s = foldl (λ _ → ℕ) Data.Nat._+_ 0 kk
+

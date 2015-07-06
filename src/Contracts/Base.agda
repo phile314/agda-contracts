@@ -252,21 +252,28 @@ lett_inn_ t₁ t₂ = def (quote _$_)
           ∷ arg def-argInfo t₁
           ∷ [])
 
+app : Term → Term → Term
+app t₁ t₂ = def (quote _$_)
+          ( arg def-argInfo t₁
+          ∷ arg def-argInfo t₂
+          ∷ [])
+
 ffi-lift1 : ∀ {l n}
   → (fde : T {l} n)
-  → (List ℕ → Term) -- thing to wrap
+  → Term -- thing to wrap
   → Position -- seems to be only used to figure out in which directin to convert
   → List ℕ -- environment
   → Term
-ffi-lift1 (set l₁) wr pos Γ = wr Γ
-ffi-lift1 (var k ∙ x) wr pos Γ = wr Γ
-ffi-lift1 (def nm ∙ x) wr pos Γ  = wr Γ
+ffi-lift1 (set l₁) wr pos Γ = wr
+ffi-lift1 (var k ∙ x) wr pos Γ = wr
+ffi-lift1 (def nm ∙ x) wr pos Γ  = wr
 ffi-lift1 {_} {n} (π fde ⇒ fde₁) wr pos Γ =
   lam visible (abs "x" bd)
-  where ls = ffi-lift1 fde (λ env → let nVars = length env ∸ length Γ
+  where ls = ffi-lift1 fde (var 0 []) (invertPosition pos) (shift 1 Γ)
+--  λ env → let nVars = length env ∸ length Γ
            -- TODO should we really apply the whole new env here?
-           in var (nVars * 2) (List.map mkArg (reverse (take nVars env)))) (invertPosition pos) (shift 1 Γ)
-        rs = ffi-lift1 fde₁ wr pos (0 ∷ shift 2 Γ)
+--           in var (nVars * 2) (List.map mkArg (reverse (take nVars env)))) (invertPosition pos) (shift 1 Γ)
+        rs = ffi-lift1 fde₁ (app (subst (N._+_ 2) wr) (var 0 [])) pos (0 ∷ shift 2 Γ)
         bd = lett ls inn rs
 ffi-lift1 (iso {l} x LOWₐ HIGHₐ) wr pos Γ =
   -- extract the conversion from the named iso
@@ -275,7 +282,7 @@ ffi-lift1 (iso {l} x LOWₐ HIGHₐ) wr pos Γ =
     ( arg def-argInfo (tyFrom pos)
     ∷ arg def-argInfo (tyTo pos)
     ∷ arg def-argInfo conv
-    ∷ arg def-argInfo (wr Γ) ∷ [])
+    ∷ arg def-argInfo (wr) ∷ [])
   where
         s = subst (λ x → lookup' x Γ)
         
@@ -301,7 +308,7 @@ ffi-lift1 (iso {l} x LOWₐ HIGHₐ) wr pos Γ =
         conv = s $ getConv pos (def (quote proj₂) [ arg def-argInfo isoHigh ])
 
 ffi-lift : ∀ {l} → (fde : T {l} 0) → Name {- name of the low level fun -} → Term
-ffi-lift fde nm  = ffi-lift1 fde (λ Γ → def nm (List.map mkArg (List.reverse Γ))) Pos []
+ffi-lift fde nm  = ffi-lift1 fde (def nm []) Pos []
 
 open import Level
 
