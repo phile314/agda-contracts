@@ -213,7 +213,7 @@ module T3 where
 {-  ⟨_∙_⟩ : ∀ {l} → PartIsoInt {l} → List ? → Set l
   ⟨ p ⟩ = {!!}
 -}
-  open import Data.List as L
+  open import Data.List as List
   open import Data.Vec
   open import Data.Maybe
   open import Relation.Binary.PropositionalEquality
@@ -221,7 +221,7 @@ module T3 where
   open import Data.Product
 
   getArgs : ∀ {l} → PartIsoInt {l} → Set (Level.suc l)
-  getArgs p = WithArgs ((PartIso.LOWₐ h) L.++ ( PartIso.HIGHₐ h))
+  getArgs p = WithArgs ((PartIso.LOWₐ h) List.++ ( PartIso.HIGHₐ h))
     where h = PartIsoInt.wrapped p
 
   data AST {l m} : Set (Level.suc (Level.suc (l Level.⊔ m )))
@@ -230,10 +230,10 @@ module T3 where
 
   data AST {l m} where
     pi : (a : AST {l} {l}) → (getTy a → AST {m} {m}) → AST
-    ⟦_⟧ : (A : Set l) → AST -- normal type (List, Nat, etc..)
-    ⟦_⇋_⟧ : (pi : PartIsoInt {l}) → getArgs pi → AST -- isomorphism
+    ⟦_⟧ : (A : Set (l Level.⊔ m)) → AST -- normal type (List, Nat, etc..)
+    ⟦_⇋_⟧ : (pi : PartIsoInt {l Level.⊔ m}) → getArgs pi → AST -- isomorphism
 
-  split++ : ∀ {l} {a : ArgTys {l}} → {b : ArgTys {l}} → (args : WithArgs (a L.++ b)) → (WithArgs a × WithArgs b)
+  split++ : ∀ {l} {a : ArgTys {l}} → {b : ArgTys {l}} → (args : WithArgs (a List.++ b)) → (WithArgs a × WithArgs b)
   split++ {a = []} args = [] , args
   split++ {a = x ∷ a} (a₁ , args) = (a₁ , (proj₁ r)) , (proj₂ r)
     where r = split++ args
@@ -251,6 +251,9 @@ module T3 where
   syntax pi e₁ (λ x → e₂) = ⟨ x ∷ e₁ ⟩⇒ e₂
   syntax id e = ⟨ e ⟩
 
+  ASTNN : {l : Level} → Set (Level.suc (Level.suc l))
+  ASTNN {l} = AST {l} {l}
+
   -- an example how the contracts syntax could look like,
   -- if implemented using normal Agda constructs.
   ty' : AST
@@ -260,12 +263,75 @@ module T3 where
     ⟨ xs ∷ ⟦ List a ⟧ ⟩⇒
     ⟨ ⟦ List a ⟧ ⟩
 
-  open import Reflection
---  f : Term
---  f = quoteTerm ( ⟨ n ∷ ℕ ⟩⇒ ( ⟨ x ∷ ℕ ⟩⇒ ⟨ (vec⇔list Level.zero ⇄ cons n nil) ⟩ ) )
+  postulate Errrr : ∀ {a} → {A : Set a} → A
 
---  g : {! definition (quote ty')!}
---  g = {!!}
+  open import Function
+  open import Reflection as R
+  f : Term
+  f = quoteTerm ( ⟨ n ∷ ⟦ ℕ ⟧ ⟩⇒ ⟨ x ∷ ⟦ ℕ ⟧ ⟩⇒ ⟨ ⟦ vec⇔list ⇋ lift ℕ , lift n , [] ⟧ ⟩ )
+
+
+  ff : Term
+  ff = quoteTerm k
+    where
+      k : AST
+      k = ⟨ ⟦ ℕ⇔ℤ ⇋ [] ⟧ ⟩
+
+  gg : Term
+  gg = quoteTerm ( ⟨ n ∷ ⟦ ℕ ⟧ ⟩⇒ ⟨ ⟦ ℕ ⟧  ⟩ )
+
+  unArg : ∀ {A} → Arg A → A
+  unArg (arg i x) = x
+
+  getLevel : Term → Level
+  getLevel t = Level.zero
+
+  stripLam : Term → Term
+  stripLam (lam v (abs s x)) = x
+  stripLam _ = Errrr
+
+  {-# TERMINATING #-}
+  ast-ty⇒T' : ∀ {l n} → (t : Term) → T {l} n
+  ast-ty⇒T' (var x args) = var {!!} ∙ {!!}
+  ast-ty⇒T' (def f args) = def f ∙ List.map (ast-ty⇒T' ∘ unArg) args
+  ast-ty⇒T' (sort (set t)) = Errrr
+  ast-ty⇒T' (sort (lit n₁)) = set n₁
+  ast-ty⇒T' (sort unknown) = Errrr
+  ast-ty⇒T' _ = Errrr
+
+  {-# TERMINATING #-}
+  ast⇒T' : ∀ {l n} → (t : Term) -- AST
+    → T {l} n
+  arg-ast⇒T : ∀ {l n} → Arg Term → T {l} n
+  
+  ast⇒T' (var x args) = Errrr
+  ast⇒T' (con c args) = case c of (
+    λ { (quote AST.pi) → π ast⇒T' (unArg (lookup' 2 args)) ⇒ ast⇒T' ((stripLam ∘ unArg ∘ lookup' 3) args) ;
+        (quote AST.⟦_⟧) → ast-ty⇒T' (unArg (lookup' 2 args)) ;
+        (quote AST.⟦_⇋_⟧) → iso {!unArg (lookup' 2 args)!} {!!} {!!} ;
+        _ → Errrr})
+  ast⇒T' (def f args) = Errrr
+  ast⇒T' (lam v t) = Errrr
+  ast⇒T' (pat-lam cs args) = Errrr
+  ast⇒T' (pi t₁ t₂) = Errrr
+  ast⇒T' (sort s) = Errrr
+  ast⇒T' (lit l) = Errrr
+  ast⇒T' (quote-goal t) = Errrr
+  ast⇒T' (quote-term t) = Errrr
+  ast⇒T' quote-context = Errrr
+  ast⇒T' (unquote-term t args) = Errrr
+  ast⇒T' unknown = Errrr
+
+  arg-ast⇒T (arg i x) = ast⇒T' x
+
+  g : {! ff!}
+  g = {!ast⇒T' ff!}
+
+  open import Data.Bool
+  lk : Bool → Term
+  lk true = let x = {!open import Data.List!} in {!!}
+  lk false = {!!}
+    where open import Data.List public
 
   postulate mkForeign : {a : Set} → a
 
