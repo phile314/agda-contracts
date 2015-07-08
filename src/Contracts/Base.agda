@@ -61,7 +61,8 @@ record PartIso {l} : Set (Level.suc (Level.suc l)) where
                        argsToTy HIGHₐ (Σ (Set l) (Conversions HSₜ))))
 
 record PartIsoInt : Set where
-  field wrappedₙ : Name -- name of the part iso
+--  field wrappedₙ : Name -- name of the part iso
+  field wrapped : Term
 
 applyArgs : ∀ {l} → {aTys : ArgTys {l}} {A : Set l} → (f : argsToTy aTys A) → WithArgs aTys → A
 applyArgs {aTys = []} f [] = f
@@ -115,7 +116,7 @@ partIsoLowTy p args = proj₁ (applyArgs (PartIso.iso p) args)
 postulate
   error : {a : Set} → a
   error2 : {a : Set} → a
-  notImpl : {a : Set} → a
+  notImpl notImpl2 notImpl3 : {a : Set} → a
   UnexpectedIsoInIsoArgs : ∀ {a} {A : Set a} → A
 
 IsoHandler : Set
@@ -159,7 +160,7 @@ getIsoLow p as =
     ∷ [])
   where
     tiso = def (quote PartIso.iso)
-      [ arg def-argInfo (def (PartIsoInt.wrappedₙ p) [] ) ]
+      [ arg def-argInfo (PartIsoInt.wrapped p) ]
 
 -- gets the iso high pair
 getIsoHigh : ∀ {n}
@@ -227,15 +228,15 @@ subst σ (lam v (abs x t)) = lam v (abs x (subst σ' t))
     σ' : ℕ → ℕ
     σ' ℕ.zero = ℕ.zero -- the given var is not free, so just return it unchanged
     σ' (ℕ.suc i) = ℕ.suc (σ i)
-subst σ (pat-lam cs args) = notImpl
-subst σ (pi t₁ t₂) = notImpl
-subst σ (sort s) = notImpl
-subst σ (lit l) = notImpl
-subst σ (quote-goal t) = notImpl
-subst σ (quote-term t) = notImpl
-subst σ quote-context = notImpl
-subst σ (unquote-term t args) = notImpl
-subst σ unknown = notImpl
+subst σ (pat-lam cs args) = notImpl2
+subst σ (pi t₁ t₂) = notImpl2
+subst σ (sort s) = notImpl2
+subst σ (lit l) = lit l
+subst σ (quote-goal t) = notImpl2
+subst σ (quote-term t) = notImpl2
+subst σ quote-context = quote-context
+subst σ (unquote-term t args) = notImpl3
+subst σ unknown = unknown
 
 substArgs σ (arg i x) = arg i (subst σ x)
 
@@ -312,8 +313,8 @@ open import Level
 
 toIntPartIso : ∀ {l}
   → PartIso {l}
-  → Name --part iso name
+  → Term --quoted part iso term
   → PartIsoInt
-toIntPartIso p pₙ = record
-  { wrappedₙ = pₙ
+toIntPartIso p pₜ = record
+  { wrapped = pₜ
   }

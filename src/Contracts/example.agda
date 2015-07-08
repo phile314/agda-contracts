@@ -16,7 +16,7 @@ module NatIntIso where
 
   ℕ⇔ℤ' : PartIsoInt
   ℕ⇔ℤ' = record --toIntPartIso partIso (quote partIso) (quoteTerm partIso)
-    { wrappedₙ = quote ℕ⇔ℤ } --; wrapped = partIso}
+    { wrapped = quoteTerm ℕ⇔ℤ } --; wrapped = partIso}
 
 
 module Ex2 where
@@ -52,7 +52,7 @@ module Ex2 where
   -- The ffi-lift function does the heavy lifting,
   -- by producing a term which inserts the contracts checks where necessary.
   add : unquote (getAgdaHighType addType)
-  add = unquote (ffi-lift addType (quote add'))
+  add = unquote (ffi-lift addType (quote add')) -- unquote (ffi-lift addType (quote add'))
 
 
 module VecIso where
@@ -71,14 +71,14 @@ module VecIso where
   list⇒vec xs | yes refl = just (Data.Vec.fromList xs)
   list⇒vec xs | no ¬p = nothing
 
-  vec⇔list : ∀ {l} → PartIso
+  vec⇔list : {l : Level} → PartIso
   vec⇔list {l} = mkPartIso L.[ Lift {_} {l} (Set l) ] L.[ (Lift ℕ) ]
       (λ x → (List (lower x)) , (λ x₁ → (Vec (lower x) (lower x₁)) , ((withMaybe list⇒vec) , (total Data.Vec.toList))))
 
 
   vec⇔list' : {l : Level} → PartIsoInt
-  vec⇔list' = record --toIntPartIso partIso (quote partIso) (quoteTerm partIso)
-    { wrappedₙ = quote vec⇔list } --; wrapped = partIso }
+  vec⇔list' {l} = record --toIntPartIso partIso (quote partIso) (quoteTerm partIso)
+    { wrapped = quoteTerm (vec⇔list {l}) } --; wrapped = partIso }
 
 
 module MapEx where
@@ -149,9 +149,9 @@ module DepCon1 where
   fixType _ x = x
 
 
-  myMap2 : unquote (getAgdaHighType mapNZType) --unquote (getAgdaHighType mapNZType)
+  myMap2 : {!unquote (getAgdaHighType mapNZType)!} --unquote (getAgdaHighType mapNZType) --unquote (getAgdaHighType mapNZType)
 --  myMap2 =  {!pretty (elimLets (ffi-lift mapNZType (quote mapImpl2)))!}
-  myMap2 = unquote (ffi-lift mapNZType (quote mapImpl2)) -- unquote (ffi-lift mapNZType (quote mapImpl2))
+  myMap2 = {!mapNZType!} --unquote (ffi-lift mapNZType (quote mapImpl2)) -- unquote (ffi-lift mapNZType (quote mapImpl2))
   
     
 module DepCon where
@@ -292,6 +292,10 @@ module T3 where
   stripLam (lam v (abs s x)) = x
   stripLam _ = Errrr
 
+  defToNm : Term → Name
+  defToNm (def nm []) = nm
+  defToNm _ = error
+
   {-# TERMINATING #-}
   ast-ty⇒T' : ∀ {n} → (t : Term) → T n
   ast-ty⇒T' (var x args) = var {!!} ∙ {!!}
@@ -305,12 +309,12 @@ module T3 where
   ast⇒T' : ∀ {n} → (t : Term) -- AST
     → T n
   arg-ast⇒T : ∀ {n} → Arg Term → T n
-  
+
   ast⇒T' (var x args) = Errrr
   ast⇒T' (con c args) = case c of (
     λ { (quote AST.pi) → π ast⇒T' (unArg (lookup' 2 args)) ⇒ ast⇒T' ((stripLam ∘ unArg ∘ lookup' 3) args) ;
         (quote AST.⟦_⟧) → ast-ty⇒T' (unArg (lookup' 2 args)) ;
-        (quote AST.⟦_⇋_⟧) → iso {!unArg (lookup' 2 args)!} {!!} {!!} ;
+        (quote AST.⟦_⇋_⟧) → iso (record { wrapped = ((unArg (lookup' 2 args)))}) [] [] ;
         _ → Errrr})
   ast⇒T' (def f args) = Errrr
   ast⇒T' (lam v t) = Errrr
