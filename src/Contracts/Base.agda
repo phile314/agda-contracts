@@ -60,9 +60,8 @@ record PartIso {l} : Set (Level.suc (Level.suc l)) where
         iso : argsToTy LOWₐ (Σ (Set l) (λ HSₜ →
                        argsToTy HIGHₐ (Σ (Set l) (Conversions HSₜ))))
 
-record PartIsoInt {l} : Set (Level.suc (Level.suc l)) where
-  field wrapped : PartIso {l}
-        wrappedₙ : Name -- name of the part iso
+record PartIsoInt : Set where
+  field wrappedₙ : Name -- name of the part iso
 
 applyArgs : ∀ {l} → {aTys : ArgTys {l}} {A : Set l} → (f : argsToTy aTys A) → WithArgs aTys → A
 applyArgs {aTys = []} f [] = f
@@ -83,26 +82,26 @@ invertPosition Neg = Pos
 import Data.Vec as V
 
 -- TODO discard only makes sense in negative positions, we should enforce that it is only specified there
-data T {l} : ℕ → Set (Level.suc (Level.suc l)) where
+data T : ℕ → Set where
   set : ∀ {n} → (l : ℕ) → T n
   -- var
   var_∙_ : ∀ {n}
     → (k : Fin n)
-    → List (T {l} n) -- arguments, we don't support keeping the arguments anyway, so just force discard here.
+    → List (T n) -- arguments, we don't support keeping the arguments anyway, so just force discard here.
     → T n
   def_∙_ : ∀ {n}
     → (nm : Name)
-    → List (T {l} n)
+    → List (T n)
     → T n
   π_⇒_ : ∀ {n}
-    → T {l} n -- type of the arg
-    → T {l} (ℕ.suc n) -- body
-    → T {_} n
+    → T n -- type of the arg
+    → T (ℕ.suc n) -- body
+    → T n
 
   iso : ∀ {n}
-    → (p : PartIsoInt {l})
-    → V.Vec (T {l} n) (length (PartIso.LOWₐ (PartIsoInt.wrapped p))) -- LOW arguments
-    → V.Vec (T {l} n) (length (PartIso.HIGHₐ (PartIsoInt.wrapped p))) -- HIGH arguments
+    → (p : PartIsoInt)
+    → List (T n) -- LOW arguments
+    → List (T n) -- HIGH arguments
     → T n
 
 
@@ -119,15 +118,15 @@ postulate
   notImpl : {a : Set} → a
   UnexpectedIsoInIsoArgs : ∀ {a} {A : Set a} → A
 
-IsoHandler : ∀ {l} → Set (Level.suc (Level.suc l))
-IsoHandler {l} = {n : ℕ} → (p : PartIsoInt {l})
-  → V.Vec (T {l} n) (length (PartIso.LOWₐ (PartIsoInt.wrapped p))) -- LOW arguments
-  → V.Vec (T {l} n) (length (PartIso.HIGHₐ (PartIsoInt.wrapped p))) -- HIGH arguments
+IsoHandler : Set
+IsoHandler = {n : ℕ} → (p : PartIsoInt)
+  → List (T n) -- LOW arguments
+  → List (T n) -- HIGH arguments
   → Term
 
 
-elAGDA : ∀ {l n} → IsoHandler {l} → (t : T {l} n) → Term
-elArg : ∀ {l n} → IsoHandler {l} → (t : T {l} n) → Arg Term
+elAGDA : ∀ {n} → IsoHandler → (t : T n) → Term
+elArg : ∀ {n} → IsoHandler → (t : T n) → Arg Term
 
 elAGDA h (var k ∙ xs) = var (toℕ k) (List.map (elArg h) xs)
 elAGDA h (def x ∙ xs) = def x (List.map (elArg h) xs)
@@ -138,54 +137,52 @@ elAGDA h (iso i HSₐ AGDAₐ) = h i HSₐ AGDAₐ
 elArg h t = arg def-argInfo (elAGDA h t)
 
 
-mkArgs : ∀ {l n} → (as : ArgTys {Level.suc l}) → V.Vec (T {l} n) (length as) → Term
-mkArgs [] V.[] = con (quote WithArgs.[]) []
-mkArgs (x ∷ as₁) (x₁ V.∷ ts) = con (quote WithArgs._,_)
+mkArgs : ∀ {n} → List (T n) → Term
+mkArgs [] = con (quote WithArgs.[]) []
+mkArgs (x₁ ∷ ts) = con (quote WithArgs._,_)
   ( arg def-argInfo
     (con (quote Level.lift)
       [ arg def-argInfo (elAGDA UnexpectedIsoInIsoArgs x₁) ]
     )
-  ∷ arg def-argInfo (mkArgs as₁ ts)
+  ∷ arg def-argInfo (mkArgs ts)
   ∷ [])
 
 
-getIsoLow : ∀ {l n}
-  → (p : PartIsoInt {l})
-  → V.Vec (T {l} n) (length (PartIso.LOWₐ (PartIsoInt.wrapped p))) -- LOW Args
+getIsoLow : ∀ {n}
+  → (p : PartIsoInt)
+  → List (T n) -- LOW Args
   → Term
 getIsoLow p as =
   def (quote applyArgs)
     (arg def-argInfo (tiso)
-    ∷ (arg def-argInfo (mkArgs atys as))
+    ∷ (arg def-argInfo (mkArgs as))
     ∷ [])
   where
     tiso = def (quote PartIso.iso)
       [ arg def-argInfo (def (PartIsoInt.wrappedₙ p) [] ) ]
-    atys = PartIso.LOWₐ (PartIsoInt.wrapped p)
 
 -- gets the iso high pair
-getIsoHigh : ∀ {l n}
+getIsoHigh : ∀ {n}
   → Term -- the term representing ISO Low
-  → (p : PartIsoInt {l})
-  → V.Vec (T {l} n) (length (PartIso.HIGHₐ (PartIsoInt.wrapped p))) -- HIGH Args
+  → (p : PartIsoInt)
+  → List (T n) -- HIGH Args
   → Term
 getIsoHigh lw p as =
   def (quote applyArgs)
     (arg def-argInfo high
-    ∷ arg def-argInfo (mkArgs atys as)
+    ∷ arg def-argInfo (mkArgs as)
     ∷ [])
   where
-    atys = PartIso.HIGHₐ (PartIsoInt.wrapped p)
     high = def (quote proj₂) [ arg def-argInfo lw ]
 
-getIsoLowType : ∀ {l} → IsoHandler {l}
+getIsoLowType : IsoHandler
 getIsoLowType p LOWₐ HIGHₐ = def (quote proj₁)
   [ arg def-argInfo (getIsoLow p LOWₐ ) ]
 
-getAgdaLowType : ∀ {l} → T {l} 0 → Term
+getAgdaLowType : T 0 → Term
 getAgdaLowType t = elAGDA getIsoLowType t
 
-getAgdaHighType : ∀ {l} → T {l} 0 → Term
+getAgdaHighType : T 0 → Term
 getAgdaHighType t = elAGDA handleIso t
   where
     handleIso : IsoHandler
@@ -258,8 +255,8 @@ app t₁ t₂ = def (quote _$_)
           ∷ arg def-argInfo t₂
           ∷ [])
 
-ffi-lift1 : ∀ {l n}
-  → (fde : T {l} n)
+ffi-lift1 : ∀ {n}
+  → (fde : T n)
   → Term -- thing to wrap
   → Position -- seems to be only used to figure out in which directin to convert
   → List ℕ -- environment
@@ -267,7 +264,7 @@ ffi-lift1 : ∀ {l n}
 ffi-lift1 (set l₁) wr pos Γ = wr
 ffi-lift1 (var k ∙ x) wr pos Γ = wr
 ffi-lift1 (def nm ∙ x) wr pos Γ  = wr
-ffi-lift1 {_} {n} (π fde ⇒ fde₁) wr pos Γ =
+ffi-lift1 {n} (π fde ⇒ fde₁) wr pos Γ =
   lam visible (abs "x" bd)
   where ls = ffi-lift1 fde (var 0 []) (invertPosition pos) (shift 1 Γ)
 --  λ env → let nVars = length env ∸ length Γ
@@ -307,7 +304,7 @@ ffi-lift1 (iso {l} x LOWₐ HIGHₐ) wr pos Γ =
         conv : Term
         conv = s $ getConv pos (def (quote proj₂) [ arg def-argInfo isoHigh ])
 
-ffi-lift : ∀ {l} → (fde : T {l} 0) → Name {- name of the low level fun -} → Term
+ffi-lift : (fde : T 0) → Name {- name of the low level fun -} → Term
 ffi-lift fde nm  = ffi-lift1 fde (def nm []) Pos []
 
 open import Level
@@ -318,6 +315,5 @@ toIntPartIso : ∀ {l}
   → Name --part iso name
   → PartIsoInt
 toIntPartIso p pₙ = record
-  { wrapped = p
-  ; wrappedₙ = pₙ
+  { wrappedₙ = pₙ
   }

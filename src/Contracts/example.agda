@@ -7,15 +7,16 @@ module NatIntIso where
   open import Data.Maybe
   open import Data.List
   open import Data.Product
-
-  ℕ⇔ℤ : PartIsoInt
-  ℕ⇔ℤ = record --toIntPartIso partIso (quote partIso) (quoteTerm partIso)
-    { wrappedₙ = quote partIso ; wrapped = partIso}
+  
+  ℕ⇔ℤ : PartIso
+  ℕ⇔ℤ = mkPartIso [] [] (ℤ , (ℕ , ((withMaybe f) , (total (ℤ.+_)))))
     where f : ℤ → Maybe ℕ
           f -[1+ n ] = nothing
           f (+ n) = just n
-          partIso : PartIso
-          partIso = mkPartIso [] [] (ℤ , (ℕ , ((withMaybe f) , (total (ℤ.+_)))))
+
+  ℕ⇔ℤ' : PartIsoInt
+  ℕ⇔ℤ' = record --toIntPartIso partIso (quote partIso) (quoteTerm partIso)
+    { wrappedₙ = quote ℕ⇔ℤ } --; wrapped = partIso}
 
 
 module Ex2 where
@@ -35,8 +36,8 @@ module Ex2 where
 --  fty = ⟨ ℕ⇔ℤ ⟩ → ⟨ ℕ⇔ℤ ⟩ → ⟨ ℕ⇔ℤ ⟩
 
   -- the internal AST representation of the above notation
-  addType : T {Level.zero} 0
-  addType = π ( iso ℕ⇔ℤ [] [] ) ⇒ (π (iso ℕ⇔ℤ [] []) ⇒ (iso ℕ⇔ℤ [] []))
+  addType : T 0
+  addType = π ( iso ℕ⇔ℤ' [] [] ) ⇒ (π (iso ℕ⇔ℤ' [] []) ⇒ (iso ℕ⇔ℤ' [] []))
 --  addType = π ( def_∙_ (quote ℤ) {quote bla} [] ) ⇒ (π (def_∙_ (quote ℤ) {quote bla} []) ⇒ (def_∙_ (quote ℤ) {quote bla} []))
 
   -- the ffi declaration, which has the type ℤ → ℤ → ℤ
@@ -70,13 +71,14 @@ module VecIso where
   list⇒vec xs | yes refl = just (Data.Vec.fromList xs)
   list⇒vec xs | no ¬p = nothing
 
-  vec⇔list : {l : Level} → PartIsoInt {l}
-  vec⇔list {l} = record --toIntPartIso partIso (quote partIso) (quoteTerm partIso)
-    { wrappedₙ = quote partIso ; wrapped = partIso }
-    where
-    partIso : PartIso
-    partIso = mkPartIso L.[ Lift {_} {l} (Set l) ] L.[ (Lift ℕ) ]
+  vec⇔list : ∀ {l} → PartIso
+  vec⇔list {l} = mkPartIso L.[ Lift {_} {l} (Set l) ] L.[ (Lift ℕ) ]
       (λ x → (List (lower x)) , (λ x₁ → (Vec (lower x) (lower x₁)) , ((withMaybe list⇒vec) , (total Data.Vec.toList))))
+
+
+  vec⇔list' : {l : Level} → PartIsoInt
+  vec⇔list' = record --toIntPartIso partIso (quote partIso) (quoteTerm partIso)
+    { wrappedₙ = quote vec⇔list } --; wrapped = partIso }
 
 
 module MapEx where
@@ -95,10 +97,10 @@ module MapEx where
   mapImpl f (x L.∷ xs) = f x L.∷ mapImpl f xs
 
   -- map higher order fun, where we convert the inputs of the higher order thingie
-  mapNZType : T {Level.zero} 0
+  mapNZType : T 0
   mapNZType =
       π (
-        π (iso ℕ⇔ℤ V.[] V.[]) ⇒ (iso ℕ⇔ℤ V.[] V.[])
+        π (iso ℕ⇔ℤ' L.[] L.[]) ⇒ (iso ℕ⇔ℤ' L.[] L.[])
 --        π (def (quote ℤ) ∙ []) ⇒ (def (quote ℤ) ∙ [])
         )
     ⇒ (π (def (quote L.List) ∙ [ (def (quote ℤ) ∙ []) ])
@@ -120,7 +122,7 @@ module DepCon1 where
   mapImpl2 : (n : ℕ) (A : Set) (B : Set) → (A → B) → List A → List B
   mapImpl2 n A B = L.map
 
-  mapNZType : T {Level.zero} 0
+  mapNZType : T 0
   mapNZType =
     π def quote ℕ ∙ [] -- n
     ⇒ (π set 0 -- A
@@ -128,8 +130,8 @@ module DepCon1 where
     ⇒ (π (
       π var # 1 ∙ []
       ⇒ (var # 1 ∙ [])) -- f
-    ⇒ (π iso vec⇔list V.[ var # 2 ∙ [] ] V.[ var # 3 ∙ [] ] -- vec
-    ⇒ iso vec⇔list V.[ var # 2 ∙ [] ] V.[ var # 4 ∙ [] ] ))))
+    ⇒ (π iso (vec⇔list' {Level.zero}) L.[ var # 2 ∙ [] ] L.[ var # 3 ∙ [] ] -- vec
+    ⇒ iso (vec⇔list' {Level.zero}) L.[ var # 2 ∙ [] ] L.[ var # 4 ∙ [] ] ))))
 
 --  lowType : Set (Level.suc Level.zero)
 --  lowType = {!!} --unquote (getAgdaLowType mapNZType)
@@ -140,8 +142,8 @@ module DepCon1 where
   import Agda.Primitive
   import Data.Product
 
-  partIso : PartIso {Level.zero}
-  partIso = PartIsoInt.wrapped VecIso.vec⇔list
+--  partIso : PartIso {Level.zero}
+--  partIso = PartIsoInt.wrapped VecIso.vec⇔list
 
   fixType : ∀ {a} (A : Set a) → A → A
   fixType _ x = x
@@ -220,9 +222,9 @@ module T3 where
   open import Relation.Nullary
   open import Data.Product
 
-  getArgs : ∀ {l} → PartIsoInt {l} → Set (Level.suc l)
+  getArgs : ∀ {l} → PartIso {l} → Set (Level.suc l)
   getArgs p = WithArgs ((PartIso.LOWₐ h) List.++ ( PartIso.HIGHₐ h))
-    where h = PartIsoInt.wrapped p
+    where h = p --PartIsoInt.wrapped p
 
   data AST {l m} : Set (Level.suc (Level.suc (l Level.⊔ m )))
 
@@ -231,7 +233,7 @@ module T3 where
   data AST {l m} where
     pi : (a : AST {l} {l}) → (getTy a → AST {m} {m}) → AST
     ⟦_⟧ : (A : Set (l Level.⊔ m)) → AST -- normal type (List, Nat, etc..)
-    ⟦_⇋_⟧ : (pi : PartIsoInt {l Level.⊔ m}) → getArgs pi → AST -- isomorphism
+    ⟦_⇋_⟧ : (pi : PartIso {l Level.⊔ m}) → getArgs pi → AST -- isomorphism
 
   split++ : ∀ {l} {a : ArgTys {l}} → {b : ArgTys {l}} → (args : WithArgs (a List.++ b)) → (WithArgs a × WithArgs b)
   split++ {a = []} args = [] , args
@@ -241,7 +243,7 @@ module T3 where
   getTy (pi a x) = (arg : getTy a) → (getTy (x arg))
   getTy (⟦ x ⟧) = x
   getTy (⟦ x ⇋ x₁ ⟧) = proj₁ (applyArgs (proj₂ g) (proj₂ k)) --(PartIso.iso h) x₁
-    where h = PartIsoInt.wrapped x
+    where h = x --PartIsoInt.wrapped x
           k = split++ {_} {PartIso.LOWₐ h} x₁
           g = applyArgs (PartIso.iso h) (proj₁ k)
 
@@ -291,7 +293,7 @@ module T3 where
   stripLam _ = Errrr
 
   {-# TERMINATING #-}
-  ast-ty⇒T' : ∀ {l n} → (t : Term) → T {l} n
+  ast-ty⇒T' : ∀ {n} → (t : Term) → T n
   ast-ty⇒T' (var x args) = var {!!} ∙ {!!}
   ast-ty⇒T' (def f args) = def f ∙ List.map (ast-ty⇒T' ∘ unArg) args
   ast-ty⇒T' (sort (set t)) = Errrr
@@ -300,9 +302,9 @@ module T3 where
   ast-ty⇒T' _ = Errrr
 
   {-# TERMINATING #-}
-  ast⇒T' : ∀ {l n} → (t : Term) -- AST
-    → T {l} n
-  arg-ast⇒T : ∀ {l n} → Arg Term → T {l} n
+  ast⇒T' : ∀ {n} → (t : Term) -- AST
+    → T n
+  arg-ast⇒T : ∀ {n} → Arg Term → T n
   
   ast⇒T' (var x args) = Errrr
   ast⇒T' (con c args) = case c of (
