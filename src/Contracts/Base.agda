@@ -61,6 +61,7 @@ record PartIso {l} : Set (Level.suc (Level.suc l)) where
                        argsToTy HIGHₐ (Σ (Set l) (Conversions HSₜ))))
 
 record PartIsoInt : Set where
+  constructor mkIsoInt
   field wrappedₙ : Name -- name of the part iso
 --  field wrapped : Term
 
@@ -213,13 +214,12 @@ unsafeConvert _ _ fail x = conversionFailure ""
 mkArg : ℕ → Arg Term
 mkArg i = arg (arg-info visible relevant) (var i [])
 
--- substitution
+-- substitution for free variables
 subst : (ℕ → ℕ) -- substitution function
   → Term
   → Term
 substArgs : (ℕ → ℕ) → Arg Term → Arg Term
 
--- substitute free variables
 subst σ (var x args) = var (σ x) (List.map (substArgs σ) args)
 subst σ (con c args) = con c (List.map (substArgs σ) args)
 subst σ (def f args) = def f (List.map (substArgs σ) args)
@@ -268,9 +268,6 @@ ffi-lift1 (def nm ∙ x) wr pos Γ  = wr
 ffi-lift1 {n} (π fde ⇒ fde₁) wr pos Γ =
   lam visible (abs "x" bd)
   where ls = ffi-lift1 fde (var 0 []) (invertPosition pos) (shift 1 Γ)
---  λ env → let nVars = length env ∸ length Γ
-           -- TODO should we really apply the whole new env here?
---           in var (nVars * 2) (List.map mkArg (reverse (take nVars env)))) (invertPosition pos) (shift 1 Γ)
         rs = ffi-lift1 fde₁ (app (subst (N._+_ 2) wr) (var 0 [])) pos (0 ∷ shift 2 Γ)
         bd = lett ls inn rs
 ffi-lift1 (iso {l} x LOWₐ HIGHₐ) wr pos Γ =
@@ -313,7 +310,6 @@ open import Level
 
 toIntPartIso : ∀ {l}
   → PartIso {l}
---  → Term --quoted part iso term
   → Name
   → PartIsoInt
 toIntPartIso p pₙ = record

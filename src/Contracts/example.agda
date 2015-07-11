@@ -8,15 +8,15 @@ module NatIntIso where
   open import Data.List
   open import Data.Product
   
-  ℕ⇔ℤ : PartIso
-  ℕ⇔ℤ = mkPartIso [] [] (ℤ , (ℕ , ((withMaybe f) , (total (ℤ.+_)))))
+  ℕ⇔ℤI : PartIso
+  ℕ⇔ℤI = mkPartIso [] [] (ℤ , (ℕ , ((withMaybe f) , (total (ℤ.+_)))))
     where f : ℤ → Maybe ℕ
           f -[1+ n ] = nothing
           f (+ n) = just n
 
   ℕ⇔ℤ' : PartIsoInt
   ℕ⇔ℤ' = record --toIntPartIso partIso (quote partIso) (quoteTerm partIso)
-    { wrappedₙ = quote ℕ⇔ℤ } --; wrapped = partIso}
+    { wrappedₙ = quote ℕ⇔ℤI } --; wrapped = partIso}
 
 
 module Ex2 where
@@ -71,15 +71,15 @@ module VecIso where
   list⇒vec xs | yes refl = just (Data.Vec.fromList xs)
   list⇒vec xs | no ¬p = nothing
 
-  vec⇔list : {l : Level} → PartIso
-  vec⇔list {l} = mkPartIso L.[ Lift {_} {l} (Set l) ] L.[ (Lift ℕ) ]
+  vec⇔listI : {l : Level} → PartIso
+  vec⇔listI {l} = mkPartIso L.[ Lift {_} {l} (Set l) ] L.[ (Lift ℕ) ]
       (λ x → (List (lower x)) , (λ x₁ → (Vec (lower x) (lower x₁)) , ((withMaybe list⇒vec) , (total Data.Vec.toList))))
 
 
   vec⇔list' : {l : Level} → PartIsoInt
   vec⇔list' {l} = record --toIntPartIso partIso (quote partIso) (quoteTerm partIso)
     { wrappedₙ = quote vl } --; wrapped = partIso }
-    where vl = vec⇔list {l}
+    where vl = vec⇔listI {l}
 
 
 module MapEx where
@@ -267,9 +267,20 @@ module T3 where
   open import Relation.Nullary
   open import Data.Product
 
-  getArgs : ∀ {l} → PartIso {l} → Set (Level.suc l)
+  record PartIsoPub {l} : Set (Level.suc (Level.suc l)) where
+    constructor mkIsoPub
+    field partIso : PartIso {l}
+    field partIsoInt : PartIsoInt
+
+  ℕ⇔ℤ : PartIsoPub
+  ℕ⇔ℤ = record { partIso = ℕ⇔ℤI ; partIsoInt = ℕ⇔ℤ' }
+
+  vec⇔list : {l : Level} → PartIsoPub {l}
+  vec⇔list {l} = record { partIso = vec⇔listI ; partIsoInt = (vec⇔list' {l}) }
+
+  getArgs : ∀ {l} → PartIsoPub {l} → Set (Level.suc l)
   getArgs p = WithArgs ((PartIso.LOWₐ h) List.++ ( PartIso.HIGHₐ h))
-    where h = p --PartIsoInt.wrapped p
+    where h = PartIsoPub.partIso p --PartIsoInt.wrapped p
 
   data AST {l m} : Set (Level.suc (Level.suc (l Level.⊔ m )))
 
@@ -278,7 +289,7 @@ module T3 where
   data AST {l m} where
     pi : (a : AST {l} {l}) → (getTy a → AST {m} {m}) → AST
     ⟦_⟧ : (A : Set (l Level.⊔ m)) → AST -- normal type (List, Nat, etc..)
-    ⟦_⇋_⟧ : (pi : PartIso {l Level.⊔ m}) → getArgs pi → AST -- isomorphism
+    ⟦_⇋_⟧ : (pi :  PartIsoPub {l Level.⊔ m}) → getArgs pi → AST -- isomorphism
 
   split++ : ∀ {l} {a : ArgTys {l}} → {b : ArgTys {l}} → (args : WithArgs (a List.++ b)) → (WithArgs a × WithArgs b)
   split++ {a = []} args = [] , args
@@ -288,7 +299,7 @@ module T3 where
   getTy (pi a x) = (arg : getTy a) → (getTy (x arg))
   getTy (⟦ x ⟧) = x
   getTy (⟦ x ⇋ x₁ ⟧) = proj₁ (applyArgs (proj₂ g) (proj₂ k)) --(PartIso.iso h) x₁
-    where h = x --PartIsoInt.wrapped x
+    where h = PartIsoPub.partIso x --PartIsoInt.wrapped x
           k = split++ {_} {PartIso.LOWₐ h} x₁
           g = applyArgs (PartIso.iso h) (proj₁ k)
 
@@ -341,6 +352,15 @@ module T3 where
   defToNm (def nm []) = nm
   defToNm _ = error
 
+  pubIsoToIntIsoNm : Term → Name
+  pubIsoToIntIsoNm (con (quote mkIsoPub) args) = case (unArg $ lookup' 2 args) of (
+    λ {(con (quote mkIsoInt) args') → case unArg $ lookup' 0 args' of (
+      λ { (lit (name nm)) → nm ;
+          _ → error});
+       _ → error
+      })
+  pubIsoToIntIsoNm _ = error
+
   {-# TERMINATING #-}
   ast-ty⇒T' : ∀ {n} → (t : Term) → T n
   ast-ty⇒T' (var x args) = var {!!} ∙ {!!}
@@ -359,7 +379,7 @@ module T3 where
   ast⇒T' (con c args) = case c of (
     λ { (quote AST.pi) → π ast⇒T' (unArg (lookup' 2 args)) ⇒ ast⇒T' ((stripLam ∘ unArg ∘ lookup' 3) args) ;
         (quote AST.⟦_⟧) → ast-ty⇒T' (unArg (lookup' 2 args)) ;
-        (quote AST.⟦_⇋_⟧) → {!!} ; --iso ? ? ? --(record { wrapped = ((unArg (lookup' 2 args)))}) [] [] ;
+        (quote AST.⟦_⇋_⟧) → iso (record { wrappedₙ = pubIsoToIntIsoNm $ unArg $ lookup' 2 args}) [] [] ; --iso ? ? ? --(record { wrapped = ((unArg (lookup' 2 args)))}) [] [] ;
         _ → Errrr})
   ast⇒T' (def f args) = Errrr
   ast⇒T' (lam v t) = Errrr
@@ -376,12 +396,28 @@ module T3 where
   arg-ast⇒T (arg i x) = ast⇒T' x
 
   g : {! ff!}
-  g = {!ast⇒T' ff!}
+  g = {!ast⇒T' f!}
 
+  open import Data.Integer
+  addImpl' : ℤ → ℤ → ℤ
+  addImpl' a b = a Data.Integer.+ b
+
+  addContr : Term
+  addContr = quoteTerm (
+        ⟨ a ∷ ⟦ ℤ ⟧ ⟩⇒ --⟦ ℕ⇔ℤ ⇋ [] ⟧ ⟩⇒
+        ⟨ b ∷ ⟦ ℕ⇔ℤ ⇋ [] ⟧ ⟩⇒
+        ⟨ ⟦ ℕ⇔ℤ ⇋ [] ⟧ ⟩ )
+--        ⟨ ⟦ vec⇔list ⇋ lift ℕ , lift n , [] ⟧ ⟩ )
+
+  add : unquote (getAgdaHighType (ast⇒T' addContr))
+  add = unquote (ffi-lift (ast⇒T' addContr) (quote addImpl'))
+
+
+  
   open import Data.Bool
   lk : Bool → Term
   lk true = let x = {!open import Data.List!} in {!!}
-  lk false = {!!}
+  lk false = {!add ( -[1+ 30 ] ) (24)!}
     where open import Data.List public
 
   postulate mkForeign : {a : Set} → a
