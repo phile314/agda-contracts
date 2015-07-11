@@ -362,7 +362,21 @@ module T3 where
   pubIsoToIntIsoNm _ = error
 
   {-# TERMINATING #-}
+  withArgsToT' : {n : ℕ} → Term → List (T n)
   ast-ty⇒T' : ∀ {n} → (t : Term) → T n
+
+  withArgsToT' {n} (con (quote WithArgs.[]) args) = []
+  withArgsToT' {n} (con (quote WithArgs._,_) args) = {!!} --∷ withArgsToT' {n} tl
+    where
+      hd = unArg $ lookup' 2 args -- con lift ...
+      tl = unArg $ lookup' 4 args
+      arg' : T n
+      arg' = case hd of (
+        λ { (con (quote Level.lift) args') → ast-ty⇒T' (unArg $ lookup' 3 args') ;
+            _ → error })
+  withArgsToT' t = error
+
+  {-# TERMINATING #-}
   ast-ty⇒T' (var x args) = var {!!} ∙ {!!}
   ast-ty⇒T' (def f args) = def f ∙ List.map (ast-ty⇒T' ∘ unArg) args
   ast-ty⇒T' (sort (set t)) = Errrr
@@ -395,7 +409,7 @@ module T3 where
 
   arg-ast⇒T (arg i x) = ast⇒T' x
 
-  g : {! ff!}
+  g : {! f!}
   g = {!ast⇒T' f!}
 
   open import Data.Integer

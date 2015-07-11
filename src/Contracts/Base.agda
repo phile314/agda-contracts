@@ -144,7 +144,7 @@ mkArgs [] = con (quote WithArgs.[]) []
 mkArgs (x₁ ∷ ts) = con (quote WithArgs._,_)
   ( arg def-argInfo
     (con (quote Level.lift)
-      [ arg def-argInfo (elAGDA UnexpectedIsoInIsoArgs x₁) ]
+     [ arg def-argInfo (elAGDA UnexpectedIsoInIsoArgs x₁) ]
     )
   ∷ arg def-argInfo (mkArgs ts)
   ∷ [])
