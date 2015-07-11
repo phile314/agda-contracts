@@ -61,8 +61,8 @@ record PartIso {l} : Set (Level.suc (Level.suc l)) where
                        argsToTy HIGHₐ (Σ (Set l) (Conversions HSₜ))))
 
 record PartIsoInt : Set where
---  field wrappedₙ : Name -- name of the part iso
-  field wrapped : Term
+  field wrappedₙ : Name -- name of the part iso
+--  field wrapped : Term
 
 applyArgs : ∀ {l} → {aTys : ArgTys {l}} {A : Set l} → (f : argsToTy aTys A) → WithArgs aTys → A
 applyArgs {aTys = []} f [] = f
@@ -160,7 +160,7 @@ getIsoLow p as =
     ∷ [])
   where
     tiso = def (quote PartIso.iso)
-      [ arg def-argInfo (PartIsoInt.wrapped p) ]
+      [ arg def-argInfo (def (PartIsoInt.wrappedₙ p) []) ]
 
 -- gets the iso high pair
 getIsoHigh : ∀ {n}
@@ -313,8 +313,9 @@ open import Level
 
 toIntPartIso : ∀ {l}
   → PartIso {l}
-  → Term --quoted part iso term
+--  → Term --quoted part iso term
+  → Name
   → PartIsoInt
-toIntPartIso p pₜ = record
-  { wrapped = pₜ
+toIntPartIso p pₙ = record
+  { wrappedₙ = pₙ
   }

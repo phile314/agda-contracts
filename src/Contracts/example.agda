@@ -16,7 +16,7 @@ module NatIntIso where
 
   ℕ⇔ℤ' : PartIsoInt
   ℕ⇔ℤ' = record --toIntPartIso partIso (quote partIso) (quoteTerm partIso)
-    { wrapped = quoteTerm ℕ⇔ℤ } --; wrapped = partIso}
+    { wrappedₙ = quote ℕ⇔ℤ } --; wrapped = partIso}
 
 
 module Ex2 where
@@ -78,7 +78,8 @@ module VecIso where
 
   vec⇔list' : {l : Level} → PartIsoInt
   vec⇔list' {l} = record --toIntPartIso partIso (quote partIso) (quoteTerm partIso)
-    { wrapped = quoteTerm (vec⇔list {l}) } --; wrapped = partIso }
+    { wrappedₙ = quote vl } --; wrapped = partIso }
+    where vl = vec⇔list {l}
 
 
 module MapEx where
@@ -108,6 +109,48 @@ module MapEx where
 
   myMap : unquote (getAgdaHighType mapNZType) --unquote (getAgdaHighType mapNZType)
   myMap = unquote (ffi-lift mapNZType (quote mapImpl))
+
+module DepSimple where
+  open VecIso
+  open import Data.Nat
+  open import Contracts.Base
+  open import Level
+  open import Data.List as L
+  open import Data.Fin
+  import Data.Vec as V
+  open import Reflection
+
+  mapImpl2 : (n : ℕ) (A : Set) → List A
+  mapImpl2 n A = []
+
+  mapNZType : T 0
+  mapNZType =
+    π def quote ℕ ∙ [] -- n
+    ⇒ (π set 0 -- A
+    ⇒ iso (vec⇔list' {Level.zero}) L.[ var # 0 ∙ [] ] L.[ var # 1 ∙ [] ] )
+
+--  lowType : Set (Level.suc Level.zero)
+--  lowType = {!!} --unquote (getAgdaLowType mapNZType)
+
+--  lk : {!!}
+--  lk = {!pretty (ffi-lift mapNZType (quote mapImpl2))!}
+
+  import Agda.Primitive
+  import Data.Product
+
+--  partIso : PartIso {Level.zero}
+--  partIso = PartIsoInt.wrapped VecIso.vec⇔list
+
+  fixType : ∀ {a} (A : Set a) → A → A
+  fixType _ x = x
+
+  import Data.Nat.Base
+  import Data.List.Base
+  import Data.Vec
+
+  myMap2 : unquote (getAgdaHighType mapNZType) --unquote (getAgdaHighType mapNZType) --unquote (getAgdaHighType mapNZType)
+--  myMap2 =  {!pretty (elimLets (ffi-lift mapNZType (quote mapImpl2)))!}
+  myMap2 = unquote (ffi-lift mapNZType (quote mapImpl2)) -- unquote (ffi-lift mapNZType (quote mapImpl2))
 
 module DepCon1 where
   open VecIso
@@ -148,10 +191,12 @@ module DepCon1 where
   fixType : ∀ {a} (A : Set a) → A → A
   fixType _ x = x
 
+  import Data.Nat.Base
 
-  myMap2 : {!unquote (getAgdaHighType mapNZType)!} --unquote (getAgdaHighType mapNZType) --unquote (getAgdaHighType mapNZType)
+
+  myMap2 : unquote (getAgdaHighType mapNZType) --unquote (getAgdaHighType mapNZType) --unquote (getAgdaHighType mapNZType)
 --  myMap2 =  {!pretty (elimLets (ffi-lift mapNZType (quote mapImpl2)))!}
-  myMap2 = {!mapNZType!} --unquote (ffi-lift mapNZType (quote mapImpl2)) -- unquote (ffi-lift mapNZType (quote mapImpl2))
+  myMap2 = unquote (ffi-lift mapNZType (quote mapImpl2)) -- unquote (ffi-lift mapNZType (quote mapImpl2))
   
     
 module DepCon where
@@ -314,7 +359,7 @@ module T3 where
   ast⇒T' (con c args) = case c of (
     λ { (quote AST.pi) → π ast⇒T' (unArg (lookup' 2 args)) ⇒ ast⇒T' ((stripLam ∘ unArg ∘ lookup' 3) args) ;
         (quote AST.⟦_⟧) → ast-ty⇒T' (unArg (lookup' 2 args)) ;
-        (quote AST.⟦_⇋_⟧) → iso (record { wrapped = ((unArg (lookup' 2 args)))}) [] [] ;
+        (quote AST.⟦_⇋_⟧) → {!!} ; --iso ? ? ? --(record { wrapped = ((unArg (lookup' 2 args)))}) [] [] ;
         _ → Errrr})
   ast⇒T' (def f args) = Errrr
   ast⇒T' (lam v t) = Errrr
