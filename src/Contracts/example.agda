@@ -287,7 +287,7 @@ module T3 where
   getTy : ∀ {l} → AST {l} {l} → Set l --(l Level.⊔ m )
 
   data AST {l m} where
-    pi : (a : AST {l} {l}) → (getTy a → AST {m} {m}) → AST
+    pi : (a : AST {l} {l}) → ArgWay → (getTy a → AST {m} {m}) → AST
     ⟦_⟧ : (A : Set (l Level.⊔ m)) → AST -- normal type (List, Nat, etc..)
     ⟦_⇋_⟧ : (pi :  PartIsoPub {l Level.⊔ m}) → getArgs pi → AST -- isomorphism
 
@@ -296,7 +296,7 @@ module T3 where
   split++ {a = x ∷ a} (a₁ , args) = (a₁ , (proj₁ r)) , (proj₂ r)
     where r = split++ args
 
-  getTy (pi a x) = (arg : getTy a) → (getTy (x arg))
+  getTy (pi a _ x) = (arg : getTy a) → (getTy (x arg))
   getTy (⟦ x ⟧) = x
   getTy (⟦ x ⇋ x₁ ⟧) = proj₁ (applyArgs (proj₂ g) (proj₂ k)) --(PartIso.iso h) x₁
     where h = PartIsoPub.partIso x --PartIsoInt.wrapped x
@@ -306,11 +306,14 @@ module T3 where
   id : ∀ {a} {A : Set a} → A → A
   id x = x
 
-  syntax pi e₁ (λ x → e₂) = ⟨ x ∷ e₁ ⟩⇒ e₂
+  piK : ∀ {l m} → (a : AST {l} {l}) → (getTy a → AST {m} {m}) → AST {l} {m}
+  piK x = pi x Keep
+  piD : ∀ {l m} → (a : AST {l} {l}) → (getTy a → AST {m} {m}) → AST {l} {m}
+  piD x = pi x Discard
+  
+  syntax piK e₁ (λ x → e₂) = ⟨ x ∷ e₁ ⟩⇒ e₂
+  syntax piD e₁ (λ x → e₂) = ⟨ x ↛∷ e₁ ⟩⇒ e₂
   syntax id e = ⟨ e ⟩
-
-  ASTNN : {l : Level} → Set (Level.suc (Level.suc l))
-  ASTNN {l} = AST {l} {l}
 
   -- an example how the contracts syntax could look like,
   -- if implemented using normal Agda constructs.
@@ -423,8 +426,8 @@ module T3 where
         ⟨ ⟦ ℕ⇔ℤ ⇋ [] ⟧ ⟩ )
 --        ⟨ ⟦ vec⇔list ⇋ lift ℕ , lift n , [] ⟧ ⟩ )
 
-  add : unquote (getAgdaHighType (ast⇒T' addContr))
-  add = unquote (ffi-lift (ast⇒T' addContr) (quote addImpl'))
+--  add : unquote (getAgdaHighType (ast⇒T' addContr))
+--  add = unquote (ffi-lift (ast⇒T' addContr) (quote addImpl'))
 
 
   
