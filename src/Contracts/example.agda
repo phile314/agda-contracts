@@ -37,7 +37,7 @@ module Ex2 where
 
   -- the internal AST representation of the above notation
   addType : T 0
-  addType = π ( iso ℕ⇔ℤ' [] [] ) ⇒ (π (iso ℕ⇔ℤ' [] []) ⇒ (iso ℕ⇔ℤ' [] []))
+  addType = π ( iso ℕ⇔ℤ' [] [] ) ∣ Keep ⇒ (π (iso ℕ⇔ℤ' [] []) ∣ Keep ⇒ (iso ℕ⇔ℤ' [] []))
 --  addType = π ( def_∙_ (quote ℤ) {quote bla} [] ) ⇒ (π (def_∙_ (quote ℤ) {quote bla} []) ⇒ (def_∙_ (quote ℤ) {quote bla} []))
 
   -- the ffi declaration, which has the type ℤ → ℤ → ℤ
@@ -101,10 +101,10 @@ module MapEx where
   mapNZType : T 0
   mapNZType =
       π (
-        π (iso ℕ⇔ℤ' L.[] L.[]) ⇒ (iso ℕ⇔ℤ' L.[] L.[])
+        π (iso ℕ⇔ℤ' L.[] L.[]) ∣ Keep ⇒ (iso ℕ⇔ℤ' L.[] L.[])
 --        π (def (quote ℤ) ∙ []) ⇒ (def (quote ℤ) ∙ [])
-        )
-    ⇒ (π (def (quote L.List) ∙ [ (def (quote ℤ) ∙ []) ])
+        ) ∣ Keep
+    ⇒ (π (def (quote L.List) ∙ [ (def (quote ℤ) ∙ []) ]) ∣ Keep
     ⇒ (def (quote L.List) ∙ [ (def (quote ℤ) ∙ []) ]))
 
   myMap : unquote (getAgdaHighType mapNZType) --unquote (getAgdaHighType mapNZType)
@@ -125,8 +125,8 @@ module DepSimple where
 
   mapNZType : T 0
   mapNZType =
-    π def quote ℕ ∙ [] -- n
-    ⇒ (π set 0 -- A
+    π def quote ℕ ∙ [] ∣ Keep -- n
+    ⇒ (π set 0 ∣ Keep -- A
     ⇒ iso (vec⇔list' {Level.zero}) L.[ var # 0 ∙ [] ] L.[ var # 1 ∙ [] ] )
 
 --  lowType : Set (Level.suc Level.zero)
@@ -162,18 +162,18 @@ module DepCon1 where
   import Data.Vec as V
   open import Reflection
 
-  mapImpl2 : (n : ℕ) (A : Set) (B : Set) → (A → B) → List A → List B
-  mapImpl2 n A B = L.map
+  mapImpl2 : (A : Set) (B : Set) → (A → B) → List A → List B
+  mapImpl2 A B = L.map
 
   mapNZType : T 0
   mapNZType =
-    π def quote ℕ ∙ [] -- n
-    ⇒ (π set 0 -- A
-    ⇒ (π set 0 -- B
+    π def quote ℕ ∙ [] ∣ Discard -- n
+    ⇒ (π set 0 ∣ Keep -- A
+    ⇒ (π set 0 ∣ Keep -- B
     ⇒ (π (
-      π var # 1 ∙ []
-      ⇒ (var # 1 ∙ [])) -- f
-    ⇒ (π iso (vec⇔list' {Level.zero}) L.[ var # 2 ∙ [] ] L.[ var # 3 ∙ [] ] -- vec
+      π var # 1 ∙ [] ∣ Keep
+      ⇒ (var # 1 ∙ [])) ∣ Keep -- f
+    ⇒ (π iso (vec⇔list' {Level.zero}) L.[ var # 2 ∙ [] ] L.[ var # 3 ∙ [] ] ∣ Keep -- vec
     ⇒ iso (vec⇔list' {Level.zero}) L.[ var # 2 ∙ [] ] L.[ var # 4 ∙ [] ] ))))
 
 --  lowType : Set (Level.suc Level.zero)
@@ -365,16 +365,16 @@ module T3 where
   withArgsToT' : {n : ℕ} → Term → List (T n)
   ast-ty⇒T' : ∀ {n} → (t : Term) → T n
 
-  withArgsToT' {n} (con (quote WithArgs.[]) args) = []
-  withArgsToT' {n} (con (quote WithArgs._,_) args) = {!!} --∷ withArgsToT' {n} tl
-    where
+  withArgsToT' {n} (con (quote WithArgs.[]) _) = {!!}
+  withArgsToT' {n} (con (quote WithArgs._,_) args') = {!!} --∷ withArgsToT' {n} tl
+{-    where
       hd = unArg $ lookup' 2 args -- con lift ...
       tl = unArg $ lookup' 4 args
       arg' : T n
       arg' = case hd of (
         λ { (con (quote Level.lift) args') → ast-ty⇒T' (unArg $ lookup' 3 args') ;
-            _ → error })
-  withArgsToT' t = error
+            _ → error })-}
+  withArgsToT' t = {!!}
 
   {-# TERMINATING #-}
   ast-ty⇒T' (var x args) = var {!!} ∙ {!!}
@@ -391,7 +391,7 @@ module T3 where
 
   ast⇒T' (var x args) = Errrr
   ast⇒T' (con c args) = case c of (
-    λ { (quote AST.pi) → π ast⇒T' (unArg (lookup' 2 args)) ⇒ ast⇒T' ((stripLam ∘ unArg ∘ lookup' 3) args) ;
+    λ { (quote AST.pi) → π ast⇒T' (unArg (lookup' 2 args)) ∣ Keep ⇒ ast⇒T' ((stripLam ∘ unArg ∘ lookup' 3) args) ;
         (quote AST.⟦_⟧) → ast-ty⇒T' (unArg (lookup' 2 args)) ;
         (quote AST.⟦_⇋_⟧) → iso (record { wrappedₙ = pubIsoToIntIsoNm $ unArg $ lookup' 2 args}) [] [] ; --iso ? ? ? --(record { wrapped = ((unArg (lookup' 2 args)))}) [] [] ;
         _ → Errrr})

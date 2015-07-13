@@ -77,6 +77,10 @@ data Position : Set where
   Pos : Position
   Neg : Position
 
+data ArgWay : Set where
+  Keep : ArgWay
+  Discard : ArgWay
+
 invertPosition : Position → Position
 invertPosition Pos = Neg
 invertPosition Neg = Pos
@@ -95,8 +99,9 @@ data T : ℕ → Set where
     → (nm : Name)
     → List (T n)
     → T n
-  π_⇒_ : ∀ {n}
+  π_∣_⇒_ : ∀ {n}
     → T n -- type of the arg
+    → ArgWay
     → T (ℕ.suc n) -- body
     → T n
 
@@ -120,21 +125,31 @@ postulate
   notImpl notImpl2 notImpl3 : {a : Set} → a
   UnexpectedIsoInIsoArgs : ∀ {a} {A : Set a} → A
 
+open import Data.Bool hiding (T)
+
 IsoHandler : Set
 IsoHandler = {n : ℕ} → (p : PartIsoInt)
   → List (T n) -- LOW arguments
   → List (T n) -- HIGH arguments
   → Term
 
+record elOpts : Set where
+  constructor mkElOpts
+  field isoHandler : IsoHandler
+        ignoreDiscard : Bool
 
-elAGDA : ∀ {n} → IsoHandler → (t : T n) → Term
-elArg : ∀ {n} → IsoHandler → (t : T n) → Arg Term
+elAGDA : ∀ {n} → elOpts → (t : T n) → Term
+elArg : ∀ {n} → elOpts → (t : T n) → Arg Term
 
 elAGDA h (var k ∙ xs) = var (toℕ k) (List.map (elArg h) xs)
 elAGDA h (def x ∙ xs) = def x (List.map (elArg h) xs)
-elAGDA h (π  t ⇒ t₁) = pi (arg def-argInfo (el unknown (elAGDA h t))) (abs "" (el unknown (elAGDA h t₁)))
+elAGDA h (π  t ∣ k ⇒ t₁) = case k of
+  (λ { Keep → r-keep
+     ; Discard → if elOpts.ignoreDiscard h then r-keep else elAGDA h t₁
+     })
+  where r-keep = pi (arg def-argInfo (el unknown (elAGDA h t))) (abs "" (el unknown (elAGDA h t₁)))
 elAGDA h (set l) = sort (lit l)
-elAGDA h (iso i HSₐ AGDAₐ) = h i HSₐ AGDAₐ
+elAGDA h (iso i HSₐ AGDAₐ) = (elOpts.isoHandler h) i HSₐ AGDAₐ
 
 elArg h t = arg def-argInfo (elAGDA h t)
 
@@ -182,10 +197,10 @@ getIsoLowType p LOWₐ HIGHₐ = def (quote proj₁)
   [ arg def-argInfo (getIsoLow p LOWₐ ) ]
 
 getAgdaLowType : T 0 → Term
-getAgdaLowType t = elAGDA getIsoLowType t
+getAgdaLowType t = elAGDA (mkElOpts getIsoLowType false) t
 
 getAgdaHighType : T 0 → Term
-getAgdaHighType t = elAGDA handleIso t
+getAgdaHighType t = elAGDA (mkElOpts handleIso true) t
   where
     handleIso : IsoHandler
     handleIso p LOWₐ HIGHₐ =
@@ -265,10 +280,14 @@ ffi-lift1 : ∀ {n}
 ffi-lift1 (set l₁) wr pos Γ = wr
 ffi-lift1 (var k ∙ x) wr pos Γ = wr
 ffi-lift1 (def nm ∙ x) wr pos Γ  = wr
-ffi-lift1 {n} (π fde ⇒ fde₁) wr pos Γ =
+ffi-lift1 {n} (π fde ∣ k ⇒ fde₁) wr pos Γ =
   lam visible (abs "x" bd)
   where ls = ffi-lift1 fde (var 0 []) (invertPosition pos) (shift 1 Γ)
-        rs = ffi-lift1 fde₁ (app (subst (N._+_ 2) wr) (var 0 [])) pos (0 ∷ shift 2 Γ)
+        toWrap = case k of
+          λ { Keep → app (subst (N._+_ 2) wr) (var 0 [])
+            ; Discard → subst (N._+_ 2) wr
+            }
+        rs = ffi-lift1 fde₁ toWrap pos (0 ∷ shift 2 Γ)
         bd = lett ls inn rs
 ffi-lift1 (iso {l} x LOWₐ HIGHₐ) wr pos Γ =
   -- extract the conversion from the named iso
