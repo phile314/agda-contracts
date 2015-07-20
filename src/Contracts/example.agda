@@ -267,6 +267,10 @@ module T3 where
   open import Relation.Nullary
   open import Data.Product
 
+  data _Level≤_ : Level → Level → Set where
+    Z : {m : Level} → Level.zero Level≤ m
+    S : {m n : Level} → m Level≤ n → (Level.suc m) Level≤ (Level.suc n)
+
   record PartIsoPub {l} : Set (Level.suc (Level.suc l)) where
     constructor mkIsoPub
     field partIso : PartIso {l}
@@ -289,6 +293,7 @@ module T3 where
   data AST {l m} where
     pi : (a : AST {l} {l}) → ArgWay → (getTy a → AST {m} {m}) → AST
     ⟦_⟧ : (A : Set (l Level.⊔ m)) → AST -- normal type (List, Nat, etc..)
+    ⟦Set_⟧ : (ll : Level) → {lt : ll Level≤ l} → AST
     ⟦_⇋_⟧ : (pi :  PartIsoPub {l Level.⊔ m}) → getArgs pi → AST -- isomorphism
 
   split++ : ∀ {l} {a : ArgTys {l}} → {b : ArgTys {l}} → (args : WithArgs (a List.++ b)) → (WithArgs a × WithArgs b)
@@ -298,6 +303,7 @@ module T3 where
 
   getTy (pi a _ x) = (arg : getTy a) → (getTy (x arg))
   getTy (⟦ x ⟧) = x
+  getTy {l} (⟦Set_⟧ ll {lt}) = {!!} --Lift {Level.suc ll} {l} (Set ll)
   getTy (⟦ x ⇋ x₁ ⟧) = proj₁ (applyArgs (proj₂ g) (proj₂ k)) --(PartIso.iso h) x₁
     where h = PartIsoPub.partIso x --PartIsoInt.wrapped x
           k = split++ {_} {PartIso.LOWₐ h} x₁
@@ -324,12 +330,14 @@ module T3 where
     ⟨ xs ∷ ⟦ List a ⟧ ⟩⇒
     ⟨ ⟦ List a ⟧ ⟩
 
-  postulate Errrr : ∀ {a} → {A : Set a} → A
+  postulate Errrr Errrr2 Errrr3 : ∀ {a} → {A : Set a} → A
 
   open import Function
   open import Reflection as R
+  f' : AST
+  f' = ⟨ n ∷ ⟦ ℕ ⟧ ⟩⇒ ⟨ x ∷ ⟦Set Level.zero ⟧ ⟩⇒ ⟨ ⟦ vec⇔list ⇋ lift ℕ , lift n , [] ⟧ ⟩
   f : Term
-  f = quoteTerm ( ⟨ n ∷ ⟦ ℕ ⟧ ⟩⇒ ⟨ x ∷ ⟦ ℕ ⟧ ⟩⇒ ⟨ ⟦ vec⇔list ⇋ lift ℕ , lift n , [] ⟧ ⟩ )
+  f = quoteTerm (⟨ n ∷ ⟦ ℕ ⟧ ⟩⇒ ⟨ x ∷ ⟦ ℕ ⟧ ⟩⇒ ⟨ ⟦ vec⇔list ⇋ lift ℕ , lift n , [] ⟧ ⟩)
 
 
   ff : Term
@@ -349,7 +357,7 @@ module T3 where
 
   stripLam : Term → Term
   stripLam (lam v (abs s x)) = x
-  stripLam _ = Errrr
+  stripLam _ = Errrr2
 
   defToNm : Term → Name
   defToNm (def nm []) = nm
@@ -368,51 +376,57 @@ module T3 where
   withArgsToT' : {n : ℕ} → Term → List (T n)
   ast-ty⇒T' : ∀ {n} → (t : Term) → T n
 
-  withArgsToT' {n} (con (quote WithArgs.[]) _) = {!!}
-  withArgsToT' {n} (con (quote WithArgs._,_) args') = {!!} --∷ withArgsToT' {n} tl
-{-    where
-      hd = unArg $ lookup' 2 args -- con lift ...
-      tl = unArg $ lookup' 4 args
+  withArgsToT' {n} (con (quote WithArgs.[]) _) = []
+  withArgsToT' {n} (con (quote WithArgs._,_) args') = arg' ∷ withArgsToT' {n} tl
+    where
+      hd = unArg $ lookup' 2 args' -- con lift ...
+      tl = unArg $ lookup' 4 args'
       arg' : T n
       arg' = case hd of (
         λ { (con (quote Level.lift) args') → ast-ty⇒T' (unArg $ lookup' 3 args') ;
-            _ → error })-}
-  withArgsToT' t = {!!}
-
+            _ → Errrr3 })
+  withArgsToT' _ = Errrr3
+  
+  open import Data.Fin using (fromℕ≤)
+  
   {-# TERMINATING #-}
-  ast-ty⇒T' (var x args) = var {!!} ∙ {!!}
+  ast-ty⇒T' {n} (var x args) = case (ℕ.suc x) ≤? n of (
+    λ { (yes p) → var (fromℕ≤ p) ∙ List.map (ast-ty⇒T' ∘ unArg) args
+      ; (no _) → Errrr2
+      })
   ast-ty⇒T' (def f args) = def f ∙ List.map (ast-ty⇒T' ∘ unArg) args
-  ast-ty⇒T' (sort (set t)) = Errrr
+  ast-ty⇒T' (sort (set t)) = Errrr2
   ast-ty⇒T' (sort (lit n₁)) = set n₁
-  ast-ty⇒T' (sort unknown) = Errrr
-  ast-ty⇒T' _ = Errrr
+  ast-ty⇒T' (sort unknown) = Errrr2
+  ast-ty⇒T' _ = Errrr2
 
   {-# TERMINATING #-}
   ast⇒T' : ∀ {n} → (t : Term) -- AST
     → T n
   arg-ast⇒T : ∀ {n} → Arg Term → T n
 
-  ast⇒T' (var x args) = Errrr
+  ast⇒T' (var x args) = Errrr3
   ast⇒T' (con c args) = case c of (
-    λ { (quote AST.pi) → π ast⇒T' (unArg (lookup' 2 args)) ∣ Keep ⇒ ast⇒T' ((stripLam ∘ unArg ∘ lookup' 3) args) ;
+    -- todo extract KEEP
+    λ { (quote AST.pi) → π ast⇒T' (unArg (lookup' 2 args)) ∣ Keep ⇒ ast⇒T' ((stripLam ∘ unArg ∘ lookup' 4) args) ;
         (quote AST.⟦_⟧) → ast-ty⇒T' (unArg (lookup' 2 args)) ;
-        (quote AST.⟦_⇋_⟧) → iso (record { wrappedₙ = pubIsoToIntIsoNm $ unArg $ lookup' 2 args}) [] [] ; --iso ? ? ? --(record { wrapped = ((unArg (lookup' 2 args)))}) [] [] ;
-        _ → Errrr})
-  ast⇒T' (def f args) = Errrr
-  ast⇒T' (lam v t) = Errrr
-  ast⇒T' (pat-lam cs args) = Errrr
-  ast⇒T' (pi t₁ t₂) = Errrr
-  ast⇒T' (sort s) = Errrr
-  ast⇒T' (lit l) = Errrr
-  ast⇒T' (quote-goal t) = Errrr
-  ast⇒T' (quote-term t) = Errrr
-  ast⇒T' quote-context = Errrr
-  ast⇒T' (unquote-term t args) = Errrr
-  ast⇒T' unknown = Errrr
+        (quote AST.⟦_⇋_⟧) → iso (record { wrappedₙ = pubIsoToIntIsoNm $ unArg $ lookup' 2 args}) (withArgsToT' {!!}) {!!} ; --iso ? ? ? --(record { wrapped = ((unArg (lookup' 2 args)))}) [] [] ;
+        _ → Errrr3})
+  ast⇒T' (def f args) = Errrr3
+  ast⇒T' (lam v t) = Errrr3
+  ast⇒T' (pat-lam cs args) = Errrr3
+  ast⇒T' (pi t₁ t₂) = Errrr3
+  ast⇒T' (sort s) = Errrr3
+  ast⇒T' (lit l) = Errrr3
+  ast⇒T' (quote-goal t) = Errrr3
+  ast⇒T' (quote-term t) = Errrr3
+  ast⇒T' quote-context = Errrr3
+  ast⇒T' (unquote-term t args) = Errrr3
+  ast⇒T' unknown = Errrr3
 
   arg-ast⇒T (arg i x) = ast⇒T' x
 
-  g : {! f!}
+  g : {! getTy f'!}
   g = {!ast⇒T' f!}
 
   open import Data.Integer
