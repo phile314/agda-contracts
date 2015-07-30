@@ -1,4 +1,5 @@
 {-# OPTIONS --type-in-type #-}
+{-# OPTIONS --no-termination-check #-}
 
 module Contracts.SSyn where
 
@@ -78,6 +79,14 @@ module T3 where
   defToNm (def nm []) = nm
   defToNm _ = error
 
+  listLen : Term → ℕ
+  listLen t = case t of (
+    λ { (con (quote Data.List.Base.List.[]) args) → 0
+      ; (con (quote List._∷_) args) → N.suc (listLen (unArg $ lookup' 3 args))
+      ; _ →  Errrr
+      })
+    where open import Data.List.Base
+
   pubIsoToIntIsoNm : Term → Name
   pubIsoToIntIsoNm (con (quote mkIsoPub) args) = case (unArg $ lookup' 1 args) of (
     λ {(con (quote mkIsoInt) args') → case unArg $ lookup' 0 args' of (
@@ -87,6 +96,13 @@ module T3 where
       })
   pubIsoToIntIsoNm _ = error
 
+  pubIsoGetNumArgs : Term → (ℕ × ℕ) -- low, high
+  pubIsoGetNumArgs (con (quote mkIsoPub) args) = case (unArg $ lookup' 0 args) of (
+    λ { (con (quote mkPartIso) args) → (listLen $ unArg $ lookup' 0 args) , (listLen $ unArg $ lookup' 1 args)
+      ; _ → error
+      })
+  pubIsoGetNumArgs _ = error
+
   {-# TERMINATING #-}
   withArgsToT' : {n : ℕ} → Term → List (T n)
   ast-ty⇒T' : ∀ {n} → (t : Term) → T n
@@ -94,12 +110,10 @@ module T3 where
   withArgsToT' {n} (con (quote WithArgs.[]) _) = []
   withArgsToT' {n} (con (quote WithArgs._,_) args') = arg' ∷ withArgsToT' {n} tl
     where
-      hd = unArg $ lookup' 2 args' -- con lift ...
-      tl = unArg $ lookup' 4 args'
+      hd = unArg $ lookup' 1 args' -- con lift ...
+      tl = unArg $ lookup' 3 args'
       arg' : T n
-      arg' = case hd of (
-        λ { (con (quote Level.lift) args') → ast-ty⇒T' (unArg $ lookup' 3 args') ;
-            _ → Errrr3 })
+      arg' = ast-ty⇒T' hd
   withArgsToT' _ = Errrr3
   
   open import Data.Fin using (fromℕ≤)
@@ -121,11 +135,16 @@ module T3 where
   arg-ast⇒T : ∀ {n} → Arg Term → T n
 
   ast⇒T' (var x args) = Errrr3
-  ast⇒T' (con c args) = case c of (
+  ast⇒T' {n} (con c args) = case c of (
     -- todo extract KEEP
     λ { (quote AST.pi) → π ast⇒T' (unArg (lookup' 0 args)) ∣ Keep ⇒ ast⇒T' ((stripLam ∘ unArg ∘ lookup' 2) args) ;
         (quote AST.⟦_⟧) → ast-ty⇒T' (unArg (lookup' 0 args)) ;
-        (quote AST.⟦_⇋_⟧) → iso (record { wrappedₙ = pubIsoToIntIsoNm $ unArg $ lookup' 0 args}) (withArgsToT' {!!}) {!!} ; --iso ? ? ? --(record { wrapped = ((unArg (lookup' 2 args)))}) [] [] ;
+        (quote AST.⟦_⇋_⟧) →
+          let pubIso = unArg $ lookup' 0 args
+              nArgs = pubIsoGetNumArgs pubIso
+              intIso = record { wrappedₙ = pubIsoToIntIsoNm pubIso }
+              allArgs = withArgsToT' (unArg $ lookup' 1 args)
+           in iso intIso (List.take (proj₁ nArgs) allArgs) (List.drop (proj₁ nArgs) allArgs) ; --iso ? ? ? --(record { wrapped = ((unArg (lookup' 2 args)))}) [] [] ;
         _ → Errrr3})
   ast⇒T' (def f args) = Errrr3
   ast⇒T' (lam v t) = Errrr3
