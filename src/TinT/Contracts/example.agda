@@ -1,3 +1,5 @@
+{-# OPTIONS --type-in-type #-}
+
 module Contracts.example where
 
 module NatIntIso where
@@ -66,14 +68,14 @@ module VecIso where
   open import Relation.Binary.PropositionalEquality
   open import Data.Product
 
-  list⇒vec : ∀ {l} {n : ℕ} {A : Set l} → List A → Maybe (Vec A n)
-  list⇒vec {_} {n} xs with n N.≟ L.length xs
+  list⇒vec : ∀ {n : ℕ} {A : Set} → List A → Maybe (Vec A n)
+  list⇒vec {n} xs with n N.≟ L.length xs
   list⇒vec xs | yes refl = just (Data.Vec.fromList xs)
   list⇒vec xs | no ¬p = nothing
 
   vec⇔listI : {l : Level} → PartIso
-  vec⇔listI {l} = mkPartIso L.[ Lift {_} {l} (Set l) ] L.[ (Lift ℕ) ]
-      (λ x → (List (lower x)) , (λ x₁ → (Vec (lower x) (lower x₁)) , ((withMaybe list⇒vec) , (total Data.Vec.toList))))
+  vec⇔listI {l} = mkPartIso L.[ Set ] L.[ ℕ ]
+      (λ x → (List x) , (λ x₁ → (Vec x x₁) , ((withMaybe list⇒vec) , (total Data.Vec.toList))))
 
 
   vec⇔list' : {l : Level} → PartIsoInt
@@ -141,7 +143,7 @@ module DepSimple where
 --  partIso : PartIso {Level.zero}
 --  partIso = PartIsoInt.wrapped VecIso.vec⇔list
 
-  fixType : ∀ {a} (A : Set a) → A → A
+  fixType : (A : Set) → A → A
   fixType _ x = x
 
   import Data.Nat.Base
@@ -188,7 +190,7 @@ module DepCon1 where
 --  partIso : PartIso {Level.zero}
 --  partIso = PartIsoInt.wrapped VecIso.vec⇔list
 
-  fixType : ∀ {a} (A : Set a) → A → A
+  fixType : (A : Set) → A → A
   fixType _ x = x
 
   import Data.Nat.Base
@@ -257,9 +259,6 @@ module T3 where
   open import Data.Nat as N
   open import Level
   
-{-  ⟨_∙_⟩ : ∀ {l} → PartIsoInt {l} → List ? → Set l
-  ⟨ p ⟩ = {!!}
--}
   open import Data.List as List
   open import Data.Vec
   open import Data.Maybe
@@ -267,36 +266,32 @@ module T3 where
   open import Relation.Nullary
   open import Data.Product
 
-  data _Level≤_ : Level → Level → Set where
-    Z : {m : Level} → Level.zero Level≤ m
-    S : {m n : Level} → m Level≤ n → (Level.suc m) Level≤ (Level.suc n)
-
-  record PartIsoPub {l} : Set (Level.suc (Level.suc l)) where
+  record PartIsoPub : Set where
     constructor mkIsoPub
-    field partIso : PartIso {l}
+    field partIso : PartIso
     field partIsoInt : PartIsoInt
 
   ℕ⇔ℤ : PartIsoPub
   ℕ⇔ℤ = record { partIso = ℕ⇔ℤI ; partIsoInt = ℕ⇔ℤ' }
 
-  vec⇔list : {l : Level} → PartIsoPub {l}
-  vec⇔list {l} = record { partIso = vec⇔listI ; partIsoInt = (vec⇔list' {l}) }
+  vec⇔list : PartIsoPub
+  vec⇔list = record { partIso = vec⇔listI ; partIsoInt = (vec⇔list') }
 
-  getArgs : ∀ {l} → PartIsoPub {l} → Set (Level.suc l)
+  getArgs : PartIsoPub → Set
   getArgs p = WithArgs ((PartIso.LOWₐ h) List.++ ( PartIso.HIGHₐ h))
     where h = PartIsoPub.partIso p --PartIsoInt.wrapped p
 
-  data AST {l m} : Set (Level.suc (Level.suc (l Level.⊔ m )))
+  data AST : Set
 
-  getTy : ∀ {l m} → AST {l} {m} → Set (l Level.⊔ m )
+  getTy : AST → Set
 
-  data AST {l m} where
-    pi : (a : AST {l} {l}) → ArgWay → (getTy a → AST {m} {m}) → AST
-    ⟦_⟧ : (A : Set (l Level.⊔ m)) → AST -- normal type (List, Nat, etc..)
+  data AST where
+    pi : (a : AST) → ArgWay → (getTy a → AST) → AST
+    ⟦_⟧ : (A : Set) → AST -- normal type (List, Nat, etc..)
 --    ⟦Set_⟧ : (ll : Level) → {lt : ll Level≤ l} → AST
-    ⟦_⇋_⟧ : (pi :  PartIsoPub {l Level.⊔ m}) → getArgs pi → AST -- isomorphism
+    ⟦_⇋_⟧ : (pi :  PartIsoPub) → getArgs pi → AST -- isomorphism
 
-  split++ : ∀ {l} {a : ArgTys {l}} → {b : ArgTys {l}} → (args : WithArgs (a List.++ b)) → (WithArgs a × WithArgs b)
+  split++ : {a : ArgTys} → {b : ArgTys} → (args : WithArgs (a List.++ b)) → (WithArgs a × WithArgs b)
   split++ {a = []} args = [] , args
   split++ {a = x ∷ a} (a₁ , args) = (a₁ , (proj₁ r)) , (proj₂ r)
     where r = split++ args
@@ -306,15 +301,15 @@ module T3 where
 --  getTy {l} (⟦Set_⟧ ll {lt}) = {!!} --Lift {Level.suc ll} {l} (Set ll)
   getTy (⟦ x ⇋ x₁ ⟧) = proj₁ (applyArgs (proj₂ g) (proj₂ k)) --(PartIso.iso h) x₁
     where h = PartIsoPub.partIso x --PartIsoInt.wrapped x
-          k = split++ {_} {PartIso.LOWₐ h} x₁
+          k = split++ {PartIso.LOWₐ h} {_} x₁
           g = applyArgs (PartIso.iso h) (proj₁ k)
 
-  id : ∀ {a} {A : Set a} → A → A
+  id : {A : Set} → A → A
   id x = x
 
-  piK : ∀ {l m} → (a : AST {l} {l}) → (getTy a → AST {m} {m}) → AST {l} {m}
+  piK : (a : AST) → (getTy a → AST) → AST
   piK x = pi x Keep
-  piD : ∀ {l m} → (a : AST {l} {l}) → (getTy a → AST {m} {m}) → AST {l} {m}
+  piD : (a : AST) → (getTy a → AST) → AST
   piD x = pi x Discard
   
   syntax piK e₁ (λ x → e₂) = ⟨ x ∷ e₁ ⟩⇒ e₂
@@ -340,15 +335,16 @@ module T3 where
     ⟨ xs ∷ ⟦ List a ⟧ ⟩⇒
     ⟨ ⟦ List a ⟧ ⟩-}
 
-  postulate Errrr Errrr2 Errrr3 : ∀ {a} → {A : Set a} → A
+  postulate Errrr Errrr2 Errrr3 : {A : Set} → A
 
-{-  open import Function
+  open import Function
   open import Reflection as R
+  
   f' : AST
-  f' = ⟨ n ∷ ⟦ ℕ ⟧ ⟩⇒ ⟨ x ∷ ⟦ Set ⟧ ⟩⇒ ⟨ ⟦ vec⇔list ⇋ lift ℕ , lift n , [] ⟧ ⟩
+  f' = ⟨ n ∷ ⟦ ℕ ⟧ ⟩⇒ ⟨ x ∷ ⟦ Set ⟧ ⟩⇒ ⟨ ⟦ vec⇔list ⇋ ℕ , n , [] ⟧ ⟩
   f : Term
-  f = quoteTerm (⟨ n ∷ ⟦ ℕ ⟧ ⟩⇒ ⟨ x ∷ ⟦ ℕ ⟧ ⟩⇒ ⟨ ⟦ vec⇔list ⇋ lift ℕ , lift n , [] ⟧ ⟩)
-
+  f = quoteTerm (⟨ n ∷ ⟦ ℕ ⟧ ⟩⇒ ⟨ x ∷ ⟦ Set ⟧ ⟩⇒ ⟨ ⟦ vec⇔list ⇋ ℕ , n , [] ⟧ ⟩)
+{-
 
   ff : Term
   ff = quoteTerm k
@@ -358,7 +354,8 @@ module T3 where
 
   gg : Term
   gg = quoteTerm ( ⟨ n ∷ ⟦ ℕ ⟧ ⟩⇒ ⟨ ⟦ ℕ ⟧  ⟩ )
-
+  -}
+  
   unArg : ∀ {A} → Arg A → A
   unArg (arg i x) = x
 
@@ -374,7 +371,7 @@ module T3 where
   defToNm _ = error
 
   pubIsoToIntIsoNm : Term → Name
-  pubIsoToIntIsoNm (con (quote mkIsoPub) args) = case (unArg $ lookup' 2 args) of (
+  pubIsoToIntIsoNm (con (quote mkIsoPub) args) = case (unArg $ lookup' 1 args) of (
     λ {(con (quote mkIsoInt) args') → case unArg $ lookup' 0 args' of (
       λ { (lit (name nm)) → nm ;
           _ → error});
@@ -418,9 +415,9 @@ module T3 where
   ast⇒T' (var x args) = Errrr3
   ast⇒T' (con c args) = case c of (
     -- todo extract KEEP
-    λ { (quote AST.pi) → π ast⇒T' (unArg (lookup' 2 args)) ∣ Keep ⇒ ast⇒T' ((stripLam ∘ unArg ∘ lookup' 4) args) ;
-        (quote AST.⟦_⟧) → ast-ty⇒T' (unArg (lookup' 2 args)) ;
-        (quote AST.⟦_⇋_⟧) → iso (record { wrappedₙ = pubIsoToIntIsoNm $ unArg $ lookup' 2 args}) (withArgsToT' {!!}) {!!} ; --iso ? ? ? --(record { wrapped = ((unArg (lookup' 2 args)))}) [] [] ;
+    λ { (quote AST.pi) → π ast⇒T' (unArg (lookup' 0 args)) ∣ Keep ⇒ ast⇒T' ((stripLam ∘ unArg ∘ lookup' 2) args) ;
+        (quote AST.⟦_⟧) → ast-ty⇒T' (unArg (lookup' 0 args)) ;
+        (quote AST.⟦_⇋_⟧) → iso (record { wrappedₙ = pubIsoToIntIsoNm $ unArg $ lookup' 0 args}) (withArgsToT' {!!}) {!!} ; --iso ? ? ? --(record { wrapped = ((unArg (lookup' 2 args)))}) [] [] ;
         _ → Errrr3})
   ast⇒T' (def f args) = Errrr3
   ast⇒T' (lam v t) = Errrr3
@@ -436,9 +433,10 @@ module T3 where
 
   arg-ast⇒T (arg i x) = ast⇒T' x
 
-  g : {! getTy f'!}
+  g : {!  f!}
   g = {!ast⇒T' f!}
 
+  {-
   open import Data.Integer
   addImpl' : ℤ → ℤ → ℤ
   addImpl' a b = a Data.Integer.+ b

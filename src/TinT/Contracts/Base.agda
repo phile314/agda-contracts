@@ -90,7 +90,7 @@ import Data.Vec as V
 
 -- TODO discard only makes sense in negative positions, we should enforce that it is only specified there
 data T : ℕ → Set where
-  set : ∀ {n} → (l : ℕ) → T n
+  set : ∀ {n} → (l : ℕ ) → T n
   -- var
   var_∙_ : ∀ {n}
     → (k : Fin n)
@@ -139,6 +139,7 @@ record elOpts : Set where
   field isoHandler : IsoHandler
         ignoreDiscard : Bool
 
+-- todo handle discard in neg. position properly
 elAGDA : ∀ {n} → elOpts → (t : T n) → Term
 elArg : ∀ {n} → elOpts → (t : T n) → Arg Term
 
@@ -149,7 +150,7 @@ elAGDA h (π  t ∣ k ⇒ t₁) = case k of
      ; Discard → if elOpts.ignoreDiscard h then r-keep else elAGDA h t₁
      })
   where r-keep = pi (arg def-argInfo (el unknown (elAGDA h t))) (abs "" (el unknown (elAGDA h t₁)))
-elAGDA h (set l) = sort (lit l)
+elAGDA h (set l) = sort (lit l) -- we use type-in-type, so what should we do here?
 elAGDA h (iso i HSₐ AGDAₐ) = (elOpts.isoHandler h) i HSₐ AGDAₐ
 
 elArg h t = arg def-argInfo (elAGDA h t)
@@ -159,9 +160,10 @@ mkArgs : ∀ {n} → List (T n) → Term
 mkArgs [] = con (quote WithArgs.[]) []
 mkArgs (x₁ ∷ ts) = con (quote WithArgs._,_)
   ( arg def-argInfo
-    (con (quote Level.lift)
-     [ arg def-argInfo (elAGDA UnexpectedIsoInIsoArgs x₁) ]
-    )
+--    (con (quote Level.lift)
+--     [ arg def-argInfo (elAGDA UnexpectedIsoInIsoArgs x₁) ]
+     (elAGDA UnexpectedIsoInIsoArgs x₁)
+--    )
   ∷ arg def-argInfo (mkArgs ts)
   ∷ [])
 
@@ -278,7 +280,7 @@ ffi-lift1 : ∀ {n}
   → Position -- seems to be only used to figure out in which directin to convert
   → List ℕ -- environment
   → Term
-ffi-lift1 (set l₁) wr pos Γ = wr
+ffi-lift1 (set _) wr pos Γ = wr
 ffi-lift1 (var k ∙ x) wr pos Γ = wr
 ffi-lift1 (def nm ∙ x) wr pos Γ  = wr
 ffi-lift1 {n} (π fde ∣ k ⇒ fde₁) wr pos Γ =

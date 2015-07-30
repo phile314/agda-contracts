@@ -9,19 +9,12 @@ module T3 where
   open import Data.Nat as N
   open import Level
   
-{-  ⟨_∙_⟩ : ∀ {l} → PartIsoInt {l} → List ? → Set l
-  ⟨ p ⟩ = {!!}
--}
   open import Data.List as List
   open import Data.Vec
   open import Data.Maybe
   open import Relation.Binary.PropositionalEquality
   open import Relation.Nullary
   open import Data.Product
-
-  data _Level≤_ : Level → Level → Set where
-    Z : {m : Level} → Level.zero Level≤ m
-    S : {m n : Level} → m Level≤ n → (Level.suc m) Level≤ (Level.suc n)
 
   record PartIsoPub : Set where
     constructor mkIsoPub
@@ -66,43 +59,10 @@ module T3 where
   syntax piD e₁ (λ x → e₂) = ⟨ x ↛∷ e₁ ⟩⇒ e₂
   syntax id e = ⟨ e ⟩
 
-  kl : ℕ → ℕ
-  kl = quoteGoal g in {!!}
-
-
-  kkk : _
-  kkk = kl
-
-  mm : {!!}
-  mm = {!!}
-
-  -- an example how the contracts syntax could look like,
-  -- if implemented using normal Agda constructs.
-{-  ty' : AST
-  ty' = ⟨ a ∷ ⟦ Set₁ ⟧ ⟩⇒
-    ⟨ x ∷ ⟦ ℕ⇔ℤ ⇋ [] ⟧ ⟩⇒
-    ⟨ y ∷ ⟦ vec⇔list ⇋ lift a , ((lift x) , []) ⟧ ⟩⇒
-    ⟨ xs ∷ ⟦ List a ⟧ ⟩⇒
-    ⟨ ⟦ List a ⟧ ⟩-}
-
   postulate Errrr Errrr2 Errrr3 : {A : Set} → A
 
-{-  open import Function
-  open import Reflection as R
-  f' : AST
-  f' = ⟨ n ∷ ⟦ ℕ ⟧ ⟩⇒ ⟨ x ∷ ⟦ Set ⟧ ⟩⇒ ⟨ ⟦ vec⇔list ⇋ lift ℕ , lift n , [] ⟧ ⟩
-  f : Term
-  f = quoteTerm (⟨ n ∷ ⟦ ℕ ⟧ ⟩⇒ ⟨ x ∷ ⟦ ℕ ⟧ ⟩⇒ ⟨ ⟦ vec⇔list ⇋ lift ℕ , lift n , [] ⟧ ⟩)
-
-
-  ff : Term
-  ff = quoteTerm k
-    where
-      k : AST
-      k = ⟨ ⟦ ℕ⇔ℤ ⇋ [] ⟧ ⟩
-
-  gg : Term
-  gg = quoteTerm ( ⟨ n ∷ ⟦ ℕ ⟧ ⟩⇒ ⟨ ⟦ ℕ ⟧  ⟩ )
+  open import Reflection
+  open import Function
 
   unArg : ∀ {A} → Arg A → A
   unArg (arg i x) = x
@@ -119,7 +79,7 @@ module T3 where
   defToNm _ = error
 
   pubIsoToIntIsoNm : Term → Name
-  pubIsoToIntIsoNm (con (quote mkIsoPub) args) = case (unArg $ lookup' 2 args) of (
+  pubIsoToIntIsoNm (con (quote mkIsoPub) args) = case (unArg $ lookup' 1 args) of (
     λ {(con (quote mkIsoInt) args') → case unArg $ lookup' 0 args' of (
       λ { (lit (name nm)) → nm ;
           _ → error});
@@ -163,9 +123,9 @@ module T3 where
   ast⇒T' (var x args) = Errrr3
   ast⇒T' (con c args) = case c of (
     -- todo extract KEEP
-    λ { (quote AST.pi) → π ast⇒T' (unArg (lookup' 2 args)) ∣ Keep ⇒ ast⇒T' ((stripLam ∘ unArg ∘ lookup' 4) args) ;
-        (quote AST.⟦_⟧) → ast-ty⇒T' (unArg (lookup' 2 args)) ;
-        (quote AST.⟦_⇋_⟧) → iso (record { wrappedₙ = pubIsoToIntIsoNm $ unArg $ lookup' 2 args}) (withArgsToT' {!!}) {!!} ; --iso ? ? ? --(record { wrapped = ((unArg (lookup' 2 args)))}) [] [] ;
+    λ { (quote AST.pi) → π ast⇒T' (unArg (lookup' 0 args)) ∣ Keep ⇒ ast⇒T' ((stripLam ∘ unArg ∘ lookup' 2) args) ;
+        (quote AST.⟦_⟧) → ast-ty⇒T' (unArg (lookup' 0 args)) ;
+        (quote AST.⟦_⇋_⟧) → iso (record { wrappedₙ = pubIsoToIntIsoNm $ unArg $ lookup' 0 args}) (withArgsToT' {!!}) {!!} ; --iso ? ? ? --(record { wrapped = ((unArg (lookup' 2 args)))}) [] [] ;
         _ → Errrr3})
   ast⇒T' (def f args) = Errrr3
   ast⇒T' (lam v t) = Errrr3
@@ -181,38 +141,4 @@ module T3 where
 
   arg-ast⇒T (arg i x) = ast⇒T' x
 
-  g : {! getTy f'!}
-  g = {!ast⇒T' f!}
-
-  open import Data.Integer
-  addImpl' : ℤ → ℤ → ℤ
-  addImpl' a b = a Data.Integer.+ b
-
-  addContr : Term
-  addContr = quoteTerm (
-        ⟨ a ∷ ⟦ ℤ ⟧ ⟩⇒ --⟦ ℕ⇔ℤ ⇋ [] ⟧ ⟩⇒
-        ⟨ b ∷ ⟦ ℕ⇔ℤ ⇋ [] ⟧ ⟩⇒
-        ⟨ ⟦ ℕ⇔ℤ ⇋ [] ⟧ ⟩ )
---        ⟨ ⟦ vec⇔list ⇋ lift ℕ , lift n , [] ⟧ ⟩ )
-
---  add : unquote (getAgdaHighType (ast⇒T' addContr))
---  add = unquote (ffi-lift (ast⇒T' addContr) (quote addImpl'))
-
-
-  
-  open import Data.Bool
-  lk : Bool → Term
-  lk true = let x = {!open import Data.List!} in {!!}
-  lk false = {!add ( -[1+ 30 ] ) (24)!}
-    where open import Data.List public
-
-  postulate mkForeign : {a : Set} → a
--}
---  q : ℕ → ℕ
---  q = tactic t
-
---  q' : ℕ → ℕ
---  q' = quoteGoal g in unquote {!g!}
-
---  r : ℕ → ℕ
---    using foreign (record {})
+open T3 public
