@@ -237,6 +237,8 @@ subst : (ℕ → ℕ) -- substitution function
   → Term
   → Term
 substArgs : (ℕ → ℕ) → Arg Term → Arg Term
+substCl : Clause → Clause
+substSort : (ℕ → ℕ) → Sort → Sort
 
 subst σ (var x args) = var (σ x) (List.map (substArgs σ) args)
 subst σ (con c args) = con c (List.map (substArgs σ) args)
@@ -246,17 +248,24 @@ subst σ (lam v (abs x t)) = lam v (abs x (subst σ' t))
     σ' : ℕ → ℕ
     σ' ℕ.zero = ℕ.zero -- the given var is not free, so just return it unchanged
     σ' (ℕ.suc i) = ℕ.suc (σ i)
-subst σ (pat-lam cs args) = notImpl2
+subst σ (pat-lam cs args) = pat-lam (List.map substCl cs) (List.map (substArgs σ) args)
 subst σ (pi t₁ t₂) = notImpl2
-subst σ (sort s) = notImpl2
+subst σ (sort s) = sort (substSort σ s)
 subst σ (lit l) = lit l
-subst σ (quote-goal t) = notImpl2
-subst σ (quote-term t) = notImpl2
+subst σ (quote-goal t) = notImpl3
+subst σ (quote-term t) = notImpl3
 subst σ quote-context = quote-context
 subst σ (unquote-term t args) = notImpl3
 subst σ unknown = unknown
 
 substArgs σ (arg i x) = arg i (subst σ x)
+
+substCl (clause pats body) = notImpl3
+substCl (absurd-clause pats) = absurd-clause pats
+
+substSort σ (set t) = set (subst σ t)
+substSort σ (lit n) = lit n
+substSort σ unknown = unknown
 
 import Data.Bool as B
 open import Relation.Nullary.Decidable
@@ -324,8 +333,8 @@ ffi-lift1 (iso {l} x LOWₐ HIGHₐ) wr pos Γ =
         conv : Term
         conv = s $ getConv pos (def (quote proj₂) [ arg def-argInfo isoHigh ])
 
-ffi-lift : (fde : T 0) → Name {- name of the low level fun -} → Term
-ffi-lift fde nm  = ffi-lift1 fde (def nm []) Pos []
+ffi-lift : (fde : T 0) → Term {- low term / function -} → Term
+ffi-lift fde low  = ffi-lift1 fde low Pos []
 
 open import Level
 

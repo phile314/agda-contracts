@@ -161,3 +161,43 @@ module T3 where
   arg-ast⇒T (arg i x) = ast⇒T' x
 
 open T3 public
+
+open import Reflection
+open import Data.List
+open import Contracts.Base
+
+forceTy : (A : Set) → A → A
+forceTy _ x = x
+
+forceTy' : Term → Term → Term
+forceTy' ty val =
+  def (quote forceTy)
+    ( arg (arg-info visible relevant) ty
+    ∷ arg (arg-info visible relevant) val
+    ∷ [])
+
+macro
+  assert : (ast : Term) -- AST
+    →  (lowDef : Term)
+    → Term
+  assert ast lowDef = forceTy' (getAgdaHighType t) lifted
+    where
+      t = ast⇒T' {0} ast
+      low = forceTy' (getAgdaLowType t) lowDef
+      lifted = ffi-lift t low
+
+open import Data.Nat
+g : ℕ → ℕ
+g x = x
+
+ff : Term
+ff = quoteTerm (⟨ x ∷ ⟦ ℕ ⟧ ⟩⇒ ⟨ ⟦ ℕ ⟧ ⟩)
+
+ft : T 0
+ft = ast⇒T' ff
+
+f : {!forceTy' (getAgdaLowType ft) (quoteTerm g)!}
+f =  {!quoteTerm g!} --assert (⟨ x ∷ ⟦ ℕ ⟧ ⟩⇒ ⟨ ⟦ ℕ ⟧ ⟩) g
+
+fff : {!!}
+fff = {!!} -- assert (⟨ x ∷ ⟦ ℕ ⟧ ⟩⇒ ⟨ ⟦ ℕ ⟧ ⟩) g
