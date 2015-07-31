@@ -232,7 +232,7 @@ unsafeConvert _ _ fail x = conversionFailure ""
 mkArg : ℕ → Arg Term
 mkArg i = arg (arg-info visible relevant) (var i [])
 
-{-
+
 -- substitution for free variables
 subst : (ℕ → ℕ) -- substitution function
   → Term
@@ -267,13 +267,13 @@ substCl (absurd-clause pats) = absurd-clause pats
 substSort σ (set t) = set (subst σ t)
 substSort σ (lit n) = lit n
 substSort σ unknown = unknown
--}
+
 
 import Data.Bool as B
 open import Relation.Nullary.Decidable
 
 lett_inn_ : Term → Term → Term
-lett_inn_ (var x []) t₂ = substTerm [ safe (var x []) _ ] t₂ -- (λ x₁ → B.if ⌊ x₁ N.≟ 0 ⌋ then x else x₁ ∸ 1) t₂
+lett_inn_ (var x []) t₂ = {- substTerm [ safe (var x []) _ ] t₂ -} subst (λ x₁ → B.if ⌊ x₁ N.≟ 0 ⌋ then x else x₁ ∸ 1) t₂
   where open import Reflection.Substitute
 lett_inn_ t₁ t₂ = def (quote _$_)
           ( arg def-argInfo (lam visible (abs "" t₂))
@@ -300,8 +300,8 @@ ffi-lift1 {n} (π fde ∣ k ⇒ fde₁) wr pos Γ =
   where ls = ffi-lift1 fde (var 0 []) (invertPosition pos) (shift 1 Γ)
         open import Reflection.DeBruijn
         toWrap = case k of
-          λ { Keep → app (weaken 2 wr) (var 0 []) --app (subst (N._+_ 2) wr) (var 0 [])
-            ; Discard → weaken 2 wr
+          λ { Keep → app (weaken 2 wr) (var 0 []) -- app (subst (N._+_ 2) wr) (var 0 [])
+            ; Discard → weaken 2 wr -- subst (N._+_ 2) wr
             }
         rs = ffi-lift1 fde₁ toWrap pos (0 ∷ shift 2 Γ)
         bd = lett ls inn rs
@@ -316,7 +316,7 @@ ffi-lift1 (iso {l} x LOWₐ HIGHₐ) wr pos Γ =
   where
         open import Reflection.Substitute
         ix = reverse $ downFrom (List.length Γ)
-        s = substTerm (List.map (λ ix → safe (var ix []) _) Γ) --subst (λ x → lookup' x Γ)
+        s = {-substTerm (List.map (λ ix → safe (var ix []) _) Γ)-} subst (λ x → lookup' x Γ)
         
         getConv : Position → Term → Term
         getConv Pos t = (def (quote proj₁) [ arg def-argInfo t ]) 

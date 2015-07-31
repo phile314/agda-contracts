@@ -153,7 +153,7 @@ module DepSimple where
 
   myMap2 : unquote (getAgdaHighType mapNZType) --unquote (getAgdaHighType mapNZType) --unquote (getAgdaHighType mapNZType)
 --  myMap2 =  {!pretty (elimLets (ffi-lift mapNZType (quote mapImpl2)))!}
-  myMap2 = unquote (ffi-lift mapNZType (quoteTerm mapImpl2)) -- unquote (ffi-lift mapNZType (quote mapImpl2))
+  myMap2 = unquote (ffi-lift mapNZType (def (quote mapImpl2) [])) -- unquote (ffi-lift mapNZType (quote mapImpl2))
 
 module DepCon1 where
   open VecIso
@@ -165,19 +165,21 @@ module DepCon1 where
   import Data.Vec as V
   open import Reflection
 
-  mapImpl2 : (A : Set) (B : Set) → (A → B) → List A → List B
-  mapImpl2 A B = L.map
+  mapImpl2 : ℕ → (A : Set) {-(B : Set)-} → (A → A) → List A → List A
+  mapImpl2 A B = {!!} --L.map
 
   mapNZType : T 0
   mapNZType =
-    π def quote ℕ ∙ [] ∣ Discard -- n
+    π def quote ℕ ∙ [] ∣ Keep -- n
     ⇒ (π set 0 ∣ Keep -- A
-    ⇒ (π set 0 ∣ Keep -- B
+--    ⇒ (π set 0 ∣ Keep -- B
     ⇒ (π (
-      π var # 1 ∙ [] ∣ Keep
+      π var # 0 ∙ [] ∣ Keep
       ⇒ (var # 1 ∙ [])) ∣ Keep -- f
-    ⇒ (π iso (vec⇔list') L.[ var # 2 ∙ [] ] L.[ var # 3 ∙ [] ] ∣ Keep -- vec
-    ⇒ iso (vec⇔list') L.[ var # 2 ∙ [] ] L.[ var # 4 ∙ [] ] ))))
+--    ⇒ (π iso (vec⇔list') L.[ var # 2 ∙ [] ] L.[ var # 3 ∙ [] ] ∣ Keep -- vec
+    ⇒ (π (def (quote List) ∙ L.[ var # 1 ∙ [] ]) ∣ Keep
+    ⇒ (def (quote List) ∙ L.[ var # 2 ∙ [] ] ))))
+--    ⇒ iso (vec⇔list') L.[ var # 2 ∙ [] ] L.[ var # 4 ∙ [] ] ))))
 
 --  lowType : Set (Level.suc Level.zero)
 --  lowType = {!!} --unquote (getAgdaLowType mapNZType)
@@ -197,8 +199,10 @@ module DepCon1 where
   import Data.Nat.Base
 
 
-  myMap2 : unquote (getAgdaHighType mapNZType) --unquote (getAgdaHighType mapNZType) --unquote (getAgdaHighType mapNZType)
+  myMap2 : unquote (getAgdaHighType mapNZType)
+--  myMap2 : {!unquote (getAgdaHighType mapNZType)!} --unquote (getAgdaHighType mapNZType) --unquote (getAgdaHighType mapNZType)
 --  myMap2 =  {!pretty (elimLets (ffi-lift mapNZType (quote mapImpl2)))!}
+--  myMap2 = {!pretty (ffi-lift mapNZType (def (quote mapImpl2) []))!}
   myMap2 = unquote (ffi-lift mapNZType (def (quote mapImpl2) [])) -- unquote (ffi-lift mapNZType (quote mapImpl2))
     where open import Reflection
   
@@ -302,10 +306,13 @@ module T3 where
   g = {!getAgdaHighType (ast⇒T' f)!}
 
   gg : unquote (getAgdaHighType (ast⇒T' f))
-  gg = unquote (ffi-lift (ast⇒T' f) (quote f-low))
+  gg = unquote (ffi-lift (ast⇒T' f) (def (quote f-low) []))
 
   ggg : {!!}
   ggg = {!gg!}
+
+  pp' : _
+  pp' = assert (⟨ n ∷ ⟦ ℕ ⟧ ⟩⇒ ⟨ x ∷ ⟦ Set ⟧ ⟩⇒ ⟨ ⟦ vec⇔list ⇋ x , n , [] ⟧ ⟩) f-low
 
   {-
   open import Data.Integer
@@ -357,7 +364,7 @@ open import Data.Vec
 
 postulate exError : {A : Set} → A
 
-
+{-
 main : IO.Primitive.IO ⊤
 main = run (putStrLn (Data.Nat.Show.show s))
   where n = 3
@@ -367,3 +374,4 @@ main = run (putStrLn (Data.Nat.Show.show s))
 
         s = foldl (λ _ → ℕ) Data.Nat._+_ 0 kk
 
+-}
