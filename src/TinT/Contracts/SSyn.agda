@@ -185,19 +185,3 @@ macro
       t = ast⇒T' {0} ast
       low = forceTy' (getAgdaLowType t) lowDef
       lifted = ffi-lift t low
-
-open import Data.Nat
-g : ℕ → ℕ
-g x = x
-
-ff : Term
-ff = quoteTerm (⟨ x ∷ ⟦ ℕ ⟧ ⟩⇒ ⟨ ⟦ ℕ ⟧ ⟩)
-
-ft : T 0
-ft = ast⇒T' ff
-
-f : {!forceTy' (getAgdaLowType ft) (quoteTerm g)!}
-f =  {!quoteTerm g!} --assert (⟨ x ∷ ⟦ ℕ ⟧ ⟩⇒ ⟨ ⟦ ℕ ⟧ ⟩) g
-
-fff : {!!}
-fff = {!!} -- assert (⟨ x ∷ ⟦ ℕ ⟧ ⟩⇒ ⟨ ⟦ ℕ ⟧ ⟩) g

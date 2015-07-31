@@ -129,16 +129,16 @@ substClauses σ (c ∷ cs) = substClause σ c ∷ substClauses σ cs
 substClause σ (clause ps b) =
   case patternArgsVars ps of λ
   { zero    → clause ps (substTerm σ b)
-  ; (suc n) → clause ps (substTerm (reverse (Data.List.map (λ i → safe (var i []) _) (reverse $ downFrom n)) ++ weaken {{{!!}}} (suc n) σ) b)
+  ; (suc n) → clause ps (substTerm (reverse (Data.List.map (λ i → safe (var i []) _) (reverse $ downFrom $ suc n)) ++ weaken (suc n) σ) b)
   }
 substClause σ (absurd-clause ps) = absurd-clause ps
 
 substArgs σ [] = []
 substArgs σ (x ∷ args) = substArg σ x ∷ substArgs σ args
 substArg σ (arg i x) = arg i (substTerm σ x)
-substAbs σ (abs x v) = abs x $ substTerm (safe (var 0 []) _ ∷ weaken {{{!!}}} 1 σ) v
+substAbs σ (abs x v) = abs x $ substTerm (safe (var 0 []) _ ∷ weaken 1 σ) v
 
-substAbsType σ (abs x a) = abs x $ substType (safe (var 0 []) _ ∷ weaken {{{!!}}} 1 σ) a
+substAbsType σ (abs x a) = abs x $ substType (safe (var 0 []) _ ∷ weaken 1 σ) a
 substArgType σ (arg i x) = arg i (substType σ x)
 
 substType σ (el s t) = el (substSort σ s) (substTerm σ t)

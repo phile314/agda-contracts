@@ -163,19 +163,21 @@ open Traversable {{...}} public
 
 DeBruijnTraversable : ∀ {a} {F : Set a → Set a} {{_ : RawFunctor F}} {{_ : Traversable F}}
                         {A : Set a} {{_ : DeBruijn A}} → DeBruijn (F A)
-DeBruijnTraversable {_} {_} {{rf}} {{t}} =
-  record { strengthenFrom = λ lo k → traverse {_} {_} {_} {{?}} (strengthenFrom lo k)
+DeBruijnTraversable {a} {F} {{rf}} {{t}} =
+                    record { strengthenFrom = λ lo k → traverse {F = Maybe} {{app}} (strengthenFrom lo k)
          ; weakenFrom = λ lo k → _<$$>_ (weakenFrom lo k) }
   where
     open RawFunctor rf renaming (_<$>_ to _<$$>_)
-    
+    module RM = RawMonad (Data.Maybe.monad {a})
+    app = RM.rawIApplicative
 
 instance
   TraversableList : ∀ {a} → Traversable {a} List
-  TraversableList {a} = record { traverse = λ f xs → foldr (λ x fxs → pure' _∷_ ⊛ f x ⊛ fxs)
-                                                       (pure' []) xs }
-    where open RawMonad (Data.List.monad {a}) renaming (pure to pure')
---          open RawFunctor (Data.List.functor {a})
+  TraversableList {a} = record { traverse = f }
+    where
+      f : ∀ {F A B} {{AppF : RawApplicative F}} → (A → F B) → List A → F (List B)
+      f = λ {{app}} f xs → let open RawApplicative app renaming (pure to pure')
+        in foldr (λ x fxs → pure' _∷_ ⊛ f x ⊛ fxs) (pure' []) xs
   
   DeBruijnTerm : DeBruijn Term
   DeBruijnTerm = record { strengthenFrom = strTerm ; weakenFrom = wk }
@@ -184,11 +186,12 @@ instance
   DeBruijnType = record { strengthenFrom = strType ; weakenFrom = wkType }
 
   DeBruijnList : ∀ {a} {A : Set a} {{_ : DeBruijn A}} → DeBruijn (List A)
-  DeBruijnList = DeBruijnTraversable
+  DeBruijnList {a} {{d}} = DeBruijnTraversable {_} {List} {{RW.rawFunctor}} {{TraversableList}} {{d}}
+    where module RW = RawMonad (Data.List.monad {a})
 
-  DeBruijnArg : {A : Set} {{_ : DeBruijn A}} → DeBruijn (Arg A)
+{-  DeBruijnArg : {A : Set} {{_ : DeBruijn A}} → DeBruijn (Arg A)
   DeBruijnArg = DeBruijnTraversable
 
   DeBruijnMaybe : {A : Set} {{_ : DeBruijn A}} → DeBruijn (Maybe A)
-  DeBruijnMaybe = DeBruijnTraversable
+  DeBruijnMaybe = DeBruijnTraversable-}
 

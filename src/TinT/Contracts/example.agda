@@ -54,7 +54,8 @@ module Ex2 where
   -- The ffi-lift function does the heavy lifting,
   -- by producing a term which inserts the contracts checks where necessary.
   add : unquote (getAgdaHighType addType)
-  add = unquote (ffi-lift addType (quote add')) -- unquote (ffi-lift addType (quote add'))
+  add = unquote (ffi-lift addType (def (quote add') [])) -- unquote (ffi-lift addType (quote add'))
+    where open import Reflection
 
 
 module VecIso where
@@ -110,7 +111,7 @@ module MapEx where
     ⇒ (def (quote L.List) ∙ [ (def (quote ℤ) ∙ []) ]))
 
   myMap : unquote (getAgdaHighType mapNZType) --unquote (getAgdaHighType mapNZType)
-  myMap = unquote (ffi-lift mapNZType (quote mapImpl))
+  myMap = unquote (ffi-lift mapNZType (quoteTerm mapImpl))
 
 module DepSimple where
   open VecIso
@@ -152,7 +153,7 @@ module DepSimple where
 
   myMap2 : unquote (getAgdaHighType mapNZType) --unquote (getAgdaHighType mapNZType) --unquote (getAgdaHighType mapNZType)
 --  myMap2 =  {!pretty (elimLets (ffi-lift mapNZType (quote mapImpl2)))!}
-  myMap2 = unquote (ffi-lift mapNZType (quote mapImpl2)) -- unquote (ffi-lift mapNZType (quote mapImpl2))
+  myMap2 = unquote (ffi-lift mapNZType (quoteTerm mapImpl2)) -- unquote (ffi-lift mapNZType (quote mapImpl2))
 
 module DepCon1 where
   open VecIso
@@ -198,7 +199,8 @@ module DepCon1 where
 
   myMap2 : unquote (getAgdaHighType mapNZType) --unquote (getAgdaHighType mapNZType) --unquote (getAgdaHighType mapNZType)
 --  myMap2 =  {!pretty (elimLets (ffi-lift mapNZType (quote mapImpl2)))!}
-  myMap2 = unquote (ffi-lift mapNZType (quote mapImpl2)) -- unquote (ffi-lift mapNZType (quote mapImpl2))
+  myMap2 = unquote (ffi-lift mapNZType (def (quote mapImpl2) [])) -- unquote (ffi-lift mapNZType (quote mapImpl2))
+    where open import Reflection
   
     
 module DepCon where
