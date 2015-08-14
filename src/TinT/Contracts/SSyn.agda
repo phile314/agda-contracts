@@ -87,10 +87,10 @@ module T3 where
       })
     where open import Data.List.Base
 
-  pubIsoToIntIsoNm : Term → Name
+  pubIsoToIntIsoNm : Term → Term
   pubIsoToIntIsoNm (con (quote mkIsoPub) args) = case (unArg $ lookup' 1 args) of (
     λ {(con (quote mkIsoInt) args') → case unArg $ lookup' 0 args' of (
-      λ { (lit (name nm)) → nm ;
+      λ { (lit (name nm)) → (def nm []) ;
           _ → error});
        _ → error
       })

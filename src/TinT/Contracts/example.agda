@@ -165,13 +165,13 @@ module DepCon1 where
   import Data.Vec as V
   open import Reflection
 
-  mapImpl2 : ℕ → (A : Set) {-(B : Set)-} → (A → A) → List A → List A
-  mapImpl2 A B = {!!} --L.map
+  mapImpl2 : {- ℕ →-} (A : Set) {-(B : Set)-} → (A → A) → List A → List A
+  mapImpl2 A f xs = xs --L.map
 
   mapNZType : T 0
   mapNZType =
-    π def quote ℕ ∙ [] ∣ Keep -- n
-    ⇒ (π set 0 ∣ Keep -- A
+    π ( {-def quote ℕ ∙ []-} set 0) ∣ Keep -- n
+    ⇒ ( π set 0 ∣ Keep -- A
 --    ⇒ (π set 0 ∣ Keep -- B
     ⇒ (π (
       π var # 0 ∙ [] ∣ Keep
@@ -202,8 +202,8 @@ module DepCon1 where
   myMap2 : unquote (getAgdaHighType mapNZType)
 --  myMap2 : {!unquote (getAgdaHighType mapNZType)!} --unquote (getAgdaHighType mapNZType) --unquote (getAgdaHighType mapNZType)
 --  myMap2 =  {!pretty (elimLets (ffi-lift mapNZType (quote mapImpl2)))!}
---  myMap2 = {!pretty (ffi-lift mapNZType (def (quote mapImpl2) []))!}
-  myMap2 = unquote (ffi-lift mapNZType (def (quote mapImpl2) [])) -- unquote (ffi-lift mapNZType (quote mapImpl2))
+  myMap2 = {!pretty (ffi-lift mapNZType (def (quote mapImpl2) []))!}
+--  myMap2 = unquote (ffi-lift mapNZType (def (quote mapImpl2) [])) -- unquote (ffi-lift mapNZType (quote mapImpl2))
     where open import Reflection
   
     
@@ -348,7 +348,16 @@ module T3 where
 --  r : ℕ → ℕ
 --    using foreign (record {})
 
+module Witnessss where
+  open import Contracts.Witness
+  open import Contracts.SSyn
+  open import Data.Nat
+  open import Data.List
 
+  postulate f-low : ℕ → ℕ → ℕ
+
+  f' : _
+  f' = assert (⟨ n ∷ ⟦ ℕ ⟧ ⟩⇒ ⟨ x ∷ ⟦ Set ⟧ ⟩⇒ ⟨ ⟦ (⇔Witness ?) ⇋ [] ⟧ ⟩) f-low
 
 open import IO
 import IO.Primitive

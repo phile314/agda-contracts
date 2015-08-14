@@ -63,7 +63,7 @@ record PartIso : Set where
 
 record PartIsoInt : Set where
   constructor mkIsoInt
-  field wrappedₙ : Name -- name of the part iso
+  field wrappedₙ : Term --Name -- name of the part iso
 --  field wrapped : Term
 
 applyArgs : {aTys : ArgTys} {A : Set} → (f : argsToTy aTys A) → WithArgs aTys → A
@@ -179,7 +179,7 @@ getIsoLow p as =
     ∷ [])
   where
     tiso = def (quote PartIso.iso)
-      [ arg def-argInfo (def (PartIsoInt.wrappedₙ p) []) ]
+      [ arg def-argInfo (PartIsoInt.wrappedₙ p)  ]
 
 -- gets the iso high pair
 getIsoHigh : ∀ {n}
@@ -273,7 +273,7 @@ import Data.Bool as B
 open import Relation.Nullary.Decidable
 
 lett_inn_ : Term → Term → Term
-lett_inn_ (var x []) t₂ = {- substTerm [ safe (var x []) _ ] t₂ -} subst (λ x₁ → B.if ⌊ x₁ N.≟ 0 ⌋ then x else x₁ ∸ 1) t₂
+lett_inn_ (var x []) t₂ = substTerm [ safe (var x []) _ ] t₂ --subst (λ x₁ → B.if ⌊ x₁ N.≟ 0 ⌋ then x else x₁ ∸ 1) t₂
   where open import Reflection.Substitute
 lett_inn_ t₁ t₂ = def (quote _$_)
           ( arg def-argInfo (lam visible (abs "" t₂))
@@ -346,7 +346,7 @@ open import Level
 
 
 toIntPartIso : PartIso
-  → Name
+  → Term
   → PartIsoInt
 toIntPartIso p pₙ = record
   { wrappedₙ = pₙ
