@@ -23,7 +23,7 @@ module T3 where
     field partIsoInt : PartIsoInt
 
   getArgs : PartIsoPub → Set
-  getArgs p = WithArgs ((PartIso.LOWₐ h) List.++ ( PartIso.HIGHₐ h))
+  getArgs p = WithArgs (PartIso.LOWₐ h) ×  ( PartIso.HIGHₐ h))
     where h = PartIsoPub.partIso p --PartIsoInt.wrapped p
 
   data AST : Set

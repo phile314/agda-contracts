@@ -34,41 +34,69 @@ data Conversion (A : Set) (B : Set) : Set where
   withMaybe : (A → Maybe B) → Conversion A B
   fail : Conversion A B
 
-ArgTys : Set
-ArgTys = List (Set)
+
+open import Data.Sum
+open import Data.Product
+
+
+-- we only care about top-level args!
+data ArgTys : Set where
+  _A⇒_ : (A : Set) → (A → ArgTys) → ArgTys
+  A∎ : ArgTys
+
+_A⇒'_ : Set → ArgTys → ArgTys
+(x A⇒' y) = x A⇒ (λ _ → y)
+
+elA : ArgTys → Set → Set
+elA (A A⇒ B) f = (a : A) → elA (B a) f
+elA A∎ f = f
+
+{-(inj₁ (x A⇒ x₁)) = (a' : x) → elA' (inj₁ (x₁ a'))
+elA' (inj₂ ((proj₁ A⇒ x) , proj₂)) = (a' : elA proj₁) → elA' (inj₂ (x a' , proj₂))
+elA' (inj₂ (A∎ , proj₂)) = proj₂
+-}
 
 -- if we want dependent args, we could make WithArgs into a dependent list (chained Σ)
-data WithArgs : (ArgTys) → Set where
-  [] : WithArgs []
-  _,_ : {A : Set} → (a : A) → {AS : ArgTys} → WithArgs AS → WithArgs (A List.∷ AS)
+data WithArgs : ArgTys → Set where
+  _W⇒_ : {A : Set} → (a : A) → {B : A → ArgTys} → WithArgs (B a) → WithArgs (A A⇒ B)
+  W∎ : WithArgs A∎
 
-argsToTy : ArgTys → Set → Set
-argsToTy [] f = f
-argsToTy (x List.∷ a) f = x → argsToTy a f
+{-argsToTy : ArgTys → Set
+argsToTy (x A⇒ x₁) = (a : argsToTy x) → argsToTy {!x₁ a!}
+argsToTy (A∎ x) = x-}
+
+--[] f = f
+--argsToTy (x List.∷ a) f = x → argsToTy a f
 
 open import Data.Product
 
 
 open import Reflection
 
+LOW-τ = Set
+HIGH-τ = Set
+
 Conversions : Set → Set → Set
 Conversions Aₜ Bₜ = Conversion Aₜ Bₜ × Conversion Bₜ Aₜ
 
 record PartIso : Set where
   constructor mkPartIso
-  field LOWₐ : ArgTys -- this are the common arguments
-        HIGHₐ : ArgTys -- agda only arguments
-        iso : argsToTy LOWₐ (Σ Set (λ HSₜ →
-                       argsToTy HIGHₐ (Σ Set (Conversions HSₜ))))
+  field
+    LOWₐ : ArgTys
+    iso : elA LOWₐ (Σ (LOW-τ × ArgTys) (λ {
+      (low-τ , HIGHₐ) → elA HIGHₐ (Σ HIGH-τ (λ high-τ → Conversions low-τ high-τ))
+      }))
 
 record PartIsoInt : Set where
   constructor mkIsoInt
   field wrappedₙ : Term --Name -- name of the part iso
 --  field wrapped : Term
 
-applyArgs : {aTys : ArgTys} {A : Set} → (f : argsToTy aTys A) → WithArgs aTys → A
-applyArgs {aTys = []} f [] = f
-applyArgs {aTys = A₁ ∷ aTys} f (a , args) = applyArgs (f a) args
+applyArgs : {aTys : ArgTys} {A : Set} → (f : elA aTys A) → WithArgs aTys → A
+applyArgs {aTys A⇒ x} f (a W⇒ x₁) = applyArgs (f a) x₁
+applyArgs {A∎} f W∎ = f
+{-applyArgs {aTys = []} f [] = f
+applyArgs {aTys = A₁ ∷ aTys} f (a , args) = applyArgs (f a) args-}
 
 
 open import Data.Fin
@@ -117,7 +145,7 @@ def-argInfo : Arg-info
 def-argInfo = arg-info visible relevant
 
 partIsoLowTy : (p : PartIso) → WithArgs (PartIso.LOWₐ p) → Set
-partIsoLowTy p args = proj₁ (applyArgs (PartIso.iso p) args)
+partIsoLowTy p args = proj₁ (proj₁ (applyArgs (PartIso.iso p) args))
 
 
 postulate
@@ -157,8 +185,8 @@ elArg h t = arg def-argInfo (elAGDA h t)
 
 
 mkArgs : ∀ {n} → List (T n) → Term
-mkArgs [] = con (quote WithArgs.[]) []
-mkArgs (x₁ ∷ ts) = con (quote WithArgs._,_)
+mkArgs [] = con (quote WithArgs.W∎) []
+mkArgs (x₁ ∷ ts) = con (quote WithArgs._W⇒_)
   ( arg def-argInfo
 --    (con (quote Level.lift)
 --     [ arg def-argInfo (elAGDA UnexpectedIsoInIsoArgs x₁) ]
@@ -351,3 +379,4 @@ toIntPartIso : PartIso
 toIntPartIso p pₙ = record
   { wrappedₙ = pₙ
   }
+
