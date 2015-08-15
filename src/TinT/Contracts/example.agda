@@ -9,6 +9,7 @@ module NatIntIso where
   open import Data.Maybe
   open import Data.List
   open import Data.Product
+  open import Reflection
   
   ℕ⇔ℤI : PartIso
   ℕ⇔ℤI = mkPartIso [] [] (ℤ , (ℕ , ((withMaybe f) , (total (ℤ.+_)))))
@@ -18,7 +19,7 @@ module NatIntIso where
 
   ℕ⇔ℤ' : PartIsoInt
   ℕ⇔ℤ' = record --toIntPartIso partIso (quote partIso) (quoteTerm partIso)
-    { wrappedₙ = quote ℕ⇔ℤI } --; wrapped = partIso}
+    { wrappedₙ = def (quote ℕ⇔ℤI) [] } --; wrapped = partIso}
 
 
 module Ex2 where
@@ -81,8 +82,9 @@ module VecIso where
 
   vec⇔list' : PartIsoInt
   vec⇔list' = record --toIntPartIso partIso (quote partIso) (quoteTerm partIso)
-    { wrappedₙ = quote vl } --; wrapped = partIso }
+    { wrappedₙ = def (quote vl) [] } --; wrapped = partIso }
     where vl = vec⇔listI
+          open import Reflection
 
 
 module MapEx where
@@ -305,14 +307,14 @@ module T3 where
   g : {!  f!}
   g = {!getAgdaHighType (ast⇒T' f)!}
 
-  gg : unquote (getAgdaHighType (ast⇒T' f))
-  gg = unquote (ffi-lift (ast⇒T' f) (def (quote f-low) []))
+--  gg : unquote (getAgdaHighType (ast⇒T' f))
+--  gg = unquote (ffi-lift (ast⇒T' f) (def (quote f-low) []))
 
   ggg : {!!}
   ggg = {!gg!}
 
-  pp' : _
-  pp' = assert (⟨ n ∷ ⟦ ℕ ⟧ ⟩⇒ ⟨ x ∷ ⟦ Set ⟧ ⟩⇒ ⟨ ⟦ vec⇔list ⇋ x , n , [] ⟧ ⟩) f-low
+--  pp' : _
+--  pp' = assert (⟨ n ∷ ⟦ ℕ ⟧ ⟩⇒ ⟨ x ∷ ⟦ Set ⟧ ⟩⇒ ⟨ ⟦ vec⇔list ⇋ x , n , [] ⟧ ⟩) f-low
 
   {-
   open import Data.Integer
@@ -357,7 +359,7 @@ module Witnessss where
   postulate f-low : ℕ → ℕ → ℕ
 
   f' : _
-  f' = assert (⟨ n ∷ ⟦ ℕ ⟧ ⟩⇒ ⟨ x ∷ ⟦ Set ⟧ ⟩⇒ ⟨ ⟦ (⇔Witness ?) ⇋ [] ⟧ ⟩) f-low
+  f' = assert (⟨ n ∷ ⟦ ℕ ⟧ ⟩⇒ ⟨ x ∷ ⟦ Set ⟧ ⟩⇒ ⟨ ⟦ (⇔Witness (_≟_ 10)) ⇋ {!!} ⟧ ⟩) f-low
 
 open import IO
 import IO.Primitive
