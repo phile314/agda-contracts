@@ -51,15 +51,15 @@ elA : ArgTys → Set → Set
 elA (A A⇒ B) f = (a : A) → elA (B a) f
 elA A∎ f = f
 
-{-(inj₁ (x A⇒ x₁)) = (a' : x) → elA' (inj₁ (x₁ a'))
-elA' (inj₂ ((proj₁ A⇒ x) , proj₂)) = (a' : elA proj₁) → elA' (inj₂ (x a' , proj₂))
-elA' (inj₂ (A∎ , proj₂)) = proj₂
--}
 
 -- if we want dependent args, we could make WithArgs into a dependent list (chained Σ)
 data WithArgs : ArgTys → Set where
   _W⇒_ : {A : Set} → (a : A) → {B : A → ArgTys} → WithArgs (B a) → WithArgs (A A⇒ B)
   W∎ : WithArgs A∎
+
+_+A+_ : ArgTys → ArgTys → ArgTys
+(A A⇒ B) +A+ x = A A⇒ (λ a → B a +A+ x)
+A∎ +A+ x = x
 
 {-argsToTy : ArgTys → Set
 argsToTy (x A⇒ x₁) = (a : argsToTy x) → argsToTy {!x₁ a!}
@@ -79,13 +79,18 @@ HIGH-τ = Set
 Conversions : Set → Set → Set
 Conversions Aₜ Bₜ = Conversion Aₜ Bₜ × Conversion Bₜ Aₜ
 
+record PartIso' (LOWₐ : ArgTys) (HIGHₐ : ArgTys) : Set where
+  field
+    LOW : WithArgs LOWₐ → Set
+    HIGH : WithArgs HIGHₐ → Set
+    conv : (l : WithArgs LOWₐ) → (h : WithArgs HIGHₐ) → Conversions (LOW l) (HIGH h)
+
 record PartIso : Set where
   constructor mkPartIso
   field
-    LOWₐ : ArgTys
-    iso : elA LOWₐ (Σ (LOW-τ × ArgTys) (λ {
-      (low-τ , HIGHₐ) → elA HIGHₐ (Σ HIGH-τ (λ high-τ → Conversions low-τ high-τ))
-      }))
+    ALLₐ : ArgTys
+    iso : WithArgs ALLₐ → (Σ (ArgTys × ArgTys) (λ as → PartIso' (proj₁ as) (proj₂ as)))
+    
 
 record PartIsoInt : Set where
   constructor mkIsoInt
@@ -95,8 +100,6 @@ record PartIsoInt : Set where
 applyArgs : {aTys : ArgTys} {A : Set} → (f : elA aTys A) → WithArgs aTys → A
 applyArgs {aTys A⇒ x} f (a W⇒ x₁) = applyArgs (f a) x₁
 applyArgs {A∎} f W∎ = f
-{-applyArgs {aTys = []} f [] = f
-applyArgs {aTys = A₁ ∷ aTys} f (a , args) = applyArgs (f a) args-}
 
 
 open import Data.Fin
@@ -115,6 +118,36 @@ invertPosition Pos = Neg
 invertPosition Neg = Pos
 
 import Data.Vec as V
+
+data Shape : Position → Set where
+  S∎ : ∀ {p} → Shape p
+  _S⇒_ : ∀ {p} → Shape (invertPosition p) → Shape p → Shape p
+
+
+data C : {p : Position} → Shape p → Set
+elC : ∀ {p} {sh : Shape p} → C sh → Set
+
+{-k : ∀ {P} → ArgWay → C (invertPosition P) → Set
+k {P = P} Keep c = elC c → C P
+k {P = Pos} Discard c = C Pos × (elC c → C Pos)
+k {P = Neg} Discard c = C Neg × (elC c → C Neg)-}
+
+data C  where
+  --normal type (List, Nat, Set)
+  ⟦C_⟧ : ∀ {p} → Set → C (S∎ {p})
+  -- pi type
+  _C⇒_ : ∀ {p} {sh-a : Shape (invertPosition p)} {sh-b : Shape p} → (c : C sh-a) → (aw : ArgWay)
+    → (elC c → C sh-b)
+    → C (sh-a S⇒ sh-b)
+
+elC ⟦C x ⟧ = x
+elC (_C⇒_ c aw x) = (a : elC c) → elC (x a)
+
+CT : Position → Set
+CT p = Σ (Shape p) (λ shape → C shape × C shape × C shape)
+
+_⇒_ : ∀ {p} → CT (invertPosition p) → CT p → CT p
+(sh₁ , low₁ , high₁ , conv₁) ⇒ (sh₂ , low₂ , high₂ , conv₂) = (sh₁ S⇒ sh₂) , ((conv₁ C⇒ Keep) (λ _ → conv₂) , {!!})
 
 -- TODO discard only makes sense in negative positions, we should enforce that it is only specified there
 data T : ℕ → Set where
@@ -144,7 +177,7 @@ data T : ℕ → Set where
 def-argInfo : Arg-info
 def-argInfo = arg-info visible relevant
 
-partIsoLowTy : (p : PartIso) → WithArgs (PartIso.LOWₐ p) → Set
+{-partIsoLowTy : (p : PartIso) → WithArgs (PartIso.LOWₐ p) → Set
 partIsoLowTy p args = proj₁ (proj₁ (applyArgs (PartIso.iso p) args))
 
 
@@ -379,4 +412,4 @@ toIntPartIso : PartIso
 toIntPartIso p pₙ = record
   { wrappedₙ = pₙ
   }
-
+-}
