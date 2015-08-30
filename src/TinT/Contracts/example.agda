@@ -309,8 +309,9 @@ module T3 where
   g' : AST
   g' = ⟨ n ∷ ⟦ ℕ ⟧ ⟩⇏
     ⟨ x ∷ ⟦ Set ⟧ ⟩⇒
-    ⟨ f ∷ ⟦ (x → x) ⟧ ⟩⇒
-    ⟨ ⟦ {!!} ⇋ {!!} ⟧ ⟩
+    ⟨ f ∷ (⟨ _ ∷ ⟦ x ⟧ ⟩⇒ ⟨ ⟦ x ⟧ ⟩ ) ⟩⇒
+    ⟨ _ ∷ ⟦ vec⇔list ⇋ (liftW x) , (n , []) ⟧ ⟩⇒
+    ⟨ ⟦ vec⇔list ⇋ (liftW x) , (n , []) ⟧ ⟩
 
 --  gg : unquote (getAgdaHighType (ast⇒T' f))
 --  gg = unquote (ffi-lift (ast⇒T' f) (def (quote f-low) []))
