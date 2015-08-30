@@ -297,15 +297,20 @@ module T3 where
   open import Reflection as R
   
   f' : AST
-  f' = ⟨ n ∷ ⟦ ℕ ⟧ ⟩⇒ ⟨ x ∷ ⟦ Set ⟧ ⟩⇒ ⟨ ⟦ vec⇔list ⇋ x , n , [] ⟧ ⟩
+  f' = ⟨ n ∷ ⟦ ℕ ⟧ ⟩⇒ ⟨ x ∷ ⟦ Set ⟧ ⟩⇒ ⟨ ⟦ vec⇔list ⇋ liftW x , liftW n , [] ⟧ ⟩
   f : Term
-  f = quoteTerm (⟨ n ∷ ⟦ ℕ ⟧ ⟩⇒ ⟨ x ∷ ⟦ Set ⟧ ⟩⇒ ⟨ ⟦ vec⇔list ⇋ x , n , [] ⟧ ⟩)
+  f = quoteTerm (⟨ n ∷ ⟦ ℕ ⟧ ⟩⇒ ⟨ x ∷ ⟦ Set ⟧ ⟩⇒ ⟨ ⟦ vec⇔list ⇋ liftW x , liftW n , [] ⟧ ⟩)
 
   f-low : ℕ → (A : Set) → List A
   f-low n A = []
   
-  g : {!  f!}
-  g = {!getAgdaHighType (ast⇒T' f)!}
+--  g : {!  f!}
+--  g = {!getAgdaHighType (ast⇒T' f)!}
+  g' : AST
+  g' = ⟨ n ∷ ⟦ ℕ ⟧ ⟩⇏
+    ⟨ x ∷ ⟦ Set ⟧ ⟩⇒
+    ⟨ f ∷ ⟦ (x → x) ⟧ ⟩⇒
+    ⟨ ⟦ {!!} ⇋ {!!} ⟧ ⟩
 
 --  gg : unquote (getAgdaHighType (ast⇒T' f))
 --  gg = unquote (ffi-lift (ast⇒T' f) (def (quote f-low) []))
@@ -358,8 +363,8 @@ module Witnessss where
 
   postulate f-low : ℕ → ℕ → ℕ
 
-  f' : _
-  f' = assert (⟨ n ∷ ⟦ ℕ ⟧ ⟩⇒ ⟨ x ∷ ⟦ Set ⟧ ⟩⇒ ⟨ ⟦ (⇔Witness (_≟_ 10)) ⇋ {!!} ⟧ ⟩) f-low
+--  f' : _
+--  f' = assert (⟨ n ∷ ⟦ ℕ ⟧ ⟩⇒ ⟨ x ∷ ⟦ Set ⟧ ⟩⇒ ⟨ ⟦ (⇔Witness (_≟_ 10)) ⇋ {!!} ⟧ ⟩) f-low
 
 open import IO
 import IO.Primitive
