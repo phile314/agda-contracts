@@ -216,12 +216,19 @@ forceTy' ty val =
     ∷ arg (arg-info visible relevant) val
     ∷ [])
 
+makeContract = forceTy AST
+
+stripMkCon : Term → Term
+stripMkCon (def f args) = unArg (lookup' 1 args)
+stripMkCon _ = Errrr
+
 macro
   assert : (ast : Term) -- AST
     →  (lowDef : Term)
     → Term
   assert ast lowDef = forceTy' (getAgdaHighType t) lifted
     where
-      t = ast⇒T' {0} ast
+      open import Function
+      t = ast⇒T' {0} $ stripMkCon ast
       low = forceTy' (getAgdaLowType t) lowDef
       lifted = ffi-lift t low
