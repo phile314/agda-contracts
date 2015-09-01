@@ -310,6 +310,33 @@ module T3 where
 --  r : ℕ → ℕ
 --    using foreign (record {})
 
+module Map where
+  open import Data.List
+  open import Contracts.SSyn
+  open import Data.Nat
+  open import Contracts.Isos
+  open VecIso
+  open import Contracts.Base
+  open import Reflection
+
+  postulate
+    hs-map : ℕ → (A : Set) → {- (A → A)-} (ℕ → ℕ) → List A --→ List A
+
+  g : {!!}
+  g = {!unquote (ffi-lift (ast⇒T' {0} (quoteTerm (makeContract (
+    ⟨ n ∷ ⟦ ℕ ⟧ ⟩⇒ --⇏
+    ⟨ A ∷ ⟦ Set ⟧ ⟩⇒
+--    ⟨ f ∷ ⟨ _ ∷ ⟦ ℕ ⟧ ⟩⇒ ⟨ ⟦ ℕ ⟧ ⟩ ⟩⇒
+--    ⟨ _ ∷ ⟦ vec⇔list ⇋ ( A ,, (n , []) ) ⟧ ⟩⇒
+    ⟨ ⟦ vec⇔list ⇋ A ,, (3 ,, []) ⟧ ⟩)))) (def (quote hs-map) []) )!}
+{-  map' : _
+  map' = assert (makeContract (
+    ⟨ n ∷ ⟦ ℕ ⟧ ⟩⇏
+    ⟨ A ∷ ⟦ Set ⟧ ⟩⇒
+    ⟨ f ∷ ⟨ _ ∷ ⟦ A ⟧ ⟩⇒ ⟨ ⟦ A ⟧ ⟩ ⟩⇒
+    ⟨ _ ∷ ⟦ vec⇔list ⇋ ( A ,, (n , []) ) ⟧ ⟩⇒
+    ⟨ ⟦ vec⇔list ⇋ A ,, (n , []) ⟧ ⟩)) hs-map-}
+
 module Witnessss where
   open import Contracts.Witness
   open import Contracts.SSyn

@@ -158,8 +158,10 @@ module T3 where
   pubIsoGetNumArgs _ = error
 
   unWCon : Term → Term
+  -- an argument get's lifted here into high/low context
   unWCon (con (quote C) args) = unArg $ lookup' 2 args
-  unWCon _ = error
+  -- argument was already in low/high context
+  unWCon t = t
 
   {-# TERMINATING #-}
   withArgsToT' : {n : ℕ} → Term → List (T n)
