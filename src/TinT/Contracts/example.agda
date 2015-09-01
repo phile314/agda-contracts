@@ -325,6 +325,9 @@ module T3 where
   pp' : _
   pp' = assert (makeContract (⟨ n ∷ ⟦ ℕ ⟧ ⟩⇒ ⟨ x ∷ ⟦ Set ⟧ ⟩⇒ ⟨ ⟦ vec⇔list ⇋ x ,, n ,, [] ⟧ ⟩)) f-low
 
+  pp''' : _
+  pp''' = assert (makeContract (⟨ _ ∷ ⟦ ℕ ⟧ ⟩⇏ ⟨ n ∷ ⟦ ℕ ⟧ ⟩⇒ ⟨ x ∷ ⟦ Set ⟧ ⟩⇒ ⟨ ⟦ vec⇔list ⇋ x ,, n ,, [] ⟧ ⟩)) f-low
+
   {-
   open import Data.Integer
   addImpl' : ℤ → ℤ → ℤ

@@ -173,7 +173,12 @@ module T3 where
       arg' : T n
       arg' = ast-ty⇒T' $ unWCon hd
   withArgsToT' _ = Errrr3
-  
+
+  ast⇒ArgWay : Term → ArgWay
+  ast⇒ArgWay (con (quote Keep) args) = Keep
+  ast⇒ArgWay (con (quote Discard) args) = Discard
+  ast⇒ArgWay _ = error
+
   open import Data.Fin using (fromℕ≤)
   
   {-# TERMINATING #-}
@@ -195,7 +200,8 @@ module T3 where
   ast⇒T' (var x args) = Errrr3
   ast⇒T' {n} (con c args) = case c of (
     -- todo extract KEEP
-    λ { (quote AST'.pi) → π ast⇒T' (unArg (lookup' 1 args)) ∣ Keep ⇒ ast⇒T' ((stripLam ∘ unArg ∘ lookup' 3) args) ;
+    λ { (quote AST'.pi) → let k = ast⇒ArgWay $ unArg $ lookup' 2 args
+               in π ast⇒T' (unArg (lookup' 1 args)) ∣ k ⇒ ast⇒T' ((stripLam ∘ unArg ∘ lookup' 3) args) ;
         (quote AST'.⟦_⟧) → ast-ty⇒T' (unArg (lookup' 1 args)) ;
         (quote AST'.⟦_⇋_⟧) →
           let pubIso = unArg $ lookup' 1 args
