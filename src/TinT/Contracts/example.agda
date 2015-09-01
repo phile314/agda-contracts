@@ -19,7 +19,7 @@ module NatIntIso where
 
   ℕ⇔ℤ' : PartIsoInt
   ℕ⇔ℤ' = record --toIntPartIso partIso (quote partIso) (quoteTerm partIso)
-    { wrappedₙ = def (quote ℕ⇔ℤI) [] } --; wrapped = partIso}
+    { wrappedₙ = quote ℕ⇔ℤI } --; wrapped = partIso}
 
 
 module Ex2 where
@@ -82,7 +82,7 @@ module VecIso where
 
   vec⇔list' : PartIsoInt
   vec⇔list' = record --toIntPartIso partIso (quote partIso) (quoteTerm partIso)
-    { wrappedₙ = def (quote vl) [] } --; wrapped = partIso }
+    { wrappedₙ = quote vl } --; wrapped = partIso }
     where vl = vec⇔listI
           open import Reflection
 
@@ -316,14 +316,14 @@ module T3 where
 --  gg : unquote (getAgdaHighType (ast⇒T' f))
 --  gg = unquote (ffi-lift (ast⇒T' f) (def (quote f-low) []))
 
-  ggg : {!(getAgdaLowType (ast⇒T' {0} (quoteTerm (makeContract (⟨ n ∷ ⟦ ℕ ⟧ ⟩⇒ ⟨ x ∷ ⟦ Set ⟧ ⟩⇒ ⟨ ⟦ vec⇔list ⇋ liftW x , liftW n , [] ⟧ ⟩)))))!}
+  ggg : {!unquote (getAgdaLowType (ast⇒T' {0} (quoteTerm (makeContract (⟨ n ∷ ⟦ ℕ ⟧ ⟩⇒ ⟨ x ∷ ⟦ Set ⟧ ⟩⇒ ⟨ ⟦ vec⇔list ⇋ liftW x , liftW n , [] ⟧ ⟩)))))!}
   ggg = {!gg!}
 
 --  pp'' : _
 --  pp'' = assert (makeContract (⟨ n ∷ ⟦ ℕ ⟧ ⟩⇒ ⟨ x ∷ ⟦ Set ⟧ ⟩⇒ ⟨ ⟦ x ⟧ ⟩)) f-low
 
---  pp' : _
---  pp' = assert (makeContract (⟨ n ∷ ⟦ ℕ ⟧ ⟩⇒ ⟨ x ∷ ⟦ Set ⟧ ⟩⇒ ⟨ ⟦ vec⇔list ⇋ liftW x , liftW n , [] ⟧ ⟩)) f-low
+  pp' : _
+  pp' = assert (makeContract (⟨ n ∷ ⟦ ℕ ⟧ ⟩⇒ ⟨ x ∷ ⟦ Set ⟧ ⟩⇒ ⟨ ⟦ vec⇔list ⇋ x ,, n ,, [] ⟧ ⟩)) f-low
 
   {-
   open import Data.Integer

@@ -141,11 +141,11 @@ module T3 where
       })
     where open import Data.List.Base
 
-  pubIsoToIntIsoNm : Term → Term
+  pubIsoToIntIsoNm : Term → Name
   pubIsoToIntIsoNm (con (quote mkIsoPub) args) = case (unArg $ lookup' 1 args) of (
-    λ {(con (quote mkIsoInt) args') → {- case-} unArg $ lookup' 0 args' {-of (
-      λ { (lit (name nm)) → (def nm []) ;
-          _ → error })-} ;
+    λ {(con (quote mkIsoInt) args') → case unArg $ lookup' 0 args' of (
+      λ { (lit (name nm)) → nm ;
+          _ → error });
        _ → error
       })
   pubIsoToIntIsoNm _ = error
@@ -217,6 +217,10 @@ module T3 where
   ast⇒T' unknown = Errrr3
 
   arg-ast⇒T (arg i x) = ast⇒T' x
+
+  _,,_ : ∀ {A c} {args : ArgTys} → A → WithArgs args → WithArgs (WContext A c ∷ args)
+  a ,, b = (C a) , b
+  infixr 5 _,,_
 
 open T3 public
 
