@@ -63,7 +63,7 @@ record PartIso : Set where
 
 record PartIsoInt : Set where
   constructor mkIsoInt
-  field wrappedₙ : Term --Name -- name of the part iso
+  field wrappedₙ : Term -- name of the part iso
 --  field wrapped : Term
 
 applyArgs : {aTys : ArgTys} {A : Set} → (f : argsToTy aTys A) → WithArgs aTys → A

@@ -316,11 +316,14 @@ module T3 where
 --  gg : unquote (getAgdaHighType (ast⇒T' f))
 --  gg = unquote (ffi-lift (ast⇒T' f) (def (quote f-low) []))
 
-  ggg : {!!}
+  ggg : {!(getAgdaLowType (ast⇒T' {0} (quoteTerm (makeContract (⟨ n ∷ ⟦ ℕ ⟧ ⟩⇒ ⟨ x ∷ ⟦ Set ⟧ ⟩⇒ ⟨ ⟦ vec⇔list ⇋ liftW x , liftW n , [] ⟧ ⟩)))))!}
   ggg = {!gg!}
 
-  pp' : _
-  pp' = assert (makeContract (⟨ n ∷ ⟦ ℕ ⟧ ⟩⇒ ⟨ x ∷ ⟦ Set ⟧ ⟩⇒ ⟨ ⟦ vec⇔list ⇋ liftW x , liftW n , [] ⟧ ⟩)) f-low
+--  pp'' : _
+--  pp'' = assert (makeContract (⟨ n ∷ ⟦ ℕ ⟧ ⟩⇒ ⟨ x ∷ ⟦ Set ⟧ ⟩⇒ ⟨ ⟦ x ⟧ ⟩)) f-low
+
+--  pp' : _
+--  pp' = assert (makeContract (⟨ n ∷ ⟦ ℕ ⟧ ⟩⇒ ⟨ x ∷ ⟦ Set ⟧ ⟩⇒ ⟨ ⟦ vec⇔list ⇋ liftW x , liftW n , [] ⟧ ⟩)) f-low
 
   {-
   open import Data.Integer

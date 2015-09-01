@@ -11,7 +11,7 @@ module T3 where
   open import Level
   
   open import Data.List as List
-  open import Data.Vec
+  open import Data.Vec hiding (_>>=_)
   open import Data.Maybe
   open import Relation.Binary.PropositionalEquality
   open import Relation.Nullary
@@ -111,9 +111,23 @@ module T3 where
   getLevel : Term → Level
   getLevel t = Level.zero
 
+  fromJust : ∀ {A} → Maybe A → A
+  fromJust (just x) = x
+  fromJust nothing = error
+
   stripLam : Term → Term
   stripLam (lam v (abs s x)) = x
-  stripLam _ = Errrr2
+  stripLam (pat-lam cs args) = error
+  stripLam (quote-goal _ ) = error
+  -- there is no lambda, which means we just got a partially applied function
+  stripLam t = fromJust $ (λ x → applyTerm x List.[ arg def-argInfo (var 0 []) ]) <$> maybeSafe t'
+    where
+      open import Category.Monad
+      open RawMonad (Data.Maybe.monad {Level.zero})
+      open import Reflection.DeBruijn
+      open import Reflection.Substitute
+      open import Data.Unit
+      t' = weaken 1 t
 
   defToNm : Term → Name
   defToNm (def nm []) = nm
@@ -129,9 +143,9 @@ module T3 where
 
   pubIsoToIntIsoNm : Term → Term
   pubIsoToIntIsoNm (con (quote mkIsoPub) args) = case (unArg $ lookup' 1 args) of (
-    λ {(con (quote mkIsoInt) args') → case unArg $ lookup' 0 args' of (
+    λ {(con (quote mkIsoInt) args') → {- case-} unArg $ lookup' 0 args' {-of (
       λ { (lit (name nm)) → (def nm []) ;
-          _ → error});
+          _ → error })-} ;
        _ → error
       })
   pubIsoToIntIsoNm _ = error
@@ -143,6 +157,10 @@ module T3 where
       })
   pubIsoGetNumArgs _ = error
 
+  unWCon : Term → Term
+  unWCon (con (quote C) args) = unArg $ lookup' 2 args
+  unWCon _ = error
+
   {-# TERMINATING #-}
   withArgsToT' : {n : ℕ} → Term → List (T n)
   ast-ty⇒T' : ∀ {n} → (t : Term) → T n
@@ -153,7 +171,7 @@ module T3 where
       hd = unArg $ lookup' 1 args' -- con lift ...
       tl = unArg $ lookup' 3 args'
       arg' : T n
-      arg' = ast-ty⇒T' hd
+      arg' = ast-ty⇒T' $ unWCon hd
   withArgsToT' _ = Errrr3
   
   open import Data.Fin using (fromℕ≤)
@@ -177,13 +195,13 @@ module T3 where
   ast⇒T' (var x args) = Errrr3
   ast⇒T' {n} (con c args) = case c of (
     -- todo extract KEEP
-    λ { (quote AST'.pi) → π ast⇒T' (unArg (lookup' 0 args)) ∣ Keep ⇒ ast⇒T' ((stripLam ∘ unArg ∘ lookup' 2) args) ;
-        (quote AST'.⟦_⟧) → ast-ty⇒T' (unArg (lookup' 0 args)) ;
+    λ { (quote AST'.pi) → π ast⇒T' (unArg (lookup' 1 args)) ∣ Keep ⇒ ast⇒T' ((stripLam ∘ unArg ∘ lookup' 3) args) ;
+        (quote AST'.⟦_⟧) → ast-ty⇒T' (unArg (lookup' 1 args)) ;
         (quote AST'.⟦_⇋_⟧) →
-          let pubIso = unArg $ lookup' 0 args
+          let pubIso = unArg $ lookup' 1 args
               nArgs = pubIsoGetNumArgs pubIso
               intIso = record { wrappedₙ = pubIsoToIntIsoNm pubIso }
-              allArgs = withArgsToT' (unArg $ lookup' 1 args)
+              allArgs = withArgsToT' (unArg $ lookup' 2 args)
            in iso intIso (List.take (proj₁ nArgs) allArgs) (List.drop (proj₁ nArgs) allArgs) ; --iso ? ? ? --(record { wrapped = ((unArg (lookup' 2 args)))}) [] [] ;
         _ → Errrr3})
   ast⇒T' (def f args) = Errrr3
@@ -218,10 +236,6 @@ forceTy' ty val =
 
 makeContract = forceTy AST
 
-stripMkCon : Term → Term
-stripMkCon (def f args) = unArg (lookup' 1 args)
-stripMkCon _ = Errrr
-
 macro
   assert : (ast : Term) -- AST
     →  (lowDef : Term)
@@ -229,6 +243,6 @@ macro
   assert ast lowDef = forceTy' (getAgdaHighType t) lifted
     where
       open import Function
-      t = ast⇒T' {0} $ stripMkCon ast
+      t = ast⇒T' {0} ast
       low = forceTy' (getAgdaLowType t) lowDef
       lifted = ffi-lift t low
