@@ -2,25 +2,7 @@
 
 module Contracts.example where
 
-module NatIntIso where
-  open import Contracts.Base
-  open import Data.Nat
-  open import Data.Integer
-  open import Data.Maybe
-  open import Data.List
-  open import Data.Product
-  open import Reflection
-  
-  ℕ⇔ℤI : PartIso
-  ℕ⇔ℤI = mkPartIso [] [] (ℤ , (ℕ , ((withMaybe f) , (total (ℤ.+_)))))
-    where f : ℤ → Maybe ℕ
-          f -[1+ n ] = nothing
-          f (+ n) = just n
-
-  ℕ⇔ℤ' : PartIsoInt
-  ℕ⇔ℤ' = record --toIntPartIso partIso (quote partIso) (quoteTerm partIso)
-    { wrappedₙ = quote ℕ⇔ℤI } --; wrapped = partIso}
-
+open import Contracts.Isos
 
 module Ex2 where
   open import Data.Nat
@@ -57,34 +39,6 @@ module Ex2 where
   add : unquote (getAgdaHighType addType)
   add = unquote (ffi-lift addType (def (quote add') [])) -- unquote (ffi-lift addType (quote add'))
     where open import Reflection
-
-
-module VecIso where
-  open import Data.List as L
-  open import Data.Nat as N
-  open import Data.Maybe
-  open import Data.Vec
-  open import Relation.Nullary
-  open import Level
-  open import Contracts.Base
-  open import Relation.Binary.PropositionalEquality
-  open import Data.Product
-
-  list⇒vec : ∀ {n : ℕ} {A : Set} → List A → Maybe (Vec A n)
-  list⇒vec {n} xs with n N.≟ L.length xs
-  list⇒vec xs | yes refl = just (Data.Vec.fromList xs)
-  list⇒vec xs | no ¬p = nothing
-
-  vec⇔listI : PartIso
-  vec⇔listI = mkPartIso L.[ Set ] L.[ ℕ ]
-      (λ x → (List x) , (λ x₁ → (Vec x x₁) , ((withMaybe list⇒vec) , (total Data.Vec.toList))))
-
-
-  vec⇔list' : PartIsoInt
-  vec⇔list' = record --toIntPartIso partIso (quote partIso) (quoteTerm partIso)
-    { wrappedₙ = quote vl } --; wrapped = partIso }
-    where vl = vec⇔listI
-          open import Reflection
 
 
 module MapEx where
@@ -275,12 +229,6 @@ module T3 where
   open import Relation.Nullary
   open import Data.Product
 
-
-  ℕ⇔ℤ : PartIsoPub
-  ℕ⇔ℤ = record { partIso = ℕ⇔ℤI ; partIsoInt = ℕ⇔ℤ' }
-
-  vec⇔list : PartIsoPub
-  vec⇔list = record { partIso = vec⇔listI ; partIsoInt = (vec⇔list') }
 
   
   -- an example how the contracts syntax could look like,
