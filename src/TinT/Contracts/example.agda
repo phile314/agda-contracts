@@ -121,21 +121,22 @@ module DepCon1 where
   import Data.Vec as V
   open import Reflection
 
-  mapImpl2 : {- ℕ →-} (A : Set) {-(B : Set)-} → (A → A) → List A → List A
-  mapImpl2 A f xs = xs --L.map
+  mapImpl2 : (A : Set) → (B : Set) → (A → B) → List A → List B
+  mapImpl2 A B = L.map
 
   mapNZType : T 0
   mapNZType =
-    π ( {-def quote ℕ ∙ []-} set 0) ∣ Keep -- n
+    π ( def quote ℕ ∙ []) ∣ Discard -- n
     ⇒ ( π set 0 ∣ Keep -- A
---    ⇒ (π set 0 ∣ Keep -- B
-    ⇒ (π (
-      π var # 0 ∙ [] ∣ Keep
+    ⇒ ( π set 0 ∣ Keep -- B
+    ⇒ ( π (
+      π (var # 1 ∙ []) ∣ Keep
       ⇒ (var # 1 ∙ [])) ∣ Keep -- f
---    ⇒ (π iso (vec⇔list') L.[ var # 2 ∙ [] ] L.[ var # 3 ∙ [] ] ∣ Keep -- vec
-    ⇒ (π (def (quote List) ∙ L.[ var # 1 ∙ [] ]) ∣ Keep
-    ⇒ (def (quote List) ∙ L.[ var # 2 ∙ [] ] ))))
---    ⇒ iso (vec⇔list') L.[ var # 2 ∙ [] ] L.[ var # 4 ∙ [] ] ))))
+      
+    ⇒ (π iso (vec⇔list') L.[ var # 2 ∙ [] ] L.[ var # 3 ∙ [] ] ∣ Keep -- vec
+--    ⇒ (π (def (quote List) ∙ L.[ var # 1 ∙ [] ]) ∣ Keep
+--    ⇒ (def (quote List) ∙ L.[ var # 3 ∙ [] ] )  ))))  --)
+    ⇒ iso (vec⇔list') L.[ var # 2 ∙ [] ] L.[ var # 4 ∙ [] ] ))))
 
 --  lowType : Set (Level.suc Level.zero)
 --  lowType = {!!} --unquote (getAgdaLowType mapNZType)
@@ -158,8 +159,8 @@ module DepCon1 where
   myMap2 : unquote (getAgdaHighType mapNZType)
 --  myMap2 : {!unquote (getAgdaHighType mapNZType)!} --unquote (getAgdaHighType mapNZType) --unquote (getAgdaHighType mapNZType)
 --  myMap2 =  {!pretty (elimLets (ffi-lift mapNZType (quote mapImpl2)))!}
-  myMap2 = {!pretty (ffi-lift mapNZType (def (quote mapImpl2) []))!}
---  myMap2 = unquote (ffi-lift mapNZType (def (quote mapImpl2) [])) -- unquote (ffi-lift mapNZType (quote mapImpl2))
+--  myMap2 = {!pretty (ffi-lift mapNZType (def (quote mapImpl2) []))!}
+  myMap2 = unquote (ffi-lift mapNZType (def (quote mapImpl2) [])) -- unquote (ffi-lift mapNZType (quote mapImpl2))
     where open import Reflection
   
     
@@ -265,7 +266,7 @@ module T3 where
 --  gg = unquote (ffi-lift (ast⇒T' f) (def (quote f-low) []))
 
   ggg : {!unquote (getAgdaLowType (ast⇒T' {0} (quoteTerm (makeContract (⟨ n ∷ ⟦ ℕ ⟧ ⟩⇒ ⟨ x ∷ ⟦ Set ⟧ ⟩⇒ ⟨ ⟦ vec⇔list ⇋ liftW x , liftW n , [] ⟧ ⟩)))))!}
-  ggg = {!gg!}
+  ggg = {!lett (var 10 []) inn var 0 []!}
 
 --  pp'' : _
 --  pp'' = assert (makeContract (⟨ n ∷ ⟦ ℕ ⟧ ⟩⇒ ⟨ x ∷ ⟦ Set ⟧ ⟩⇒ ⟨ ⟦ x ⟧ ⟩)) f-low

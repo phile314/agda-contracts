@@ -89,7 +89,7 @@ applyTerm (safe (unquote-term v args) _) args₁ = unquote-term v (args ++ args�
 applyTerm (safe unknown _) _ = unknown
 
 Subst : Set → Set
-Subst A = List SafeTerm → A → A
+Subst A = Nat → List SafeTerm → A → A
 
 substTerm : Subst Term
 substArgs : Subst (List (Arg Term))
@@ -102,43 +102,46 @@ substSort : Subst Sort
 substClauses : Subst (List Clause)
 substClause : Subst Clause
 
-substTerm σ (var x args) =
+substTerm δ σ (var x args) =
   case lookup σ x of λ
-  { nothing  → var (x ∸ length σ) (substArgs σ args)
-  ; (just v) → applyTerm v (substArgs σ args) }
-substTerm σ (con c args) = con c (substArgs σ args)
-substTerm σ (def f args) = def f (substArgs σ args)
-substTerm σ (lam v b) = lam v (substAbs σ b)
-substTerm σ (pat-lam cs args) = pat-lam (substClauses σ cs) (substArgs σ args)
-substTerm σ (pi a b) = pi (substArgType σ a) (substAbsType σ b)
-substTerm σ (sort s) = sort (substSort σ s)
-substTerm σ (lit l) = lit l
-substTerm σ (quote-goal b) = quote-goal (substAbs σ b)
-substTerm σ (quote-term v) = quote-term (substTerm σ v)
-substTerm σ quote-context = quote-context
-substTerm σ (unquote-term v args) = unquote-term (substTerm σ v) (substArgs σ args)
-substTerm σ unknown = unknown
+  { nothing  → var (x ∸ δ) (substArgs δ σ args)
+  ; (just v) → applyTerm v (substArgs δ σ args) }
+substTerm δ σ (con c args) = con c (substArgs δ σ args)
+substTerm δ σ (def f args) = def f (substArgs δ σ args)
+substTerm δ σ (lam v b) = lam v (substAbs δ σ b)
+substTerm δ σ (pat-lam cs args) = pat-lam (substClauses δ σ cs) (substArgs δ σ args)
+substTerm δ σ (pi a b) = pi (substArgType δ σ a) (substAbsType δ σ b)
+substTerm δ σ (sort s) = sort (substSort δ σ s)
+substTerm δ σ (lit l) = lit l
+substTerm δ σ (quote-goal b) = quote-goal (substAbs δ σ b)
+substTerm δ σ (quote-term v) = quote-term (substTerm δ σ v)
+substTerm δ σ quote-context = quote-context
+substTerm δ σ (unquote-term v args) = unquote-term (substTerm δ σ v) (substArgs δ σ args)
+substTerm δ σ unknown = unknown
 
-substSort σ (set t) = set (substTerm σ t)
-substSort σ (lit n) = lit n
-substSort σ unknown = unknown
+substSort δ σ (set t) = set (substTerm δ σ t)
+substSort δ σ (lit n) = lit n
+substSort δ σ unknown = unknown
 
-substClauses σ [] = []
-substClauses σ (c ∷ cs) = substClause σ c ∷ substClauses σ cs
+substClauses δ σ [] = []
+substClauses δ σ (c ∷ cs) = substClause δ σ c ∷ substClauses δ σ cs
 
-substClause σ (clause ps b) =
+substClause δ σ (clause ps b) =
   case patternArgsVars ps of λ
-  { zero    → clause ps (substTerm σ b)
-  ; (suc n) → clause ps (substTerm (reverse (Data.List.map (λ i → safe (var i []) _) (reverse $ downFrom $ suc n)) ++ weaken (suc n) σ) b)
+  { zero    → clause ps (substTerm δ σ b)
+  ; (suc n) → clause ps (substTerm δ (reverse (Data.List.map (λ i → safe (var i []) _) (reverse $ downFrom $ suc n)) ++ weaken (suc n) σ) b)
   }
-substClause σ (absurd-clause ps) = absurd-clause ps
+substClause δ σ (absurd-clause ps) = absurd-clause ps
 
-substArgs σ [] = []
-substArgs σ (x ∷ args) = substArg σ x ∷ substArgs σ args
-substArg σ (arg i x) = arg i (substTerm σ x)
-substAbs σ (abs x v) = abs x $ substTerm (safe (var 0 []) _ ∷ weaken 1 σ) v
+substArgs δ σ [] = []
+substArgs δ σ (x ∷ args) = substArg δ σ x ∷ substArgs δ σ args
+substArg δ σ (arg i x) = arg i (substTerm δ σ x)
+substAbs δ σ (abs x v) = abs x $ substTerm δ (safe (var 0 []) _ ∷ weaken 1 σ) v
 
-substAbsType σ (abs x a) = abs x $ substType (safe (var 0 []) _ ∷ weaken 1 σ) a
-substArgType σ (arg i x) = arg i (substType σ x)
+substAbsType δ σ (abs x a) = abs x $ substType δ (safe (var 0 []) _ ∷ weaken 1 σ) a
+substArgType δ σ (arg i x) = arg i (substType δ σ x)
 
-substType σ (el s t) = el (substSort σ s) (substTerm σ t)
+substType δ σ (el s t) = el (substSort δ σ s) (substTerm δ σ t)
+
+subst : List SafeTerm → Term → Term
+subst σ = substTerm (length σ) σ
