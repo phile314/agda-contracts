@@ -41,7 +41,7 @@ module T3 where
   getArgs : PartIsoPub → Set
   getArgs p = WithArgs ((List.map (λ a → WContext a L) ( PartIso.LOWₐ h)) List.++
     (List.map (λ x → WContext x H) (PartIso.HIGHₐ h)))
-    where h = PartIsoPub.partIso p --PartIsoInt.wrapped p
+    where h = PartIsoPub.partIso p
     
   withArgs : List Set → Set
   withArgs as = WithArgs as
@@ -205,9 +205,9 @@ module T3 where
         (quote AST'.⟦_⇋_⟧) →
           let pubIso = unArg $ lookup' 1 args
               nArgs = pubIsoGetNumArgs pubIso
-              intIso = record { wrappedₙ = pubIsoToIntIso pubIso }
+              intIso = record { wrapped = pubIsoToIntIso pubIso }
               allArgs = withArgsToT' (unArg $ lookup' 2 args)
-           in iso intIso (List.take (proj₁ nArgs) allArgs) (List.drop (proj₁ nArgs) allArgs) ; --iso ? ? ? --(record { wrapped = ((unArg (lookup' 2 args)))}) [] [] ;
+           in iso intIso (List.take (proj₁ nArgs) allArgs) (List.drop (proj₁ nArgs) allArgs) ;
         _ → Errrr3})
   ast⇒T' (def f args) = Errrr3
   ast⇒T' (lam v t) = Errrr3

@@ -21,7 +21,7 @@ module NatIntIso where
 
   ℕ⇔ℤ' : PartIsoInt
   ℕ⇔ℤ' = record --toIntPartIso partIso (quote partIso) (quoteTerm partIso)
-    { wrappedₙ = def (quote ℕ⇔ℤI) [] } --; wrapped = partIso}
+    { wrapped = def (quote ℕ⇔ℤI) [] } --; wrapped = partIso}
 
 
   ℕ⇔ℤ : PartIsoPub
@@ -49,7 +49,7 @@ module VecIso where
 
   vec⇔list' : PartIsoInt
   vec⇔list' = record --toIntPartIso partIso (quote partIso) (quoteTerm partIso)
-    { wrappedₙ = def (quote vl) [] } --; wrapped = partIso }
+    { wrapped = def (quote vl) [] } --; wrapped = partIso }
     where vl = vec⇔listI
           open import Reflection
 

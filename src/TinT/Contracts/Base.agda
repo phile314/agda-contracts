@@ -6,6 +6,7 @@ module Contracts.Base where
 open import Data.List as List
 open import Data.Nat
 open import Data.Maybe
+
 -- TODO move to stdlib
 lookup : ∀ {A : Set} → ℕ → List A → Maybe A
 lookup i [] = nothing
@@ -63,8 +64,7 @@ record PartIso : Set where
 
 record PartIsoInt : Set where
   constructor mkIsoInt
-  field wrappedₙ : Term -- name of the part iso
---  field wrapped : Term
+  field wrapped : Term -- the part iso as term
 
 applyArgs : {aTys : ArgTys} {A : Set} → (f : argsToTy aTys A) → WithArgs aTys → A
 applyArgs {aTys = []} f [] = f
@@ -88,13 +88,12 @@ invertPosition Neg = Pos
 
 import Data.Vec as V
 
--- TODO discard only makes sense in negative positions, we should enforce that it is only specified there
 data T : ℕ → Set where
   set : ∀ {n} → (l : ℕ ) → T n
   -- var
   var_∙_ : ∀ {n}
     → (k : Fin n)
-    → List (T n) -- arguments, we don't support keeping the arguments anyway, so just force discard here.
+    → List (T n)
     → T n
   def_∙_ : ∀ {n}
     → (nm : Name)
@@ -160,10 +159,7 @@ mkArgs : ∀ {n} → List (T n) → Term
 mkArgs [] = con (quote WithArgs.[]) []
 mkArgs (x₁ ∷ ts) = con (quote WithArgs._,_)
   ( arg def-argInfo
---    (con (quote Level.lift)
---     [ arg def-argInfo (elAGDA UnexpectedIsoInIsoArgs x₁) ]
      (elAGDA UnexpectedIsoInIsoArgs x₁)
---    )
   ∷ arg def-argInfo (mkArgs ts)
   ∷ [])
 
@@ -179,7 +175,7 @@ getIsoLow p as =
     ∷ [])
   where
     tiso = def (quote PartIso.iso)
-      [ arg def-argInfo (PartIsoInt.wrappedₙ p) ]
+      [ arg def-argInfo (PartIsoInt.wrapped p) ]
 
 -- gets the iso high pair
 getIsoHigh : ∀ {n}
@@ -232,48 +228,12 @@ unsafeConvert _ _ fail x = conversionFailure ""
 mkArg : ℕ → Arg Term
 mkArg i = arg (arg-info visible relevant) (var i [])
 
-{-
--- substitution for free variables
-subst : (ℕ → ℕ) -- substitution function
-  → Term
-  → Term
-substArgs : (ℕ → ℕ) → Arg Term → Arg Term
-substCl : Clause → Clause
-substSort : (ℕ → ℕ) → Sort → Sort
 
-subst σ (var x args) = var (σ x) (List.map (substArgs σ) args)
-subst σ (con c args) = con c (List.map (substArgs σ) args)
-subst σ (def f args) = def f (List.map (substArgs σ) args)
-subst σ (lam v (abs x t)) = lam v (abs x (subst σ' t))
-  where
-    σ' : ℕ → ℕ
-    σ' ℕ.zero = ℕ.zero -- the given var is not free, so just return it unchanged
-    σ' (ℕ.suc i) = ℕ.suc (σ i)
-subst σ (pat-lam cs args) = pat-lam (List.map substCl cs) (List.map (substArgs σ) args)
-subst σ (pi t₁ t₂) = notImpl2
-subst σ (sort s) = sort (substSort σ s)
-subst σ (lit l) = lit l
-subst σ (quote-goal t) = notImpl3
-subst σ (quote-term t) = notImpl3
-subst σ quote-context = quote-context
-subst σ (unquote-term t args) = notImpl3
-subst σ unknown = unknown
-
-substArgs σ (arg i x) = arg i (subst σ x)
-
-substCl (clause pats body) = notImpl3
-substCl (absurd-clause pats) = absurd-clause pats
-
-substSort σ (set t) = set (subst σ t)
-substSort σ (lit n) = lit n
-substSort σ unknown = unknown
-
--}
 import Data.Bool as B
 open import Relation.Nullary.Decidable
 
 lett_inn_ : Term → Term → Term
-lett_inn_ (var x []) t₂ = subst [ safe (var x []) _ ] t₂ -- subst (λ x₁ → B.if ⌊ x₁ N.≟ 0 ⌋ then x else x₁ ∸ 1) t₂
+lett_inn_ (var x []) t₂ = subst [ safe (var x []) _ ] t₂
   where open import Reflection.Substitute
 lett_inn_ t₁ t₂ = def (quote _$_)
           ( arg def-argInfo (lam visible (abs "" t₂))
@@ -300,8 +260,8 @@ ffi-lift1 {n} (π fde ∣ k ⇒ fde₁) wr pos Γ =
   where ls = ffi-lift1 fde (var 0 []) (invertPosition pos) (shift 1 Γ)
         open import Reflection.DeBruijn
         toWrap = case k of
-          λ { Keep → app (weaken 2 wr) (var 0 []) -- app (subst (N._+_ 2) wr) (var 0 [])
-            ; Discard → weaken 2 wr -- subst (N._+_ 2) wr
+          λ { Keep → app (weaken 2 wr) (var 0 [])
+            ; Discard → weaken 2 wr
             }
         rs = ffi-lift1 fde₁ toWrap pos (0 ∷ shift 2 Γ)
         bd = lett ls inn rs
@@ -316,7 +276,7 @@ ffi-lift1 (iso {l} x LOWₐ HIGHₐ) wr pos Γ =
   where
         open import Reflection.Substitute
         ix = reverse $ downFrom (List.length Γ)
-        s = subst (List.map (λ ix → safe (var ix []) _) Γ) {- subst (λ x → lookup' x Γ)-}
+        s = subst (List.map (λ ix → safe (var ix []) _) Γ)
         
         getConv : Position → Term → Term
         getConv Pos t = (def (quote proj₁) [ arg def-argInfo t ]) 
@@ -349,5 +309,5 @@ toIntPartIso : PartIso
   → Term
   → PartIsoInt
 toIntPartIso p pₙ = record
-  { wrappedₙ = pₙ
+  { wrapped = pₙ
   }
