@@ -1,7 +1,13 @@
+{-
+
+EXPERIMENTS!!!!!!!!!
+NOT WORKING!!
+
+-}
 {-# OPTIONS --type-in-type #-}
 {-# OPTIONS --no-termination-check #-}
 
-module Contracts.SSyn where
+module Contracts.NoRefl where
 
 
 -- surface syntax tests
@@ -25,22 +31,40 @@ module T3 where
 
   data WContext (A : Set) : Context → Set where
     C : ∀ {c} → A → WContext A c
+    ∅ : ∀ {c} → WContext A c
+
+  private
+    postulate not-∅ : ∀ {A c} → WContext A c → A
+
+    unC : ∀ {A c} → WContext A c → A
+    unC (C x) = x
+    unC c = not-∅ c
+
+  open import Category.Monad
+  wMonad : ∀ {c} → RawMonad (λ A → WContext A c)
+  wMonad = record
+    { return = C
+    ; _>>=_ = λ f g → g (unC f)
+    }
 
   liftW : ∀ {c} {A : Set} → A → WContext A c
   liftW x = C x
   
-  private
-    unC : ∀ {a c} → WContext a c → a
-    unC (C x) = x
 
-  record PartIsoPub : Set where
+{-  record PartIsoPub : Set where
     constructor mkIsoPub
     field partIso : PartIso
-    field partIsoInt : PartIsoInt
+    field partIsoInt : PartIsoInt-}
 
-  getArgs : PartIsoPub → Set
-  getArgs p = Σ (PartIso.ARGₐ p') (λ aa → (WContext (PartIso.ARGₗ p' aa) L) × (WContext (PartIso.ARGₕ p' aa) H))
-    where p' = PartIsoPub.partIso p
+{-  getArgs : PartIsoPub → Set
+  getArgs p = WithArgs ((List.map (λ a → WContext a L) ( PartIso.LOWₐ h)) List.++
+    (List.map (λ x → WContext x H) (PartIso.HIGHₐ h)))
+    where h = PartIsoPub.partIso p-}
+  getArgs : PartIso → Set
+  getArgs p = Σ (PartIso.ARGₐ p) (λ aa → WContext (PartIso.ARGₗ p aa) L × WContext (PartIso.ARGₕ p aa) H)
+    
+  withArgs : List Set → Set
+  withArgs as = WithArgs as
 
   pos+way→Context : Position → ArgWay → Context
   pos+way→Context p Keep = Both
@@ -59,24 +83,40 @@ module T3 where
       → (withWCon (pos+way→Context p aw) (getTy a) → AST' (invertPosition p))
       → AST' (invertPosition p)
     ⟦_⟧ : ∀ {p} (A : Set) → AST' p -- normal type (List, Nat, etc..)
-    ⟦_⇋_⟧ : ∀ {p} (pi :  PartIsoPub) → getArgs pi → AST' p -- isomorphism
+    ⟦_⇋_⟧ : ∀ {p} (pi :  PartIso) → getArgs pi → AST' p -- isomorphism
 
-{-  split++ : {a : ArgTys} → {b : ArgTys} → (args : WithArgs (a List.++ b)) → (WithArgs a × WithArgs b)
+  split++ : {a : ArgTys} → {b : ArgTys} → (args : WithArgs (a List.++ b)) → (WithArgs a × WithArgs b)
   split++ {a = []} args = [] , args
   split++ {a = x ∷ a} (a₁ , args) = (a₁ , (proj₁ r)) , (proj₂ r)
     where r = split++ args
 
   unconArgs : {args : ArgTys} {f : Set → Set} {f' : {A : Set} → f A → A} → WithArgs (List.map f args) → WithArgs args
   unconArgs {[]} [] = []
-  unconArgs {x ∷ args} {f} {f'} (a , wa) = f' a , unconArgs {f' = f'} wa-}
+  unconArgs {x ∷ args} {f} {f'} (a , wa) = f' a , unconArgs {f' = f'} wa
 
   getTy (pi {p} a aw x) = (arg : (withWCon (pos+way→Context p aw) (getTy a))) → (getTy (x arg))
   getTy (⟦ x ⟧) = x
   -- this should be the pair of low / high args
-  getTy (⟦ p ⇋ (aₐ , (aₗ , aₕ)) ⟧) = WContext (PartIso.τₗ p' aₐ (unC aₗ)) L × WContext (PartIso.τₕ p' aₐ (unC aₕ)) H
-    where p' = PartIsoPub.partIso p
+  getTy ⟦ p ⇋ arg-a , arg-l , arg-h ⟧ =
+    (WContext (PartIso.τₗ p arg-a (unC arg-l)) L)
+      ×
+    (WContext (PartIso.τₕ p arg-a (unC arg-h)) H) -- WContext (proj₁ g) L × WContext (proj₁ i) H
+{-    where h = ? --PartIso.partIso x
+          k = split++ {List.map (λ z → WContext z L) (PartIso.LOWₐ h)} x₁
+          g = applyArgs (PartIso.iso h) {-(PartIso.iso h)-} (unconArgs {f' = unC} (proj₁ k))
+          i = applyArgs {PartIso.HIGHₐ h} (proj₂ g) (unconArgs {f' = unC} (proj₂ k))-}
 
   AST = AST' Pos
+
+
+  computeType' : ∀ {p} → AST' p → Set
+  computeType' {._} (pi a Keep b) = {!!}
+  computeType' (pi {Pos} a Discard b) = (aa : computeType' a) → computeType' (b (C {!aa!}))
+  computeType' (pi {Neg} a Discard b) = {!!} -- (a : computeType' a) → computeType' (b {!!})
+  computeType' ⟦ A ⟧ = A
+  computeType' ⟦ p ⇋ x ⟧ = {!!}
+
+
 
   id : {A : Set} → A → A
   id x = x
@@ -104,7 +144,7 @@ module T3 where
   getLevel : Term → Level
   getLevel t = Level.zero
 
-  fromJust : ∀ {A} → Maybe A → A
+{-  fromJust : ∀ {A} → Maybe A → A
   fromJust (just x) = x
   fromJust nothing = error
 
@@ -155,17 +195,17 @@ module T3 where
   unWCon t = t
 
   {-# TERMINATING #-}
---  withArgsToT' : {n : ℕ} → Term → List (T n)
+  withArgsToT' : {n : ℕ} → Term → List (T n)
   ast-ty⇒T' : ∀ {n} → (t : Term) → T n
 
-  {-withArgsToT' {n} (con (quote WithArgs.[]) _) = []
+  withArgsToT' {n} (con (quote WithArgs.[]) _) = []
   withArgsToT' {n} (con (quote WithArgs._,_) args') = arg' ∷ withArgsToT' {n} tl
     where
       hd = unArg $ lookup' 1 args' -- con lift ...
       tl = unArg $ lookup' 3 args'
       arg' : T n
       arg' = ast-ty⇒T' $ unWCon hd
-  withArgsToT' _ = Errrr3-}
+  withArgsToT' _ = Errrr3
 
   ast⇒ArgWay : Term → ArgWay
   ast⇒ArgWay (con (quote Keep) args) = Keep
@@ -199,9 +239,9 @@ module T3 where
           let pubIso = unArg $ lookup' 1 args
               nArgs = pubIsoGetNumArgs pubIso
               intIso = record { wrapped = pubIsoToIntIso pubIso }
-              allArgs = {!!} --withArgsToT' (unArg $ lookup' 2 args)
-           in {!!} --iso intIso (List.take (proj₁ nArgs) allArgs) (List.drop (proj₁ nArgs) allArgs) ;
-      ; _ → Errrr3})
+              allArgs = withArgsToT' (unArg $ lookup' 2 args)
+           in iso intIso (List.take (proj₁ nArgs) allArgs) (List.drop (proj₁ nArgs) allArgs) ;
+        _ → Errrr3})
   ast⇒T' (def f args) = Errrr3
   ast⇒T' (lam v t) = Errrr3
   ast⇒T' (pat-lam cs args) = Errrr3
@@ -216,9 +256,10 @@ module T3 where
 
   arg-ast⇒T (arg i x) = ast⇒T' x
 
-{-  _,,_ : ∀ {A c} {args : ArgTys} → A → WithArgs args → WithArgs (WContext A c ∷ args)
+  _,,_ : ∀ {A c} {args : ArgTys} → A → WithArgs args → WithArgs (WContext A c ∷ args)
   a ,, b = (C a) , b
-  infixr 5 _,,_-}
+  infixr 5 _,,_
+-}
 
 open T3 public
 
@@ -238,6 +279,7 @@ forceTy' ty val =
 
 makeContract = forceTy AST
 
+{-
 macro
   assert : (ast : Term) -- AST
     →  (lowDef : Term)
@@ -247,6 +289,5 @@ macro
       open import Function
       t = ast⇒T' {0} ast
       low = forceTy' (getAgdaLowType t) lowDef
-      lifted = ffi-lift t low
-
+      lifted = ffi-lift t low-}
 
