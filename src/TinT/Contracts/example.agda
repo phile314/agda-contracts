@@ -265,12 +265,14 @@ module T3 where
 --  gg : unquote (getAgdaHighType (ast⇒T' f))
 --  gg = unquote (ffi-lift (ast⇒T' f) (def (quote f-low) []))
 
-  ggg : {!unquote (getAgdaLowType (ast⇒T' {0} (quoteTerm (makeContract (⟨ n ∷ ⟦ ℕ ⟧ ⟩⇒ ⟨ x ∷ ⟦ Set ⟧ ⟩⇒ ⟨ ⟦ vec⇔list ⇋ liftW x , liftW n , [] ⟧ ⟩)))))!}
+  ggg : {!pretty (getAgdaLowType (ast⇒T' {0} (quoteTerm (makeContract (⟨ n ∷ ⟦ ℕ ⟧ ⟩⇒ ⟨ x ∷ ⟦ Set ⟧ ⟩⇒ ⟨ ⟦ vec⇔list ⇋ x ,, n ,, [] ⟧ ⟩)))))!}
   ggg = {!lett (var 10 []) inn var 0 []!}
 
---  pp'' : _
---  pp'' = assert (makeContract (⟨ n ∷ ⟦ ℕ ⟧ ⟩⇒ ⟨ x ∷ ⟦ Set ⟧ ⟩⇒ ⟨ ⟦ x ⟧ ⟩)) f-low
+  pp'' : _
+  pp'' = assert (makeContract (⟨ n ∷ ⟦ ℕ ⟧ ⟩⇒ ⟨ x ∷ ⟦ Set ⟧ ⟩⇒ ⟨ ⟦ x ⟧ ⟩)) error
 
+  pp'4 : _
+  pp'4 = assert (makeContract (⟨ ⟦ ℕ⇔ℤ ⇋ [] ⟧ ⟩)) error
   pp' : _
   pp' = assert (makeContract (⟨ n ∷ ⟦ ℕ ⟧ ⟩⇒ ⟨ x ∷ ⟦ Set ⟧ ⟩⇒ ⟨ ⟦ vec⇔list ⇋ x ,, n ,, [] ⟧ ⟩)) f-low
 
