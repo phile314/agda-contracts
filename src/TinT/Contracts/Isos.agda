@@ -3,7 +3,7 @@
 module Contracts.Isos where
 
 open import Contracts.Base
-open import Contracts.SSyn
+--open import Contracts.SSyn
 
 module NatIntIso where
   open import Data.Nat
@@ -12,9 +12,10 @@ module NatIntIso where
   open import Data.List
   open import Data.Product
   open import Reflection
+  open import Data.Unit hiding (total)
   
   ℕ⇔ℤI : PartIso
-  ℕ⇔ℤI = mkPartIso [] [] (ℤ , (ℕ , ((withMaybe f) , (total (ℤ.+_)))))
+  ℕ⇔ℤI = mkPartIso1 ℤ  ℕ ((withMaybe f) , (total (ℤ.+_)))
     where f : ℤ → Maybe ℕ
           f -[1+ n ] = nothing
           f (+ n) = just n
@@ -24,8 +25,8 @@ module NatIntIso where
     { wrapped = def (quote ℕ⇔ℤI) [] } --; wrapped = partIso}
 
 
-  ℕ⇔ℤ : PartIsoPub
-  ℕ⇔ℤ = record { partIso = ℕ⇔ℤI ; partIsoInt = ℕ⇔ℤ' }
+--  ℕ⇔ℤ : PartIsoPub
+--  ℕ⇔ℤ = record { partIso = ℕ⇔ℤI ; partIsoInt = ℕ⇔ℤ' }
 
 
 module VecIso where
@@ -43,8 +44,9 @@ module VecIso where
   list⇒vec xs | no ¬p = nothing
 
   vec⇔listI : PartIso
-  vec⇔listI = mkPartIso L.[ Set ] L.[ ℕ ]
-      (λ x → (List x) , (λ x₁ → (Vec x x₁) , ((withMaybe list⇒vec) , (total Data.Vec.toList))))
+  vec⇔listI = mkPartIso Set (λ _ → ⊤) (λ _ → ℕ) (λ aa _ → List aa) (λ aa n → Vec aa n)
+      (λ aa _ n → (withMaybe list⇒vec) , (total toList))
+    where open import Data.Unit hiding (total)
 
 
   vec⇔list' : PartIsoInt
@@ -53,5 +55,5 @@ module VecIso where
     where vl = vec⇔listI
           open import Reflection
 
-  vec⇔list : PartIsoPub
-  vec⇔list = record { partIso = vec⇔listI ; partIsoInt = (vec⇔list') }
+--  vec⇔list : PartIsoPub
+--  vec⇔list = record { partIso = vec⇔listI ; partIsoInt = (vec⇔list') }

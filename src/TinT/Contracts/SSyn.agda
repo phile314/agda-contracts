@@ -184,13 +184,13 @@ module T3 where
   {-# TERMINATING #-}
   ast-ty⇒T' {n} (var x args) = case (ℕ.suc x) ≤? n of (
     λ { (yes p) → var (fromℕ≤ p) ∙ List.map (ast-ty⇒T' ∘ unArg) args
-      ; (no _) → Errrr2
+      ; (no _) → Errrr3
       })
   ast-ty⇒T' (def f args) = def f ∙ List.map (ast-ty⇒T' ∘ unArg) args
-  ast-ty⇒T' (sort (set t)) = Errrr2
+  ast-ty⇒T' (sort (set t)) = Errrr3
   ast-ty⇒T' (sort (lit n₁)) = set n₁
   ast-ty⇒T' (sort unknown) = Errrr2
-  ast-ty⇒T' _ = Errrr2
+  ast-ty⇒T' _ = Errrr3
 
   {-# TERMINATING #-}
   ast⇒T' : ∀ {n} → (t : Term) -- AST

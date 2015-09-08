@@ -35,40 +35,38 @@ data Conversion (A : Set) (B : Set) : Set where
   withMaybe : (A → Maybe B) → Conversion A B
   fail : Conversion A B
 
-ArgTys : Set
-ArgTys = List (Set)
-
--- if we want dependent args, we could make WithArgs into a dependent list (chained Σ)
-data WithArgs : (ArgTys) → Set where
-  [] : WithArgs []
-  _,_ : {A : Set} → (a : A) → {AS : ArgTys} → WithArgs AS → WithArgs (A List.∷ AS)
-
-argsToTy : ArgTys → Set → Set
-argsToTy [] f = f
-argsToTy (x List.∷ a) f = x → argsToTy a f
 
 open import Data.Product
-
-
-open import Reflection
 
 Conversions : Set → Set → Set
 Conversions Aₜ Bₜ = Conversion Aₜ Bₜ × Conversion Bₜ Aₜ
 
 record PartIso : Set where
   constructor mkPartIso
-  field LOWₐ : ArgTys -- this are the common arguments
-        HIGHₐ : ArgTys -- agda only arguments
-        iso : argsToTy LOWₐ (Σ Set (λ HSₜ →
-                       argsToTy HIGHₐ (Σ Set (Conversions HSₜ))))
+  field ARGₐ : Set
+        ARGₗ : ARGₐ → Set
+        ARGₕ : ARGₐ → Set
+        τₗ : (aa : ARGₐ) → (ARGₗ aa) → Set
+        τₕ : (aa : ARGₐ) → (ARGₕ aa) → Set
+
+        ⇅ : (aa : ARGₐ) → (al : ARGₗ aa) → (ah : ARGₕ aa) → Conversions (τₗ aa al) (τₕ aa ah)
+
+mkPartIso1 : (τₗ : Set) → (τₕ : Set) → Conversions τₗ τₕ → PartIso
+mkPartIso1 τₗ τₕ ⇅ = mkPartIso ⊤ (λ _ → ⊤) (λ _ → ⊤) (λ _ _ → τₗ) (λ _ _ → τₕ) (λ _ _ _ → ⇅)
+  where open import Data.Unit
+
+
+open import Reflection
 
 record PartIsoInt : Set where
   constructor mkIsoInt
   field wrapped : Term -- the part iso as term
 
-applyArgs : {aTys : ArgTys} {A : Set} → (f : argsToTy aTys A) → WithArgs aTys → A
+{-applyArgs : {aTys : ArgTys} {A : Set} → (f : argsToTy aTys A) → WithArgs aTys → A
 applyArgs {aTys = []} f [] = f
 applyArgs {aTys = A₁ ∷ aTys} f (a , args) = applyArgs (f a) args
+-}
+
 
 
 open import Data.Fin
@@ -107,16 +105,17 @@ data T : ℕ → Set where
 
   iso : ∀ {n}
     → (p : PartIsoInt)
-    → List (T n) -- LOW arguments
-    → List (T n) -- HIGH arguments
+    → Term -- ALL arguments - with env of all args
+    → Term -- LOW arguments - with env of low args + all args
+    → Term -- HIGH arguments - with env of high args + all args
     → T n
 
 
 def-argInfo : Arg-info
 def-argInfo = arg-info visible relevant
 
-partIsoLowTy : (p : PartIso) → WithArgs (PartIso.LOWₐ p) → Set
-partIsoLowTy p args = proj₁ (applyArgs (PartIso.iso p) args)
+--partIsoLowTy : (p : PartIso) → WithArgs (PartIso.LOWₐ p) → Set
+--partIsoLowTy p args = proj₁ (applyArgs (PartIso.iso p) args)
 
 
 postulate
@@ -128,9 +127,10 @@ postulate
 open import Data.Bool hiding (T)
 
 IsoHandler : Set
-IsoHandler = {n : ℕ} → (p : PartIsoInt)
-  → List (T n) -- LOW arguments
-  → List (T n) -- HIGH arguments
+IsoHandler = (p : PartIsoInt)
+  → Term -- ALL argument
+  → Term -- LOW argument
+  → Term -- HIGH argument
   → Term
 
 record elOpts : Set where
@@ -150,33 +150,26 @@ elAGDA h (π  t ∣ k ⇒ t₁) = case k of
      })
   where r-keep = pi (arg def-argInfo (el unknown (elAGDA h t))) (abs "" (el unknown (elAGDA h t₁)))
 elAGDA h (set l) = sort (lit l) -- we use type-in-type, so what should we do here?
-elAGDA h (iso i HSₐ AGDAₐ) = (elOpts.isoHandler h) i HSₐ AGDAₐ
+elAGDA h (iso i argₐ argₗ argₕ) = (elOpts.isoHandler h) i argₐ argₗ argₕ
 
 elArg h t = arg def-argInfo (elAGDA h t)
 
 
-mkArgs : ∀ {n} → List (T n) → Term
-mkArgs [] = con (quote WithArgs.[]) []
-mkArgs (x₁ ∷ ts) = con (quote WithArgs._,_)
-  ( arg def-argInfo
-     (elAGDA UnexpectedIsoInIsoArgs x₁)
-  ∷ arg def-argInfo (mkArgs ts)
-  ∷ [])
+mkArg : Term → Arg Term
+mkArg = arg (arg-info visible relevant)
 
-
-getIsoLow : ∀ {n}
-  → (p : PartIsoInt)
-  → List (T n) -- LOW Args
-  → Term
-getIsoLow p as =
+getIsoLowType : IsoHandler
+getIsoLowType p argₐ argₗ _ = def (quote PartIso.τₗ) (mkArg (PartIsoInt.wrapped p) ∷ mkArg argₐ ∷ mkArg argₗ ∷ [])
+{-
   def (quote applyArgs)
     (arg def-argInfo (tiso)
     ∷ (arg def-argInfo (mkArgs as))
     ∷ [])
   where
     tiso = def (quote PartIso.iso)
-      [ arg def-argInfo (PartIsoInt.wrapped p) ]
+      [ arg def-argInfo (PartIsoInt.wrapped p) ]-}
 
+{-
 -- gets the iso high pair
 getIsoHigh : ∀ {n}
   → Term -- the term representing ISO Low
@@ -190,22 +183,18 @@ getIsoHigh lw p as =
     ∷ [])
   where
     high = def (quote proj₂) [ arg def-argInfo lw ]
+-}
 
-getIsoLowType : IsoHandler
-getIsoLowType p LOWₐ HIGHₐ = def (quote proj₁)
-  [ arg def-argInfo (getIsoLow p LOWₐ ) ]
+getIsoHighType : IsoHandler
+getIsoHighType p argₐ _ argₕ = def (quote PartIso.τₕ) (mkArg (PartIsoInt.wrapped p) ∷ mkArg argₐ ∷ mkArg argₕ ∷ [])
+
 
 getAgdaLowType : T 0 → Term
 getAgdaLowType t = elAGDA (mkElOpts getIsoLowType false) t
 
 getAgdaHighType : T 0 → Term
-getAgdaHighType t = elAGDA (mkElOpts handleIso true) t
-  where
-    handleIso : IsoHandler
-    handleIso p LOWₐ HIGHₐ =
-      let low = getIsoLow p LOWₐ
-       in def (quote proj₁)
-            [ arg def-argInfo (getIsoHigh low p HIGHₐ) ]
+getAgdaHighType t = elAGDA (mkElOpts getIsoHighType true) t
+
 
 shift : ℕ → List ℕ → List ℕ
 shift k = List.map (N._+_ k)
@@ -225,10 +214,6 @@ unsafeConvert _ _ (withMaybe x) x₁ | nothing = conversionFailure ""
 unsafeConvert _ _ fail x = conversionFailure ""
 
 
-mkArg : ℕ → Arg Term
-mkArg i = arg (arg-info visible relevant) (var i [])
-
-
 import Data.Bool as B
 open import Relation.Nullary.Decidable
 
@@ -246,6 +231,15 @@ app t₁ t₂ = def (quote _$_)
           ∷ arg def-argInfo t₂
           ∷ [])
 
+up : (p : PartIso) → (aa : PartIso.ARGₐ p) → (al : PartIso.ARGₗ p aa) → (ah : PartIso.ARGₕ p aa)
+  → PartIso.τₗ p aa al → PartIso.τₕ p aa ah
+up p aa al ah from = unsafeConvert _ _ (proj₁ $ PartIso.⇅ p aa al ah) from
+
+down : (p : PartIso) → (aa : PartIso.ARGₐ p) → (al : PartIso.ARGₗ p aa) → (ah : PartIso.ARGₕ p aa)
+  → PartIso.τₕ p aa ah → PartIso.τₗ p aa al
+down p aa al ah from = unsafeConvert _ _ (proj₂ $ PartIso.⇅ p aa al ah) from
+
+
 ffi-lift1 : ∀ {n}
   → (fde : T n)
   → Term -- thing to wrap
@@ -257,47 +251,66 @@ ffi-lift1 (var k ∙ x) wr pos Γ = wr
 ffi-lift1 (def nm ∙ x) wr pos Γ  = wr
 ffi-lift1 {n} (π fde ∣ k ⇒ fde₁) wr pos Γ =
   lam visible (abs "x" bd)
-  where ls = ffi-lift1 fde (var 0 []) (invertPosition pos) (shift 1 Γ)
-        open import Reflection.DeBruijn
+  where open import Reflection.DeBruijn
+        ls = ffi-lift1 fde (var 0 []) (invertPosition pos) (shift 1 Γ)
         toWrap = case k of
           λ { Keep → app (weaken 2 wr) (var 0 [])
             ; Discard → weaken 2 wr
             }
         rs = ffi-lift1 fde₁ toWrap pos (0 ∷ shift 2 Γ)
         bd = lett ls inn rs
-ffi-lift1 (iso {l} x LOWₐ HIGHₐ) wr pos Γ =
+ffi-lift1 (iso {n} x argₐ argₗ argₕ) wr pos Γ =
   -- extract the conversion from the named iso
   -- apply unsafeConvert
-  def (quote unsafeConvert)
+{-  def (quote unsafeConvert)
     ( arg def-argInfo (tyFrom pos)
     ∷ arg def-argInfo (tyTo pos)
     ∷ arg def-argInfo conv
-    ∷ arg def-argInfo (wr) ∷ [])
+    ∷ arg def-argInfo (wr) ∷ [])-}
+  def (convFun pos) ((mkArg $ PartIsoInt.wrapped x) ∷ argₐ' ∷ argₗ' ∷ argₕ' ∷ mkArg wr ∷ [])
   where
         open import Reflection.Substitute
         ix = reverse $ downFrom (List.length Γ)
         s = subst (List.map (λ ix → safe (var ix []) _) Γ)
-        
+
+        mkArg' = mkArg
+
+        idEnv = reverse $ downFrom n
+        -- this only refers to arguments which do not have any isomorphisms in them
+        -- so we can return the wrapped or the original term
+        argₐ' = mkArg $ subst (List.map (λ x → safe (var (x N.+ 1) []) _) Γ) argₐ
+        -- this only refers to low args. Use the original lambda term
+        argₗ' = mkArg $ subst (List.map (λ x → safe (var (x N.+ 1) []) _) Γ) argₗ
+        -- this only refers to high args. Use the wrapped term.
+        argₕ' = mkArg $ subst (List.map (λ x → safe (var x []) _) Γ) argₕ
+
+        convFun : Position → Name
+        convFun Pos = quote up
+        convFun Neg = quote down
+
+        {-
         getConv : Position → Term → Term
         getConv Pos t = (def (quote proj₁) [ arg def-argInfo t ]) 
         getConv Neg t = (def (quote proj₂) [ arg def-argInfo t ])
         
         isoLow : Term
-        isoLow = getIsoLow x LOWₐ
+        isoLow = {!!} --getIsoLow x LOWₐ
         isoHigh : Term
-        isoHigh = getIsoHigh isoLow x HIGHₐ
+        isoHigh = {!!} --getIsoHigh isoLow x HIGHₐ
         
-        tyLow = s $ def (quote proj₁) [ arg def-argInfo isoLow ]
-        tyHigh = s $ def (quote proj₁) [ arg def-argInfo isoHigh ]
+        tyLow = s $ {!!} --def (quote proj₁) [ arg def-argInfo isoLow ]
+        tyHigh = s $ {!!} --def (quote proj₁) [ arg def-argInfo isoHigh ]
         tyFrom : Position → Term
         tyFrom Pos = tyLow
         tyFrom Neg = tyHigh
         tyTo : Position → Term
         tyTo Pos = tyHigh
         tyTo Neg = tyLow
+        
 
         conv : Term
-        conv = s $ getConv pos (def (quote proj₂) [ arg def-argInfo isoHigh ])
+        conv = s $ getConv pos (def (quote PartIso.⇅) ((mkArg $ PartIsoInt.wrapped x) ∷ mkArg argₐ ∷ {!!} ∷ {!!})) -- (def (quote proj₂) [ arg def-argInfo isoHigh ])
+        -}
 
 ffi-lift : (fde : T 0) → Term {- low term / function -} → Term
 ffi-lift fde low  = ffi-lift1 fde low Pos []
@@ -311,3 +324,6 @@ toIntPartIso : PartIso
 toIntPartIso p pₙ = record
   { wrapped = pₙ
   }
+
+
+

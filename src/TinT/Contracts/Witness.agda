@@ -21,9 +21,44 @@ open import Data.Maybe
       ; (no ¬p) → nothing }
     conv = (withMaybe up) , (total proj₁)
 
-{-open import Contracts.SSyn
+⇔Witness'2 : PartIso
+⇔Witness'2 = record
+  { LOWₐ = [ Σ Set (λ bty → Σ (bty → Set) (λ wty → (b : bty) → Dec (wty b))) ]
+  ; HIGHₐ = []
+  ; iso =
+    λ dec → let bty = proj₁ dec
+                wty = proj₁ (proj₂ dec)
+                d = proj₂ (proj₂ dec)
+                up = λ b → case d b of λ
+                  { (yes p) → just (b , p)
+                  ; (no ¬p) → nothing }
+      in bty , ((Σ bty wty) , (withMaybe up , total proj₁)) }
 
-⇔Witness : {A : Set} {B : A → Set} → ((a : A) → Dec (B a)) → PartIsoPub
+open import Reflection
+
+⇔Witness2Int : PartIsoInt
+⇔Witness2Int = record { wrapped = def (quote ⇔Witness'2) [] }
+
+open import Contracts.SSyn
+
+⇔Witness2 : PartIsoPub
+⇔Witness2 = record
+  { partIso = ⇔Witness'2
+  ; partIsoInt = ⇔Witness2Int
+  }
+
+{-
+⇔Witness :{A : Set} {B : A → Set} → ((a : A) → Dec (B a)) → PartIsoPub
+⇔Witness dec = record
+  { partIso = ⇔Witness' dec
+  ; partIsoInt = record
+    { wrapped = quoteTerm (⇔Witness' dec) }
+  }
+-}
+
+open import Contracts.SSyn
+
+{-⇔Witness : {A : Set} {B : A → Set} → ((a : A) → Dec (B a)) → PartIsoPub
 ⇔Witness d = mkIsoPub (⇔Witness' d) (mkIsoInt {!!})
 -}
 
@@ -32,10 +67,31 @@ open import Contracts.SSyn
 macro
 --  ⇔Witness : {A : Set} {B : A → Set} → ((a : A) → Dec (B a)) → PartIsoPub
   -- dec -> partiso
-  ⇔Witness : Term → Term
-  ⇔Witness dec = con (quote mkIsoPub) (arg (arg-info visible relevant) (pi') ∷ arg (arg-info visible relevant) pii ∷ [])
+  ⇔Witness : Term {- base type-} → Term {- witness type -} → Term → Term
+  ⇔Witness lty hty dec = con (quote mkIsoPub) (arg (arg-info visible relevant) (pi') ∷ arg (arg-info visible relevant) pii ∷ [])
     where
       -- part iso
-      pi' = def (quote ⇔Witness') (arg (arg-info visible relevant) dec ∷ [])
+      pi' = def (quote ⇔Witness') (arg (arg-info hidden relevant) lty
+        ∷ arg (arg-info hidden relevant) hty
+        ∷ arg (arg-info visible relevant) dec ∷ [])
       -- part iso int
-      pii = con (quote mkIsoInt) [ arg (arg-info visible relevant) (quoteTerm pi') ]
+      pii = con (quote mkIsoInt) [ arg (arg-info visible relevant)
+        -- this has to be a term, describing how to build the PartIso
+        (quote-term (pi')) ]
+--        (def (quote def) {!⇔Witness'!}) ]
+        --(def (quote _$_) (arg def-argInfo (def (quote ⇔Witness') []) ∷ arg def-argInfo dec ∷ [])) ]
+
+
+open import Data.Nat
+
+dec : Term
+dec = quoteTerm (Data.Nat._≟_ 10)
+
+open import Relation.Binary.PropositionalEquality
+
+g : {!unquote (def (quote ⇔Witness') (arg (arg-info visible relevant) dec ∷ []))!}
+g = {!quoteTerm ((makeContract (⟨ ⟦ ⇔Witness2 ⇋ (C (ℕ , ((_≡_ 10) , Data.Nat._≟_ 10))) , [] ⟧ ⟩ )))!}
+
+
+--f : _ --Σ ℕ (λ x → 10 ≡ x)
+--f = assert (makeContract (⟨ ⟦ ⇔Witness2 ⇋ (C (ℕ , ((_≡_ 10) , Data.Nat._≟_ 10))) , [] ⟧ ⟩ )) error
