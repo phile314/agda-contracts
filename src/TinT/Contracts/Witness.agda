@@ -8,43 +8,49 @@ open import Data.Product
 open import Function
 open import Data.Maybe
 
+{-
 ⇔Witness' : {A : Set} {B : A → Set} → ((a : A) → Dec (B a)) → PartIso
-⇔Witness' {A} {B} d = record { LOWₐ = [] ; HIGHₐ = [] ; iso = A , ((Σ A B) , conv) }
+⇔Witness' {A} {B} d = record
+  { ARGₐ = [] ; HIGHₐ = [] ; iso = A , ((Σ A B) , conv) }
   where
     -- we can't provide a (A → Dec (Σ A B)) here, because
     -- this would mean we have to prove that there is no
     -- such pair for all possible values of A.
     -- Using withMaybe works fine though.
-    up : A → Maybe (Σ A B)
-    up a = case d a of λ
+    w-up : A → Maybe (Σ A B)
+    w-up a = case d a of λ
       { (yes p) → just (a , p)
       ; (no ¬p) → nothing }
-    conv = (withMaybe up) , (total proj₁)
+    conv = (withMaybe w-up) , (total proj₁)
+-}
+open import Data.Unit hiding (total)
 
-⇔Witness'2 : PartIso
-⇔Witness'2 = record
-  { LOWₐ = [ Σ Set (λ bty → Σ (bty → Set) (λ wty → (b : bty) → Dec (wty b))) ]
-  ; HIGHₐ = []
-  ; iso =
-    λ dec → let bty = proj₁ dec
-                wty = proj₁ (proj₂ dec)
-                d = proj₂ (proj₂ dec)
-                up = λ b → case d b of λ
-                  { (yes p) → just (b , p)
-                  ; (no ¬p) → nothing }
-      in bty , ((Σ bty wty) , (withMaybe up , total proj₁)) }
+⇔Witness' : PartIso
+⇔Witness' = record
+  { ARGₐ = Σ Set (λ bty → Σ (bty → Set) (λ wty → (b : bty) → Dec (wty b)))
+  ; ARGₗ = λ _ → ⊤ --[]
+  ; ARGₕ = λ _ → ⊤
+  ; τₗ = λ aa _ → proj₁ aa
+  ; τₕ = λ aa _ → Σ (proj₁ aa) (proj₁ (proj₂ aa))
+  ; ⇅ = λ aa _ _ →
+    let dec = proj₂ $ proj₂ aa
+        up = λ x → case dec x of λ
+          { (yes p) → just (x , p)
+          ; (no ¬p) → nothing }
+     in withMaybe up , total proj₁
+  }
 
 open import Reflection
 
-⇔Witness2Int : PartIsoInt
-⇔Witness2Int = record { wrapped = def (quote ⇔Witness'2) [] }
+⇔WitnessInt : PartIsoInt
+⇔WitnessInt = record { wrapped = def (quote ⇔Witness') [] }
 
 open import Contracts.SSyn
 
-⇔Witness2 : PartIsoPub
-⇔Witness2 = record
-  { partIso = ⇔Witness'2
-  ; partIsoInt = ⇔Witness2Int
+⇔Witness : PartIsoPub
+⇔Witness = record
+  { partIso = ⇔Witness'
+  ; partIsoInt = ⇔WitnessInt
   }
 
 {-
@@ -62,6 +68,7 @@ open import Contracts.SSyn
 ⇔Witness d = mkIsoPub (⇔Witness' d) (mkIsoInt {!!})
 -}
 
+{-
 open import Reflection
 open import Contracts.SSyn
 macro
@@ -81,7 +88,7 @@ macro
 --        (def (quote def) {!⇔Witness'!}) ]
         --(def (quote _$_) (arg def-argInfo (def (quote ⇔Witness') []) ∷ arg def-argInfo dec ∷ [])) ]
 
-
+-}
 open import Data.Nat
 
 dec : Term
@@ -89,8 +96,8 @@ dec = quoteTerm (Data.Nat._≟_ 10)
 
 open import Relation.Binary.PropositionalEquality
 
-g : {!unquote (def (quote ⇔Witness') (arg (arg-info visible relevant) dec ∷ []))!}
-g = {!quoteTerm ((makeContract (⟨ ⟦ ⇔Witness2 ⇋ (C (ℕ , ((_≡_ 10) , Data.Nat._≟_ 10))) , [] ⟧ ⟩ )))!}
+--g : {!unquote (def (quote ⇔Witness') (arg (arg-info visible relevant) dec ∷ []))!}
+--g = {!quoteTerm ((makeContract (⟨ ⟦ ⇔Witness2 ⇋ (C (ℕ , ((_≡_ 10) , Data.Nat._≟_ 10))) , [] ⟧ ⟩ )))!}
 
 
 --f : _ --Σ ℕ (λ x → 10 ≡ x)

@@ -71,7 +71,7 @@ module T3 where
 
   pp''' : _
   pp''' = assert (makeContract (⟨ _ ∷ ⟦ ℕ ⟧ ⟩⇏ ⟨ n ∷ ⟦ ℕ ⟧ ⟩⇒ ⟨ x ∷ ⟦ Set ⟧ ⟩⇒ ⟨ ⟦ vec⇔list ⇋ x , ((liftW tt) , liftW n) ⟧ ⟩)) f-low
-{-
+
   {-
   open import Data.Integer
   addImpl' : ℤ → ℤ → ℤ
@@ -138,11 +138,14 @@ module Witnessss where
   open import Contracts.SSyn
   open import Data.Nat
   open import Data.List
+  open import Data.Product
+  open import Relation.Binary.PropositionalEquality
+  open import Data.Unit hiding (_≟_)
 
   postulate f-low : ℕ → ℕ → ℕ
 
---  f' : _
---  f' = assert (⟨ n ∷ ⟦ ℕ ⟧ ⟩⇒ ⟨ x ∷ ⟦ Set ⟧ ⟩⇒ ⟨ ⟦ (⇔Witness (_≟_ 10)) ⇋ {!!} ⟧ ⟩) f-low
+  f' : _ --ℕ → ℕ → Σ ℕ (_≡_ 10)
+  f' = assert (makeContract (⟨ n ∷ ⟦ ℕ ⟧ ⟩⇒ ⟨ x ∷ ⟦ ℕ ⟧ ⟩⇒ ⟨ ⟦ ⇔Witness ⇋ (ℕ , (_≡_ 10 , _≟_ 10)) , liftW tt , liftW tt ⟧ ⟩)) f-low
 
 open import IO
 import IO.Primitive
@@ -153,7 +156,7 @@ open import Data.Integer
 open import Data.Nat
 
 --open MapEx
-open DepCon1
+--open DepCon1
 open import Data.Vec
 
 postulate exError : {A : Set} → A
@@ -169,4 +172,4 @@ main = run (putStrLn (Data.Nat.Show.show s))
         s = foldl (λ _ → ℕ) Data.Nat._+_ 0 kk
 
 -}
--}
+
