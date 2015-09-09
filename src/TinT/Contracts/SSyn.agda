@@ -150,9 +150,10 @@ module T3 where
 
   unWCon : Term → Term
   -- an argument get's lifted here into high/low context
---  unWCon (con (quote C) args) = unArg $ lookup' 2 args
+  unWCon (con (quote C) args) = unArg $ lookup' 2 args
   -- argument was already in low/high context
-  unWCon t = def (quote unC) List.[ mkArg t ]
+  unWCon t = t
+  --unWCon t = def (quote unC) List.[ mkArg t ]
 
   {-# TERMINATING #-}
 --  withArgsToT' : {n : ℕ} → Term → List (T n)
@@ -229,6 +230,9 @@ module T3 where
 {-  _,,_ : ∀ {A c} {args : ArgTys} → A → WithArgs args → WithArgs (WContext A c ∷ args)
   a ,, b = (C a) , b
   infixr 5 _,,_-}
+  open import Data.Unit
+  ∅ : ⊤ × WContext ⊤ L × WContext ⊤ H
+  ∅ = tt , ((liftW tt) , (liftW tt))
 
 open T3 public
 
