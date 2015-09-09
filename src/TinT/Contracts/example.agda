@@ -106,7 +106,7 @@ module T3 where
 --  r : ℕ → ℕ
 --    using foreign (record {})
 
-module Map where
+module Fmap where
   open import Data.List
   open import Contracts.SSyn
   open import Data.Nat
@@ -146,6 +146,47 @@ module Witnessss where
 
   f' : _ --ℕ → ℕ → Σ ℕ (_≡_ 10)
   f' = assert (makeContract (⟨ n ∷ ⟦ ℕ ⟧ ⟩⇒ ⟨ x ∷ ⟦ ℕ ⟧ ⟩⇒ ⟨ ⟦ ⇔Witness ⇋ (ℕ , (_≡_ 10 , _≟_ 10)) , liftW tt , liftW tt ⟧ ⟩)) f-low
+
+module TwoArgTest where
+  open import Contracts.SSyn
+  open import Contracts.Base
+  open import Data.Unit
+  open import Data.Product
+  open import Data.List
+
+  data Map (A B : Set) : Set where
+
+  List⇔Map' : PartIso
+  List⇔Map' = record
+    { ARGₐ = Set × Set
+    ; ARGₗ = λ _ → ⊤
+    ; ARGₕ = λ _ → ⊤
+    ; τₗ = λ aa _ → List (proj₁ aa × proj₂ aa)
+    ; τₕ = λ aa _ → Map (proj₁ aa) (proj₂ aa)
+    ; ⇅ = λ aa _ _ → error
+    }
+  List⇔Map-Int : PartIsoInt
+  List⇔Map-Int = record { wrapped = def (quote List⇔Map') [] }
+    where open import Reflection
+
+  List⇔Map : PartIsoPub
+  List⇔Map = record { partIso = List⇔Map' ; partIsoInt = List⇔Map-Int }
+
+--  open import Data.Nat
+--  open import Data.Integer
+  f-low : (A B : Set) → List (A × B) → List (A × B)
+  f-low = error
+  f : {!!}
+  f = assert (makeContract (
+    ⟨ A ∷ ⟦ Set ⟧ ⟩⇒
+    ⟨ B ∷ ⟦ Set ⟧ ⟩⇒
+    ⟨ _ ∷ ⟦ List⇔Map ⇋ (A , B) , (liftW tt) , (liftW tt) ⟧ ⟩⇒
+    ⟨ ⟦ List⇔Map ⇋ (A , B) , (liftW tt) , (liftW tt) ⟧ ⟩)) f-low
+  g = {!unquote (getAgdaHighType (ast⇒T' {0} (quoteTerm (makeContract (
+    ⟨ A ∷ ⟦ Set ⟧ ⟩⇒
+    ⟨ B ∷ ⟦ Set ⟧ ⟩⇒
+    ⟨ _ ∷ ⟦ List⇔Map ⇋ (A , B) , (liftW tt) , (liftW tt) ⟧ ⟩⇒
+    ⟨ ⟦ List⇔Map ⇋ (A , B) , (liftW tt) , (liftW tt) ⟧ ⟩)))))!}
 
 open import IO
 import IO.Primitive
