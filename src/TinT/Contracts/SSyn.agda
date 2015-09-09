@@ -61,14 +61,6 @@ module T3 where
     ⟦_⟧ : ∀ {p} (A : Set) → AST' p -- normal type (List, Nat, etc..)
     ⟦_⇋_⟧ : ∀ {p} (pi :  PartIsoPub) → getArgs pi → AST' p -- isomorphism
 
-{-  split++ : {a : ArgTys} → {b : ArgTys} → (args : WithArgs (a List.++ b)) → (WithArgs a × WithArgs b)
-  split++ {a = []} args = [] , args
-  split++ {a = x ∷ a} (a₁ , args) = (a₁ , (proj₁ r)) , (proj₂ r)
-    where r = split++ args
-
-  unconArgs : {args : ArgTys} {f : Set → Set} {f' : {A : Set} → f A → A} → WithArgs (List.map f args) → WithArgs args
-  unconArgs {[]} [] = []
-  unconArgs {x ∷ args} {f} {f'} (a , wa) = f' a , unconArgs {f' = f'} wa-}
 
   getTy (pi {p} a aw x) = (arg : (withWCon (pos+way→Context p aw) (getTy a))) → (getTy (x arg))
   getTy (⟦ x ⟧) = x
@@ -153,20 +145,8 @@ module T3 where
   unWCon (con (quote C) args) = unArg $ lookup' 2 args
   -- argument was already in low/high context
   unWCon t = t
-  --unWCon t = def (quote unC) List.[ mkArg t ]
 
-  {-# TERMINATING #-}
---  withArgsToT' : {n : ℕ} → Term → List (T n)
-  ast-ty⇒T' : ∀ {n} → (t : Term) → T n
 
-  {-withArgsToT' {n} (con (quote WithArgs.[]) _) = []
-  withArgsToT' {n} (con (quote WithArgs._,_) args') = arg' ∷ withArgsToT' {n} tl
-    where
-      hd = unArg $ lookup' 1 args' -- con lift ...
-      tl = unArg $ lookup' 3 args'
-      arg' : T n
-      arg' = ast-ty⇒T' $ unWCon hd
-  withArgsToT' _ = Errrr3-}
   -- splits an argument term into the all/low/high arg terms
   splitArgs : Term → Term × Term × Term
   splitArgs (con (quote _,_) args) =
@@ -183,8 +163,9 @@ module T3 where
   ast⇒ArgWay _ = error
 
   open import Data.Fin using (fromℕ≤)
-  
-  {-# TERMINATING #-}
+
+
+  ast-ty⇒T' : ∀ {n} → (t : Term) → T n
   ast-ty⇒T' {n} (var x args) = case (ℕ.suc x) ≤? n of (
     λ { (yes p) → var (fromℕ≤ p) ∙ List.map (ast-ty⇒T' ∘ unArg) args
       ; (no _) → Errrr3
@@ -194,6 +175,7 @@ module T3 where
   ast-ty⇒T' (sort (lit n₁)) = set n₁
   ast-ty⇒T' (sort unknown) = Errrr2
   ast-ty⇒T' _ = Errrr3
+
 
   {-# TERMINATING #-}
   ast⇒T' : ∀ {n} → (t : Term) -- AST
@@ -227,9 +209,6 @@ module T3 where
 
   arg-ast⇒T (arg i x) = ast⇒T' x
 
-{-  _,,_ : ∀ {A c} {args : ArgTys} → A → WithArgs args → WithArgs (WContext A c ∷ args)
-  a ,, b = (C a) , b
-  infixr 5 _,,_-}
   open import Data.Unit
   ∅ : ⊤ × WContext ⊤ L × WContext ⊤ H
   ∅ = tt , ((liftW tt) , (liftW tt))
