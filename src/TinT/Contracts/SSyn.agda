@@ -150,9 +150,9 @@ module T3 where
 
   unWCon : Term → Term
   -- an argument get's lifted here into high/low context
-  unWCon (con (quote C) args) = unArg $ lookup' 2 args
+--  unWCon (con (quote C) args) = unArg $ lookup' 2 args
   -- argument was already in low/high context
-  unWCon t = t
+  unWCon t = def (quote unC) List.[ mkArg t ]
 
   {-# TERMINATING #-}
 --  withArgsToT' : {n : ℕ} → Term → List (T n)
@@ -166,6 +166,15 @@ module T3 where
       arg' : T n
       arg' = ast-ty⇒T' $ unWCon hd
   withArgsToT' _ = Errrr3-}
+  -- splits an argument term into the all/low/high arg terms
+  splitArgs : Term → Term × Term × Term
+  splitArgs (con (quote _,_) args) =
+    (unArg $ lookup' 4 args) ,
+    (case (unArg $ lookup' 5 args) of λ
+      { (con (quote _,_) args) → (unWCon $ unArg $ lookup' 4 args) , (unWCon $ unArg $ lookup' 5 args)
+      ; _ → Errrr2
+      })
+  splitArgs _ = Errrr2
 
   ast⇒ArgWay : Term → ArgWay
   ast⇒ArgWay (con (quote Keep) args) = Keep
@@ -199,9 +208,10 @@ module T3 where
           let pubIso = unArg $ lookup' 1 args
               nArgs = pubIsoGetNumArgs pubIso
               intIso = record { wrapped = pubIsoToIntIso pubIso }
-              allArgs = {!!} --withArgsToT' (unArg $ lookup' 2 args)
-           in {!!} --iso intIso (List.take (proj₁ nArgs) allArgs) (List.drop (proj₁ nArgs) allArgs) ;
-      ; _ → Errrr3})
+              (aa , al , ah) = splitArgs $ unArg $ lookup' 2 args --withArgsToT' (unArg $ lookup' 2 args)
+           in iso intIso aa al ah --iso intIso (List.take (proj₁ nArgs) allArgs) (List.drop (proj₁ nArgs) allArgs) ;
+      ; _ → Errrr3
+      })
   ast⇒T' (def f args) = Errrr3
   ast⇒T' (lam v t) = Errrr3
   ast⇒T' (pat-lam cs args) = Errrr3

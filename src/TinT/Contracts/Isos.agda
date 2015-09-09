@@ -3,7 +3,7 @@
 module Contracts.Isos where
 
 open import Contracts.Base
---open import Contracts.SSyn
+open import Contracts.SSyn
 
 module NatIntIso where
   open import Data.Nat
@@ -25,8 +25,8 @@ module NatIntIso where
     { wrapped = def (quote ℕ⇔ℤI) [] } --; wrapped = partIso}
 
 
---  ℕ⇔ℤ : PartIsoPub
---  ℕ⇔ℤ = record { partIso = ℕ⇔ℤI ; partIsoInt = ℕ⇔ℤ' }
+  ℕ⇔ℤ : PartIsoPub
+  ℕ⇔ℤ = record { partIso = ℕ⇔ℤI ; partIsoInt = ℕ⇔ℤ' }
 
 
 module VecIso where
@@ -55,5 +55,5 @@ module VecIso where
     where vl = vec⇔listI
           open import Reflection
 
---  vec⇔list : PartIsoPub
---  vec⇔list = record { partIso = vec⇔listI ; partIsoInt = (vec⇔list') }
+  vec⇔list : PartIsoPub
+  vec⇔list = record { partIso = vec⇔listI ; partIsoInt = (vec⇔list') }

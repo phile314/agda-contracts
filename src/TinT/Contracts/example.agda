@@ -34,11 +34,12 @@ module T3 where
 
   open import Function
   open import Reflection as R
+  open import Data.Unit
   
   f' : AST
-  f' = ⟨ n ∷ ⟦ ℕ ⟧ ⟩⇒ ⟨ x ∷ ⟦ Set ⟧ ⟩⇒ ⟨ ⟦ vec⇔list ⇋ liftW x , liftW n , [] ⟧ ⟩
+  f' = ⟨ n ∷ ⟦ ℕ ⟧ ⟩⇒ ⟨ x ∷ ⟦ Set ⟧ ⟩⇒ ⟨ ⟦ vec⇔list ⇋  x , (liftW tt , liftW n) {-liftW x , liftW n , []-} ⟧ ⟩
   f : Term
-  f = quoteTerm (makeContract (⟨ n ∷ ⟦ ℕ ⟧ ⟩⇒ ⟨ x ∷ ⟦ Set ⟧ ⟩⇒ ⟨ ⟦ vec⇔list ⇋ liftW x , liftW n , [] ⟧ ⟩))
+  f = quoteTerm (makeContract (⟨ n ∷ ⟦ ℕ ⟧ ⟩⇒ ⟨ x ∷ ⟦ Set ⟧ ⟩⇒ ⟨ ⟦ vec⇔list ⇋ x , ((liftW tt) , (liftW n)) {- liftW x , liftW n , []-} ⟧ ⟩))
 
   f-low : ℕ → (A : Set) → List A
   f-low n A = []
@@ -49,11 +50,13 @@ module T3 where
   g' = ⟨ n ∷ ⟦ ℕ ⟧ ⟩⇏
     ⟨ x ∷ ⟦ Set ⟧ ⟩⇒
     ⟨ f ∷ (⟨ _ ∷ ⟦ x ⟧ ⟩⇒ ⟨ ⟦ x ⟧ ⟩ ) ⟩⇒
-    ⟨ _ ∷ ⟦ vec⇔list ⇋ (liftW x) , (n , []) ⟧ ⟩⇒
-    ⟨ ⟦ vec⇔list ⇋ (liftW x) , (n , []) ⟧ ⟩
+    ⟨ _ ∷ ⟦ vec⇔list ⇋ x , ((liftW tt) , n) ⟧ ⟩⇒
+    ⟨ ⟦ vec⇔list ⇋ x , ((liftW tt) , n) ⟧ ⟩
 
---  gg : unquote (getAgdaHighType (ast⇒T' f))
---  gg = unquote (ffi-lift (ast⇒T' f) (def (quote f-low) []))
+
+  gg : unquote (getAgdaHighType (ast⇒T' f))
+  gg = unquote (ffi-lift (ast⇒T' f) (def (quote f-low) []))
+
 
   ggg : {!pretty (getAgdaLowType (ast⇒T' {0} (quoteTerm (makeContract (⟨ n ∷ ⟦ ℕ ⟧ ⟩⇒ ⟨ x ∷ ⟦ Set ⟧ ⟩⇒ ⟨ ⟦ vec⇔list ⇋ x ,, n ,, [] ⟧ ⟩)))))!}
   ggg = {!lett (var 10 []) inn var 0 []!}
@@ -62,13 +65,13 @@ module T3 where
   pp'' = assert (makeContract (⟨ n ∷ ⟦ ℕ ⟧ ⟩⇒ ⟨ x ∷ ⟦ Set ⟧ ⟩⇒ ⟨ ⟦ x ⟧ ⟩)) error
 
   pp'4 : _
-  pp'4 = assert (makeContract (⟨ ⟦ ℕ⇔ℤ ⇋ [] ⟧ ⟩)) error
+  pp'4 = assert (makeContract (⟨ ⟦ ℕ⇔ℤ ⇋ tt , ((liftW tt) , (liftW tt)) ⟧ ⟩)) error
   pp' : _
-  pp' = assert (makeContract (⟨ n ∷ ⟦ ℕ ⟧ ⟩⇒ ⟨ x ∷ ⟦ Set ⟧ ⟩⇒ ⟨ ⟦ vec⇔list ⇋ x ,, n ,, [] ⟧ ⟩)) f-low
+  pp' = assert (makeContract (⟨ n ∷ ⟦ ℕ ⟧ ⟩⇒ ⟨ x ∷ ⟦ Set ⟧ ⟩⇒ ⟨ ⟦ vec⇔list ⇋ x , ((liftW tt) , (liftW n)) ⟧ ⟩)) f-low
 
   pp''' : _
-  pp''' = assert (makeContract (⟨ _ ∷ ⟦ ℕ ⟧ ⟩⇏ ⟨ n ∷ ⟦ ℕ ⟧ ⟩⇒ ⟨ x ∷ ⟦ Set ⟧ ⟩⇒ ⟨ ⟦ vec⇔list ⇋ x ,, n ,, [] ⟧ ⟩)) f-low
-
+  pp''' = assert (makeContract (⟨ _ ∷ ⟦ ℕ ⟧ ⟩⇏ ⟨ n ∷ ⟦ ℕ ⟧ ⟩⇒ ⟨ x ∷ ⟦ Set ⟧ ⟩⇒ ⟨ ⟦ vec⇔list ⇋ x , ((liftW tt) , liftW n) ⟧ ⟩)) f-low
+{-
   {-
   open import Data.Integer
   addImpl' : ℤ → ℤ → ℤ
@@ -165,4 +168,5 @@ main = run (putStrLn (Data.Nat.Show.show s))
 
         s = foldl (λ _ → ℕ) Data.Nat._+_ 0 kk
 
+-}
 -}
