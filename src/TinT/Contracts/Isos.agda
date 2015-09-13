@@ -44,8 +44,14 @@ module VecIso where
   list⇒vec xs | no ¬p = nothing
 
   vec⇔listI : PartIso
-  vec⇔listI = mkPartIso Set (λ _ → ⊤) (λ _ → ℕ) (λ aa _ → List aa) (λ aa n → Vec aa n)
-      (λ aa _ n → (withMaybe list⇒vec) , (total toList))
+  vec⇔listI = record
+    { ARGₐ = Set
+    ; ARGₗ = λ _ → ⊤
+    ; ARGₕ = λ _ → ℕ
+    ; τₗ = λ aa _ → List aa
+    ; τₕ = λ aa n → Vec aa n
+    ; ⇅ = λ aa _ n → (withMaybe list⇒vec) , (total toList)
+    }
     where open import Data.Unit hiding (total)
 
 

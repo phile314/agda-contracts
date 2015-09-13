@@ -50,6 +50,7 @@ module T3 where
   withWCon : Context → Set → Set
   withWCon Both s = s
   withWCon c s = WContext s c
+  
 
   data AST' : Position → Set
   getTy : ∀ {p} → AST' p → Set
