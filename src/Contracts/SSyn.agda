@@ -206,6 +206,7 @@ module T3 where
   ast⇒T' (quote-term t) = Errrr3
   ast⇒T' quote-context = Errrr3
   ast⇒T' (unquote-term t args) = Errrr3
+  ast⇒T' (foreign-term t ty) = Errrr3
   ast⇒T' unknown = Errrr3
 
   arg-ast⇒T (arg i x) = ast⇒T' x

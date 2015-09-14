@@ -1,31 +1,26 @@
 module Foreign.Base where
 
-open import Level
 open import Data.String
 open import Reflection using (Name; showName)
 
 data CompileTarget : Set where
   UHC-Native : CompileTarget -- producing executables
-{-# BUILTIN COMPILETARGET CompileTarget #-}
-{-# BUILTIN COMPILETARGETUHCNATIVE UHC-Native #-}
+-- {-# BUILTIN COMPILETARGET CompileTarget #-}
+-- {-# BUILTIN COMPILETARGETUHCNATIVE UHC-Native #-}
 
 data FFIWay : CompileTarget → Set where
   UHC-HS : FFIWay UHC-Native
   UHC-C  : FFIWay UHC-Native
-{-# BUILTIN FFIWAY FFIWay #-}
-{-# BUILTIN FFIWAYUHCHS UHC-HS #-}
-{-# BUILTIN FFIWAYUHCC UHC-C #-}
+-- {-# BUILTIN FFIWAY FFIWay #-}
+-- {-# BUILTIN FFIWAYUHCHS UHC-HS #-}
+-- {-# BUILTIN FFIWAYUHCC UHC-C #-}
 
-UHC-C-EntityName : Set
-UHC-C-EntityName = String
-
-UHC-HS-EntityName : Set
-UHC-HS-EntityName = String
-
-AGDA-EntityName : Set
-AGDA-EntityName = Name
+UHC-CR-Expr UHC-HS-Name : Set
+UHC-CR-Expr = String
+UHC-HS-Name = String
 
 
+{-
 module Data where
 
   open import Data.Maybe
@@ -54,9 +49,11 @@ module Data where
     field uhc-c  : Maybe (ForeignSpec UHC-C nm)
   {-# BUILTIN FFIDATADATA ForeignData #-}
 
+-}
 
 module FunImport where
 
+{-
   data C-Safety : Set where
     safe : C-Safety
     unsafe : C-Safety
@@ -66,63 +63,28 @@ module FunImport where
 
   open import Data.Nat
   open import Data.Fin
-
-
-  -- The grammar of Haskell types, using de-bruijn indices.
-  data τ-Hs : {ct : CompileTarget} → (way : FFIWay ct) → Set where --: {ct : CompileTarget} (way : FFIWay ct) → Set where
-    var : ∀ {ct} → {way : FFIWay ct} → (k : ℕ) → τ-Hs way
-    app : ∀ {ct} → {way : FFIWay ct} → τ-Hs way → τ-Hs way → τ-Hs way
-    ∀'  : ∀ {ct} → {way : FFIWay ct} → τ-Hs way → τ-Hs way
-    _⇒_ : ∀ {ct} → {way : FFIWay ct} → τ-Hs way → τ-Hs way → τ-Hs way
-    ty  : ∀ {ct} → {way : FFIWay ct} → (nm-Agda : Name) → (foreign-data : Data.ForeignSpec way nm-Agda) → τ-Hs way
-  {-# BUILTIN FFIHSTY τ-Hs #-}
-  {-# BUILTIN FFIHSTYVAR var #-}
-  {-# BUILTIN FFIHSTYAPP app #-}
-  {-# BUILTIN FFIHSTYFORALL ∀' #-}
-  {-# BUILTIN FFIHSTYFUN _⇒_ #-}
-  {-# BUILTIN FFIHSTYDATA ty #-}
-
-  data ForeignSpec : CompileTarget → Set where
-    UHC-HS : UHC-HS-EntityName → τ-Hs UHC-HS → ForeignSpec UHC-Native
-    UHC-C : UHC-C-EntityName → C-Safety → ForeignSpec UHC-Native -- c type descriptor is missing!
-  {-# BUILTIN FFIFUNSPEC ForeignSpec #-}
-  {-# BUILTIN FFIFUNSPECUHCHS UHC-HS #-}
-  {-# BUILTIN FFIFUNSPECUHCC UHC-C #-}
-
-  open import Data.Maybe
-
-  -- there must be at most one binding for each compile target
-  record ForeignFun : Set where
-    field uhc-native : Maybe (ForeignSpec UHC-Native)
-  {-# BUILTIN FFIFUNFUN ForeignFun #-}
-
-  open import Data.List using (List; foldl)
-  apps : ∀ {ct} → {way : FFIWay ct} → τ-Hs way → List (τ-Hs way) → τ-Hs way
-  apps f xs = foldl app f xs
+-}
 
 
 
+  data UHCFunImport : Set where
+    HS : UHC-HS-Name -> UHCFunImport
+    Core : UHC-CR-Expr -> UHCFunImport
+  {-# BUILTIN FFIUHCFUNIMPORT UHCFunImport #-}
+  {-# BUILTIN FFIUHCFUNIMPORTHS HS #-}
+  {-# BUILTIN FFIUHCFUNIMPORTCORE Core #-}
 
-module HS where
-  open import Data.List
-  open import Reflection
-  open import Data.Maybe
-  open Data
-  postulate
-    HSInteger : Set
-    HSInt : Set
-    HSDouble : Set
-  instance
-    HSInteger-FD : Data.ForeignData (quote HSInteger)
-    HSInteger-FD = record { uhc-hs = just (Data.UHC-HS "Data.List" (quote HSInteger)) ; uhc-c = nothing }
+  data CallSpec : Set -> Set where
+    CompileError : forall {A} -> CallSpec A
+    RuntimeError : forall {A} -> CallSpec A
+    Spec : forall {A} -> A -> CallSpec A
+  {-# BUILTIN FFICALLSPEC CallSpec #-}
+  {-# BUILTIN FFICALLSPECCOMPILEERROR CompileError #-}
+  {-# BUILTIN FFICALLSPECRUNTIMEERROR RuntimeError #-}
+  {-# BUILTIN FFICALLSPECSPEC Spec #-}
 
-  HSList : ∀ {l} → Set l → Set l
-  HSList = Data.List.List
 
-  open import Data.Nat
-  instance
-    ℕ-FD : ForeignData (quote ℕ)
-    ℕ-FD = record { uhc-hs = just (UHC-HS "NONE" (quote ℕ)); uhc-c = nothing }
-
-  
-
+  data FFICall : Set where
+    Call : CallSpec UHCFunImport -> FFICall
+  {-# BUILTIN FFICALL FFICall #-}
+  {-# BUILTIN FFICALLCALL Call #-}

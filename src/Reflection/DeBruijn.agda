@@ -82,6 +82,7 @@ private
   strTerm lo n (unquote-term t args) = unquote-term <$> strTerm lo n t <*> strArgs lo n args
   strTerm lo n quote-context    = just quote-context
   strTerm lo n (pat-lam _ _) = just unknown -- todo
+  strTerm lo n (foreign-term t₁ t₂) = foreign-term <$> strTerm lo n t₁ <*> strType lo n t₂
   strTerm lo n unknown       = just unknown
 
   strAbsTerm lo n (abs s t)  = abs s <$> strTerm (suc lo) n t
@@ -131,6 +132,7 @@ private
   wk lo k (unquote-term t args) = unquote-term (wk lo k t) (wkArgs lo k args)
   wk lo k quote-context     = quote-context
   wk lo k (pat-lam cs args) = pat-lam (wkClauses lo k cs) (wkArgs lo k args)
+  wk lo k (foreign-term t₁ t₂) = foreign-term (wk lo k t₁) (wkType lo k t₂)
   wk lo k unknown       = unknown
 
   wkAbsTerm lo k (abs s t)  = abs s (wk     (suc lo) k t)

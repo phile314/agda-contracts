@@ -34,6 +34,7 @@ patternArgsVars (arg _ p ∷ ps) = patternVars p + patternArgsVars ps
 IsSafe : Term → Set
 IsSafe (lam _ _) = ⊥
 IsSafe (quote-goal _) = ⊥
+IsSafe (foreign-term _ _) = ⊥
 IsSafe _ = ⊤
 
 data SafeTerm : Set where
@@ -52,6 +53,7 @@ maybeSafe (quote-goal t) = nothing
 maybeSafe (quote-term v) = just (safe (quote-term v) _)
 maybeSafe quote-context = just (safe quote-context _)
 maybeSafe (unquote-term v args) = just (safe (unquote-term v args) _)
+maybeSafe (foreign-term t ty) = nothing
 maybeSafe unknown = just (safe unknown _)
 
 instance
@@ -86,6 +88,7 @@ applyTerm (safe (quote-goal t) ()) args
 applyTerm (safe (quote-term v) _) _ = quote-term v
 applyTerm (safe quote-context _) _ = quote-context
 applyTerm (safe (unquote-term v args) _) args₁ = unquote-term v (args ++ args₁)
+applyTerm (safe (foreign-term t ty) ()) args
 applyTerm (safe unknown _) _ = unknown
 
 Subst : Set → Set
@@ -117,6 +120,7 @@ substTerm δ σ (quote-goal b) = quote-goal (substAbs δ σ b)
 substTerm δ σ (quote-term v) = quote-term (substTerm δ σ v)
 substTerm δ σ quote-context = quote-context
 substTerm δ σ (unquote-term v args) = unquote-term (substTerm δ σ v) (substArgs δ σ args)
+substTerm δ σ (foreign-term t ty) = foreign-term (substTerm δ σ t) (substType δ σ ty)
 substTerm δ σ unknown = unknown
 
 substSort δ σ (set t) = set (substTerm δ σ t)
