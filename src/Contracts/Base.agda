@@ -29,10 +29,12 @@ lookup' i xs | just x = x
 lookup' i xs | nothing = OutOfBounds
 
 
+-- Conversion from A to B.
 data Conversion (A : Set) (B : Set) : Set where
   total : (A → B) → Conversion A B
   withDec : (A → Dec B) → Conversion A B
   withMaybe : (A → Maybe B) → Conversion A B
+  -- always failing conversion
   fail : Conversion A B
 
 
@@ -200,18 +202,21 @@ shift : ℕ → List ℕ → List ℕ
 shift k = List.map (N._+_ k)
 
 open import Data.String
-postulate
-  conversionFailure : {A : Set} → String → A
 
-unsafeConvert : (A : Set) (B : Set) → Conversion A B → A → B
-unsafeConvert _ _ (total x) x₁ = x x₁
-unsafeConvert _ _ (withDec x) x₁ with x x₁
-unsafeConvert _ _ (withDec x) x₁ | yes p = p
-unsafeConvert _ _ (withDec x) x₁ | no ¬p = conversionFailure ""
-unsafeConvert _ _ (withMaybe x) x₁ with x x₁
-unsafeConvert _ _ (withMaybe x) x₁ | just x₂ = x₂
-unsafeConvert _ _ (withMaybe x) x₁ | nothing = conversionFailure ""
-unsafeConvert _ _ fail x = conversionFailure ""
+private
+  postulate
+    conversionFailure : {A : Set} → String → A
+
+-- Unsafe conversion primitive
+↯ : (A : Set) (B : Set) → Conversion A B → A → B
+↯ _ _ (total x) x₁ = x x₁
+↯ _ _ (withDec x) x₁ with x x₁
+↯ _ _ (withDec x) x₁ | yes p = p
+↯ _ _ (withDec x) x₁ | no ¬p = conversionFailure ""
+↯ _ _ (withMaybe x) x₁ with x x₁
+↯ _ _ (withMaybe x) x₁ | just x₂ = x₂
+↯ _ _ (withMaybe x) x₁ | nothing = conversionFailure ""
+↯ _ _ fail x = conversionFailure ""
 
 
 import Data.Bool as B
@@ -233,11 +238,11 @@ app t₁ t₂ = def (quote _$_)
 
 up : (p : PartIso) → (aa : PartIso.ARGₐ p) → (al : PartIso.ARGₗ p aa) → (ah : PartIso.ARGₕ p aa)
   → PartIso.τₗ p aa al → PartIso.τₕ p aa ah
-up p aa al ah from = unsafeConvert _ _ (proj₁ $ PartIso.⇅ p aa al ah) from
+up p aa al ah from = ↯ _ _ (proj₁ $ PartIso.⇅ p aa al ah) from
 
 down : (p : PartIso) → (aa : PartIso.ARGₐ p) → (al : PartIso.ARGₗ p aa) → (ah : PartIso.ARGₕ p aa)
   → PartIso.τₕ p aa ah → PartIso.τₗ p aa al
-down p aa al ah from = unsafeConvert _ _ (proj₂ $ PartIso.⇅ p aa al ah) from
+down p aa al ah from = ↯ _ _ (proj₂ $ PartIso.⇅ p aa al ah) from
 
 
 ffi-lift1 : ∀ {n}
@@ -262,11 +267,6 @@ ffi-lift1 {n} (π fde ∣ k ⇒ fde₁) wr pos Γ =
 ffi-lift1 (iso {n} x argₐ argₗ argₕ) wr pos Γ =
   -- extract the conversion from the named iso
   -- apply unsafeConvert
-{-  def (quote unsafeConvert)
-    ( arg def-argInfo (tyFrom pos)
-    ∷ arg def-argInfo (tyTo pos)
-    ∷ arg def-argInfo conv
-    ∷ arg def-argInfo (wr) ∷ [])-}
   def (convFun pos) ((mkArg $ PartIsoInt.wrapped x) ∷ argₐ' ∷ argₗ' ∷ argₕ' ∷ mkArg wr ∷ [])
   where
         open import Reflection.Substitute
@@ -288,30 +288,8 @@ ffi-lift1 (iso {n} x argₐ argₗ argₕ) wr pos Γ =
         convFun Pos = quote up
         convFun Neg = quote down
 
-        {-
-        getConv : Position → Term → Term
-        getConv Pos t = (def (quote proj₁) [ arg def-argInfo t ]) 
-        getConv Neg t = (def (quote proj₂) [ arg def-argInfo t ])
-        
-        isoLow : Term
-        isoLow = {!!} --getIsoLow x LOWₐ
-        isoHigh : Term
-        isoHigh = {!!} --getIsoHigh isoLow x HIGHₐ
-        
-        tyLow = s $ {!!} --def (quote proj₁) [ arg def-argInfo isoLow ]
-        tyHigh = s $ {!!} --def (quote proj₁) [ arg def-argInfo isoHigh ]
-        tyFrom : Position → Term
-        tyFrom Pos = tyLow
-        tyFrom Neg = tyHigh
-        tyTo : Position → Term
-        tyTo Pos = tyHigh
-        tyTo Neg = tyLow
-        
 
-        conv : Term
-        conv = s $ getConv pos (def (quote PartIso.⇅) ((mkArg $ PartIsoInt.wrapped x) ∷ mkArg argₐ ∷ {!!} ∷ {!!})) -- (def (quote proj₂) [ arg def-argInfo isoHigh ])
-        -}
-
+-- produces the wrapper for lifting the low term to the high type
 ffi-lift : (fde : T 0) → Term {- low term / function -} → Term
 ffi-lift fde low  = ffi-lift1 fde low Pos []
 

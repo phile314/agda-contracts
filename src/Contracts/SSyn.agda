@@ -86,8 +86,6 @@ module T3 where
   infixl 10 piD
   infixl 10 id
 
-  postulate Errrr Errrr2 Errrr3 : {A : Set} → A
-
   open import Reflection
   open import Function
 
@@ -115,6 +113,11 @@ module T3 where
       open import Data.Unit
       t' = weaken 1 t
 
+  private
+    postulate
+      InvalidContract : ∀ {a} → a
+      InternalError : ∀ {a} → a
+
   defToNm : Term → Name
   defToNm (def nm []) = nm
   defToNm _ = error
@@ -123,7 +126,7 @@ module T3 where
   listLen t = case t of (
     λ { (con (quote Data.List.Base.List.[]) args) → 0
       ; (con (quote List._∷_) args) → N.suc (listLen (unArg $ lookup' 3 args))
-      ; _ →  Errrr
+      ; _ →  InternalError
       })
     where open import Data.List.Base
 
@@ -154,9 +157,9 @@ module T3 where
     (unArg $ lookup' 4 args) ,
     (case (unArg $ lookup' 5 args) of λ
       { (con (quote _,_) args) → (unWCon $ unArg $ lookup' 4 args) , (unWCon $ unArg $ lookup' 5 args)
-      ; _ → Errrr2
+      ; _ → InternalError
       })
-  splitArgs _ = Errrr2
+  splitArgs _ = InternalError
 
   ast⇒ArgWay : Term → ArgWay
   ast⇒ArgWay (con (quote Keep) args) = Keep
@@ -169,13 +172,13 @@ module T3 where
   ast-ty⇒T' : ∀ {n} → (t : Term) → T n
   ast-ty⇒T' {n} (var x args) = case (ℕ.suc x) ≤? n of (
     λ { (yes p) → var (fromℕ≤ p) ∙ List.map (ast-ty⇒T' ∘ unArg) args
-      ; (no _) → Errrr3
+      ; (no _) → InvalidContract
       })
   ast-ty⇒T' (def f args) = def f ∙ List.map (ast-ty⇒T' ∘ unArg) args
-  ast-ty⇒T' (sort (set t)) = Errrr3
+  ast-ty⇒T' (sort (set t)) = InvalidContract
   ast-ty⇒T' (sort (lit n₁)) = set n₁
-  ast-ty⇒T' (sort unknown) = Errrr2
-  ast-ty⇒T' _ = Errrr3
+  ast-ty⇒T' (sort unknown) = InvalidContract
+  ast-ty⇒T' _ = InvalidContract
 
 
   {-# TERMINATING #-}
@@ -183,7 +186,9 @@ module T3 where
     → T n
   arg-ast⇒T : ∀ {n} → Arg Term → T n
 
-  ast⇒T' (var x args) = Errrr3
+  -- Converts the quoted SSyn AST to the internal AST.
+  -- We assume that the quoted SSyn AST is valid Agda code with type AST'.
+  ast⇒T' (var x args) = InternalError
   ast⇒T' {n} (con c args) = case c of (
     λ { (quote AST'.pi) → let k = ast⇒ArgWay $ unArg $ lookup' 2 args
                in π ast⇒T' (unArg (lookup' 1 args)) ∣ k ⇒ ast⇒T' ((stripLam ∘ unArg ∘ lookup' 3) args) ;
@@ -194,20 +199,20 @@ module T3 where
               intIso = record { wrapped = pubIsoToIntIso pubIso }
               (aa , al , ah) = splitArgs $ unArg $ lookup' 2 args --withArgsToT' (unArg $ lookup' 2 args)
            in iso intIso aa al ah --iso intIso (List.take (proj₁ nArgs) allArgs) (List.drop (proj₁ nArgs) allArgs) ;
-      ; _ → Errrr3
+      ; _ → InternalError
       })
-  ast⇒T' (def f args) = Errrr3
-  ast⇒T' (lam v t) = Errrr3
-  ast⇒T' (pat-lam cs args) = Errrr3
-  ast⇒T' (pi t₁ t₂) = Errrr3
-  ast⇒T' (sort s) = Errrr3
-  ast⇒T' (lit l) = Errrr3
-  ast⇒T' (quote-goal t) = Errrr3
-  ast⇒T' (quote-term t) = Errrr3
-  ast⇒T' quote-context = Errrr3
-  ast⇒T' (unquote-term t args) = Errrr3
-  ast⇒T' (foreign-term t ty) = Errrr3
-  ast⇒T' unknown = Errrr3
+  ast⇒T' (def f args) = InternalError
+  ast⇒T' (lam v t) = InternalError
+  ast⇒T' (pat-lam cs args) = InternalError
+  ast⇒T' (pi t₁ t₂) = InternalError
+  ast⇒T' (sort s) = InternalError
+  ast⇒T' (lit l) = InternalError
+  ast⇒T' (quote-goal t) = InternalError
+  ast⇒T' (quote-term t) = InternalError
+  ast⇒T' quote-context = InternalError
+  ast⇒T' (unquote-term t args) = InternalError
+  ast⇒T' (foreign-term t ty) = InternalError
+  ast⇒T' unknown = InternalError
 
   arg-ast⇒T (arg i x) = ast⇒T' x
 
