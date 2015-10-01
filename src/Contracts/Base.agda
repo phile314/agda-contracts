@@ -89,7 +89,9 @@ invertPosition Neg = Pos
 import Data.Vec as V
 
 data T : ℕ → Set where
-  set : ∀ {n} → (l : ℕ ) → T n
+  -- normal agda type
+  agda-ty : ∀ {n} → Term → T n
+{-  set : ∀ {n} → (l : ℕ ) → T n
   -- var
   var_∙_ : ∀ {n}
     → (k : Fin n)
@@ -98,7 +100,7 @@ data T : ℕ → Set where
   def_∙_ : ∀ {n}
     → (nm : Name)
     → List (T n)
-    → T n
+    → T n-}
   π_∣_⇒_ : ∀ {n}
     → T n -- type of the arg
     → ArgWay
@@ -120,11 +122,13 @@ def-argInfo = arg-info visible relevant
 --partIsoLowTy p args = proj₁ (applyArgs (PartIso.iso p) args)
 
 
-postulate
-  error : {a : Set} → a
-  error2 : {a : Set} → a
-  notImpl notImpl2 notImpl3 : {a : Set} → a
-  UnexpectedIsoInIsoArgs : {A : Set} → A
+private
+  postulate
+    InternalError : {a : Set} → a
+    error : {a : Set} → a
+    error2 : {a : Set} → a
+    notImpl notImpl2 notImpl3 : {a : Set} → a
+    UnexpectedIsoInIsoArgs : {A : Set} → A
 
 open import Data.Bool hiding (T)
 
@@ -144,14 +148,24 @@ record elOpts : Set where
 elAGDA : ∀ {n} → elOpts → (t : T n) → Term
 elArg : ∀ {n} → elOpts → (t : T n) → Arg Term
 
-elAGDA h (var k ∙ xs) = var (toℕ k) (List.map (elArg h) xs)
-elAGDA h (def x ∙ xs) = def x (List.map (elArg h) xs)
+private
+  unsafeFromJust : ∀ {a} → Maybe a → a
+  unsafeFromJust (just x) = x
+  unsafeFromJust nothing = InternalError
+
+-- todo Should we do some subst here?
+-- Also, t may only have n free vars I think!
+elAGDA h (agda-ty t) = t
 elAGDA h (π  t ∣ k ⇒ t₁) = case k of
   (λ { Keep → r-keep
-     ; Discard → if elOpts.ignoreDiscard h then r-keep else elAGDA h t₁
+     ; Discard → if elOpts.ignoreDiscard h
+         then r-keep
+         else (unsafeFromJust (D.strengthen 1 (elAGDA h t₁)))
      })
-  where r-keep = pi (arg def-argInfo (el unknown (elAGDA h t))) (abs "" (el unknown (elAGDA h t₁)))
-elAGDA h (set l) = sort (lit l) -- we use type-in-type, so what should we do here?
+  where
+    r-keep = pi (arg def-argInfo (el unknown (elAGDA h t))) (abs "" (el unknown (elAGDA h t₁)))
+    open import Reflection.DeBruijn as D
+--elAGDA h (set l) = sort (lit l) -- we use type-in-type, so what should we do here?
 elAGDA h (iso i argₐ argₗ argₕ) = (elOpts.isoHandler h) i argₐ argₗ argₕ
 
 elArg h t = arg def-argInfo (elAGDA h t)
@@ -251,9 +265,10 @@ ffi-lift1 : ∀ {n}
   → Position -- seems to be only used to figure out in which directin to convert
   → List ℕ -- environment
   → Term
-ffi-lift1 (set _) wr pos Γ = wr
-ffi-lift1 (var k ∙ x) wr pos Γ = wr
-ffi-lift1 (def nm ∙ x) wr pos Γ  = wr
+ffi-lift1 (agda-ty _) wr pos Γ = wr
+--ffi-lift1 (set _) wr pos Γ = wr
+--ffi-lift1 (var k ∙ x) wr pos Γ = wr
+--ffi-lift1 (def nm ∙ x) wr pos Γ  = wr
 ffi-lift1 {n} (π fde ∣ k ⇒ fde₁) wr pos Γ =
   lam visible (abs "x" bd)
   where open import Reflection.DeBruijn

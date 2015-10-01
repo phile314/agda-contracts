@@ -95,14 +95,19 @@ module T3 where
   getLevel : Term → Level
   getLevel t = Level.zero
 
+  private
+    postulate
+      InvalidContract : ∀ {a} → a
+      InternalError : ∀ {a} → a
+
   fromJust : ∀ {A} → Maybe A → A
   fromJust (just x) = x
-  fromJust nothing = error
+  fromJust nothing = InternalError
 
   stripLam : Term → Term
   stripLam (lam v (abs s x)) = x
-  stripLam (pat-lam cs args) = error
-  stripLam (quote-goal _ ) = error
+  stripLam (pat-lam cs args) = InternalError
+  stripLam (quote-goal _ ) = InternalError
   -- there is no lambda, which means we just got a partially applied function
   stripLam t = fromJust $ (λ x → applyTerm x List.[ arg def-argInfo (var 0 []) ]) <$> maybeSafe t'
     where
@@ -113,14 +118,9 @@ module T3 where
       open import Data.Unit
       t' = weaken 1 t
 
-  private
-    postulate
-      InvalidContract : ∀ {a} → a
-      InternalError : ∀ {a} → a
-
   defToNm : Term → Name
   defToNm (def nm []) = nm
-  defToNm _ = error
+  defToNm _ = InternalError
 
   listLen : Term → ℕ
   listLen t = case t of (
@@ -133,16 +133,16 @@ module T3 where
   pubIsoToIntIso : Term → Term
   pubIsoToIntIso (con (quote mkIsoPub) args) = case (unArg $ lookup' 1 args) of (
     λ {(con (quote mkIsoInt) args') →  unquote-term (unArg $ lookup' 0 args') []
-      ; _ → error
+      ; _ → InternalError
       })
-  pubIsoToIntIso _ = error
+  pubIsoToIntIso _ = InternalError
 
   pubIsoGetNumArgs : Term → (ℕ × ℕ) -- low, high
   pubIsoGetNumArgs (con (quote mkIsoPub) args) = case (unArg $ lookup' 0 args) of (
     λ { (con (quote mkPartIso) args) → (listLen $ unArg $ lookup' 0 args) , (listLen $ unArg $ lookup' 1 args)
-      ; _ → error
+      ; _ → InternalError
       })
-  pubIsoGetNumArgs _ = error
+  pubIsoGetNumArgs _ = InternalError
 
   unWCon : Term → Term
   -- an argument get's lifted here into high/low context
@@ -164,12 +164,12 @@ module T3 where
   ast⇒ArgWay : Term → ArgWay
   ast⇒ArgWay (con (quote Keep) args) = Keep
   ast⇒ArgWay (con (quote Discard) args) = Discard
-  ast⇒ArgWay _ = error
+  ast⇒ArgWay _ = InternalError
 
   open import Data.Fin using (fromℕ≤)
 
 
-  ast-ty⇒T' : ∀ {n} → (t : Term) → T n
+{-  ast-ty⇒T' : ∀ {n} → (t : Term) → T n
   ast-ty⇒T' {n} (var x args) = case (ℕ.suc x) ≤? n of (
     λ { (yes p) → var (fromℕ≤ p) ∙ List.map (ast-ty⇒T' ∘ unArg) args
       ; (no _) → InvalidContract
@@ -178,7 +178,7 @@ module T3 where
   ast-ty⇒T' (sort (set t)) = InvalidContract
   ast-ty⇒T' (sort (lit n₁)) = set n₁
   ast-ty⇒T' (sort unknown) = InvalidContract
-  ast-ty⇒T' _ = InvalidContract
+  ast-ty⇒T' _ = InvalidContract-}
 
 
   {-# TERMINATING #-}
@@ -192,7 +192,7 @@ module T3 where
   ast⇒T' {n} (con c args) = case c of (
     λ { (quote AST'.pi) → let k = ast⇒ArgWay $ unArg $ lookup' 2 args
                in π ast⇒T' (unArg (lookup' 1 args)) ∣ k ⇒ ast⇒T' ((stripLam ∘ unArg ∘ lookup' 3) args) ;
-        (quote AST'.⟦_⟧) → ast-ty⇒T' (unArg (lookup' 1 args)) ;
+        (quote AST'.⟦_⟧) → {-ast-ty⇒T'-} agda-ty (unArg (lookup' 1 args)) ;
         (quote AST'.⟦_⇋_⟧) →
           let pubIso = unArg $ lookup' 1 args
               nArgs = pubIsoGetNumArgs pubIso
