@@ -169,18 +169,6 @@ module T3 where
   open import Data.Fin using (fromℕ≤)
 
 
-{-  ast-ty⇒T' : ∀ {n} → (t : Term) → T n
-  ast-ty⇒T' {n} (var x args) = case (ℕ.suc x) ≤? n of (
-    λ { (yes p) → var (fromℕ≤ p) ∙ List.map (ast-ty⇒T' ∘ unArg) args
-      ; (no _) → InvalidContract
-      })
-  ast-ty⇒T' (def f args) = def f ∙ List.map (ast-ty⇒T' ∘ unArg) args
-  ast-ty⇒T' (sort (set t)) = InvalidContract
-  ast-ty⇒T' (sort (lit n₁)) = set n₁
-  ast-ty⇒T' (sort unknown) = InvalidContract
-  ast-ty⇒T' _ = InvalidContract-}
-
-
   {-# TERMINATING #-}
   ast⇒T' : ∀ {n} → (t : Term) -- AST
     → T n
@@ -192,13 +180,13 @@ module T3 where
   ast⇒T' {n} (con c args) = case c of (
     λ { (quote AST'.pi) → let k = ast⇒ArgWay $ unArg $ lookup' 2 args
                in π ast⇒T' (unArg (lookup' 1 args)) ∣ k ⇒ ast⇒T' ((stripLam ∘ unArg ∘ lookup' 3) args) ;
-        (quote AST'.⟦_⟧) → {-ast-ty⇒T'-} agda-ty (unArg (lookup' 1 args)) ;
+        (quote AST'.⟦_⟧) → agda-ty (unArg (lookup' 1 args)) ;
         (quote AST'.⟦_⇋_⟧) →
           let pubIso = unArg $ lookup' 1 args
               nArgs = pubIsoGetNumArgs pubIso
               intIso = record { wrapped = pubIsoToIntIso pubIso }
-              (aa , al , ah) = splitArgs $ unArg $ lookup' 2 args --withArgsToT' (unArg $ lookup' 2 args)
-           in iso intIso aa al ah --iso intIso (List.take (proj₁ nArgs) allArgs) (List.drop (proj₁ nArgs) allArgs) ;
+              (aa , al , ah) = splitArgs $ unArg $ lookup' 2 args
+           in iso intIso aa al ah
       ; _ → InternalError
       })
   ast⇒T' (def f args) = InternalError

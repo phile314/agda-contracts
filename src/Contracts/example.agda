@@ -4,6 +4,7 @@ module Contracts.example where
 
 open import Contracts.Isos
 
+postulate dummy : forall {a} -> a
 -- surface syntax tests
 module T3 where
   open NatIntIso
@@ -58,14 +59,14 @@ module T3 where
   gg = unquote (ffi-lift (ast⇒T' f) (def (quote f-low) []))
 
 
-  ggg : {!pretty (getAgdaLowType (ast⇒T' {0} (quoteTerm (makeContract (⟨ n ∷ ⟦ ℕ ⟧ ⟩⇒ ⟨ x ∷ ⟦ Set ⟧ ⟩⇒ ⟨ ⟦ vec⇔list ⇋ x ,, n ,, [] ⟧ ⟩)))))!}
-  ggg = {!lett (var 10 []) inn var 0 []!}
+--  ggg : {!pretty (getAgdaLowType (ast⇒T' {0} (quoteTerm (makeContract (⟨ n ∷ ⟦ ℕ ⟧ ⟩⇒ ⟨ x ∷ ⟦ Set ⟧ ⟩⇒ ⟨ ⟦ vec⇔list ⇋ x ,, n ,, [] ⟧ ⟩)))))!}
+--  ggg = {!lett (var 10 []) inn var 0 []!}
 
   pp'' : _
-  pp'' = assert (makeContract (⟨ n ∷ ⟦ ℕ ⟧ ⟩⇒ ⟨ x ∷ ⟦ Set ⟧ ⟩⇒ ⟨ ⟦ x ⟧ ⟩)) error
+  pp'' = assert (makeContract (⟨ n ∷ ⟦ ℕ ⟧ ⟩⇒ ⟨ x ∷ ⟦ Set ⟧ ⟩⇒ ⟨ ⟦ x ⟧ ⟩)) dummy
 
   pp'4 : _
-  pp'4 = assert (makeContract (⟨ ⟦ ℕ⇔ℤ ⇋ tt , ((liftW tt) , (liftW tt)) ⟧ ⟩)) error
+  pp'4 = assert (makeContract (⟨ ⟦ ℕ⇔ℤ ⇋ tt , ((liftW tt) , (liftW tt)) ⟧ ⟩)) dummy
   pp' : _
   pp' = assert (makeContract (⟨ n ∷ ⟦ ℕ ⟧ ⟩⇒ ⟨ x ∷ ⟦ Set ⟧ ⟩⇒ ⟨ ⟦ vec⇔list ⇋ x , ((liftW tt) , (liftW n)) ⟧ ⟩)) f-low
 
@@ -118,13 +119,13 @@ module Fmap where
   postulate
     hs-map : ℕ → (A : Set) → {- (A → A)-} (ℕ → ℕ) → List A --→ List A
 
-  g : {!!}
+{-  g : {!!}
   g = {!unquote (ffi-lift (ast⇒T' {0} (quoteTerm (makeContract (
     ⟨ n ∷ ⟦ ℕ ⟧ ⟩⇒ --⇏
     ⟨ A ∷ ⟦ Set ⟧ ⟩⇒
 --    ⟨ f ∷ ⟨ _ ∷ ⟦ ℕ ⟧ ⟩⇒ ⟨ ⟦ ℕ ⟧ ⟩ ⟩⇒
 --    ⟨ _ ∷ ⟦ vec⇔list ⇋ ( A ,, (n , []) ) ⟧ ⟩⇒
-    ⟨ ⟦ vec⇔list ⇋ A ,, (3 ,, []) ⟧ ⟩)))) (def (quote hs-map) []) )!}
+    ⟨ ⟦ vec⇔list ⇋ A ,, (3 ,, []) ⟧ ⟩)))) (def (quote hs-map) []) )!}-}
 {-  map' : _
   map' = assert (makeContract (
     ⟨ n ∷ ⟦ ℕ ⟧ ⟩⇏
@@ -163,7 +164,7 @@ module TwoArgTest where
     ; ARGₕ = λ _ → ⊤
     ; τₗ = λ aa _ → List (proj₁ aa × proj₂ aa)
     ; τₕ = λ aa _ → Map (proj₁ aa) (proj₂ aa)
-    ; ⇅ = λ aa _ _ → error
+    ; ⇅ = λ aa _ _ → dummy
     }
   List⇔Map-Int : PartIsoInt
   List⇔Map-Int = record { wrapped = def (quote List⇔Map') [] }
@@ -175,18 +176,18 @@ module TwoArgTest where
 --  open import Data.Nat
 --  open import Data.Integer
   f-low : (A B : Set) → List (A × B) → List (A × B)
-  f-low = error
-  f : {!!}
+  f-low = dummy
+  f : _
   f = assert (makeContract (
     ⟨ A ∷ ⟦ Set ⟧ ⟩⇒
     ⟨ B ∷ ⟦ Set ⟧ ⟩⇒
     ⟨ _ ∷ ⟦ List⇔Map ⇋ (A , B) , (liftW tt) , (liftW tt) ⟧ ⟩⇒
     ⟨ ⟦ List⇔Map ⇋ (A , B) , (liftW tt) , (liftW tt) ⟧ ⟩)) f-low
-  g = {!unquote (getAgdaHighType (ast⇒T' {0} (quoteTerm (makeContract (
+{-  g = {!unquote (getAgdaHighType (ast⇒T' {0} (quoteTerm (makeContract (
     ⟨ A ∷ ⟦ Set ⟧ ⟩⇒
     ⟨ B ∷ ⟦ Set ⟧ ⟩⇒
     ⟨ _ ∷ ⟦ List⇔Map ⇋ (A , B) , (liftW tt) , (liftW tt) ⟧ ⟩⇒
-    ⟨ ⟦ List⇔Map ⇋ (A , B) , (liftW tt) , (liftW tt) ⟧ ⟩)))))!}
+    ⟨ ⟦ List⇔Map ⇋ (A , B) , (liftW tt) , (liftW tt) ⟧ ⟩)))))!}-}
 
 open import IO
 import IO.Primitive

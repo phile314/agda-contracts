@@ -64,12 +64,6 @@ record PartIsoInt : Set where
   constructor mkIsoInt
   field wrapped : Term -- the part iso as term
 
-{-applyArgs : {aTys : ArgTys} {A : Set} → (f : argsToTy aTys A) → WithArgs aTys → A
-applyArgs {aTys = []} f [] = f
-applyArgs {aTys = A₁ ∷ aTys} f (a , args) = applyArgs (f a) args
--}
-
-
 
 open import Data.Fin
 open import Reflection
@@ -89,18 +83,8 @@ invertPosition Neg = Pos
 import Data.Vec as V
 
 data T : ℕ → Set where
-  -- normal agda type
+  -- normal agda type, with at most n free vars
   agda-ty : ∀ {n} → Term → T n
-{-  set : ∀ {n} → (l : ℕ ) → T n
-  -- var
-  var_∙_ : ∀ {n}
-    → (k : Fin n)
-    → List (T n)
-    → T n
-  def_∙_ : ∀ {n}
-    → (nm : Name)
-    → List (T n)
-    → T n-}
   π_∣_⇒_ : ∀ {n}
     → T n -- type of the arg
     → ArgWay
@@ -117,9 +101,6 @@ data T : ℕ → Set where
 
 def-argInfo : Arg-info
 def-argInfo = arg-info visible relevant
-
---partIsoLowTy : (p : PartIso) → WithArgs (PartIso.LOWₐ p) → Set
---partIsoLowTy p args = proj₁ (applyArgs (PartIso.iso p) args)
 
 
 private
@@ -153,7 +134,6 @@ private
   unsafeFromJust (just x) = x
   unsafeFromJust nothing = InternalError
 
--- todo Should we do some subst here?
 -- Also, t may only have n free vars I think!
 elAGDA h (agda-ty t) = t
 elAGDA h (π  t ∣ k ⇒ t₁) = case k of
@@ -165,7 +145,6 @@ elAGDA h (π  t ∣ k ⇒ t₁) = case k of
   where
     r-keep = pi (arg def-argInfo (el unknown (elAGDA h t))) (abs "" (el unknown (elAGDA h t₁)))
     open import Reflection.DeBruijn as D
---elAGDA h (set l) = sort (lit l) -- we use type-in-type, so what should we do here?
 elAGDA h (iso i argₐ argₗ argₕ) = (elOpts.isoHandler h) i argₐ argₗ argₕ
 
 elArg h t = arg def-argInfo (elAGDA h t)
@@ -176,30 +155,6 @@ mkArg = arg (arg-info visible relevant)
 
 getIsoLowType : IsoHandler
 getIsoLowType p argₐ argₗ _ = def (quote PartIso.τₗ) (mkArg (PartIsoInt.wrapped p) ∷ mkArg argₐ ∷ mkArg argₗ ∷ [])
-{-
-  def (quote applyArgs)
-    (arg def-argInfo (tiso)
-    ∷ (arg def-argInfo (mkArgs as))
-    ∷ [])
-  where
-    tiso = def (quote PartIso.iso)
-      [ arg def-argInfo (PartIsoInt.wrapped p) ]-}
-
-{-
--- gets the iso high pair
-getIsoHigh : ∀ {n}
-  → Term -- the term representing ISO Low
-  → (p : PartIsoInt)
-  → List (T n) -- HIGH Args
-  → Term
-getIsoHigh lw p as =
-  def (quote applyArgs)
-    (arg def-argInfo high
-    ∷ arg def-argInfo (mkArgs as)
-    ∷ [])
-  where
-    high = def (quote proj₂) [ arg def-argInfo lw ]
--}
 
 getIsoHighType : IsoHandler
 getIsoHighType p argₐ _ argₕ = def (quote PartIso.τₕ) (mkArg (PartIsoInt.wrapped p) ∷ mkArg argₐ ∷ mkArg argₕ ∷ [])
@@ -266,9 +221,6 @@ ffi-lift1 : ∀ {n}
   → List ℕ -- environment
   → Term
 ffi-lift1 (agda-ty _) wr pos Γ = wr
---ffi-lift1 (set _) wr pos Γ = wr
---ffi-lift1 (var k ∙ x) wr pos Γ = wr
---ffi-lift1 (def nm ∙ x) wr pos Γ  = wr
 ffi-lift1 {n} (π fde ∣ k ⇒ fde₁) wr pos Γ =
   lam visible (abs "x" bd)
   where open import Reflection.DeBruijn

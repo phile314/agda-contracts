@@ -66,8 +66,8 @@ module MapEx where
         π (iso ℕ⇔ℤ' tt' tt' tt') ∣ Keep ⇒ (iso ℕ⇔ℤ' tt' tt' tt')
 --        π (def (quote ℤ) ∙ []) ⇒ (def (quote ℤ) ∙ [])
         ) ∣ Keep
-    ⇒ (π (def (quote L.List) ∙ [ (def (quote ℤ) ∙ []) ]) ∣ Keep
-    ⇒ (def (quote L.List) ∙ [ (def (quote ℤ) ∙ []) ]))
+    ⇒ (π (agda-ty (quoteTerm (L.List ℤ))) ∣ Keep
+    ⇒ (agda-ty (quoteTerm (L.List ℤ))))
 
   myMap : unquote (getAgdaHighType mapNZType) --unquote (getAgdaHighType mapNZType)
   myMap = unquote (ffi-lift mapNZType (quoteTerm mapImpl))
@@ -88,8 +88,8 @@ module DepSimple where
 
   mapNZType : T 0
   mapNZType =
-    π def quote ℕ ∙ [] ∣ Keep -- n
-    ⇒ (π set 0 ∣ Keep -- A
+    π (agda-ty (def (quote ℕ) [])) ∣ Keep -- n
+    ⇒ (π (agda-ty (quoteTerm Set)) ∣ Keep -- A
     ⇒ (iso (vec⇔list') (var 0 []) tt' (var 1 []) ))
 
 --  lowType : Set (Level.suc Level.zero)
@@ -115,7 +115,7 @@ module DepSimple where
 --  myMap2 =  {!pretty (elimLets (ffi-lift mapNZType (quote mapImpl2)))!}
   myMap2 = unquote (ffi-lift mapNZType (def (quote mapImpl2) [])) -- unquote (ffi-lift mapNZType (quote mapImpl2))
 
-
+{-
 module DepCon1 where
   open VecIso
   open import Data.Nat
@@ -246,4 +246,4 @@ main = run (putStrLn (Data.Nat.Show.show s))
         s = foldl (λ _ → ℕ) Data.Nat._+_ 0 kk
 
 -}
-
+-}
