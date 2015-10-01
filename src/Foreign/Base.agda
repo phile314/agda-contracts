@@ -67,24 +67,25 @@ module FunImport where
 
 
 
-  data UHCFunImport : Set where
+{-  data UHCFunImport : Set where
     HS : UHC-HS-Name -> UHCFunImport
     Core : UHC-CR-Expr -> UHCFunImport
   {-# BUILTIN FFIUHCFUNIMPORT UHCFunImport #-}
   {-# BUILTIN FFIUHCFUNIMPORTHS HS #-}
-  {-# BUILTIN FFIUHCFUNIMPORTCORE Core #-}
+  {-# BUILTIN FFIUHCFUNIMPORTCORE Core #-}-}
 
-  data CallSpec : Set -> Set where
+{-  data CallSpec : Set -> Set where
     CompileError : forall {A} -> CallSpec A
     RuntimeError : forall {A} -> CallSpec A
     Spec : forall {A} -> A -> CallSpec A
   {-# BUILTIN FFICALLSPEC CallSpec #-}
   {-# BUILTIN FFICALLSPECCOMPILEERROR CompileError #-}
   {-# BUILTIN FFICALLSPECRUNTIMEERROR RuntimeError #-}
-  {-# BUILTIN FFICALLSPECSPEC Spec #-}
+  {-# BUILTIN FFICALLSPECSPEC Spec #-}-}
 
 
+{-
   data FFICall : Set where
     Call : CallSpec UHCFunImport -> FFICall
   {-# BUILTIN FFICALL FFICall #-}
-  {-# BUILTIN FFICALLCALL Call #-}
+  {-# BUILTIN FFICALLCALL Call #-}-}

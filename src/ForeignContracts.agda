@@ -27,7 +27,7 @@ open import Data.List
 open import Data.Unit
 
 k : Term
-k = quoteTerm (makeContract (⟨ ⟦ ℕ⇔ℤ ⇋ ∅ ⟧ ⟩))
+k = quoteTerm (makeContract (⟨ _ ∷ ⟦ ℤ ⟧ ⟩⇒ ⟨ ⟦ ℤ ⟧ ⟩))
 
 g = ast⇒T' {0} k
 
@@ -37,21 +37,37 @@ lowDef = (foreign-term ffiSpec (el (unknown) (getAgdaLowType g)))
 low = forceTy' (getAgdaLowType g) lowDef
 lifted = ffi-lift g low
 
-l = {! (lifted)!}
 
-m : ℤ --unquote (getAgdaLowType g)
+l = {! (lifted)!}
+{-
+pp = {!unquote (foreign-term
+      (con (quote Call)
+       (arg (arg-info visible relevant)
+        (con (quote RuntimeError)
+         (arg (arg-info hidden relevant) (def (quote UHCFunImport) []) ∷
+          []))
+        ∷ []))
+      (el unknown
+       (pi
+        (arg (arg-info visible relevant) (el unknown (def (quote ℤ) [])))
+        (abs "" (el unknown (def (quote ℤ) []))))))!}-}
+
+m : ℤ → ℤ --unquote (getAgdaLowType g)
 m = foreign (Call RuntimeError) (unquote (getAgdaLowType g))
 
 n = unquote (forceTy' (getAgdaLowType g) (def (quote m) []))
   where open import Data.List
 
-o = {!quoteTerm (Call RuntimeError)!}
+--o = {!quoteTerm (Call RuntimeError)!}
 
 postulate x : ℤ → ℤ
 
-test : ℕ --ℕ → ℕ
-test = {- {!assert-foreign (Call RuntimeError) (makeContract (⟨ _ ∷ ⟦ ℕ⇔ℤ ⇋ ∅ ⟧ ⟩⇒ ⟨ ⟦ ℕ⇔ℤ ⇋ ∅ ⟧ ⟩))!} -}
-  assert-foreign (Call RuntimeError) (makeContract (⟨ ⟦ ℕ⇔ℤ ⇋ ∅ ⟧ ⟩))
+xx : ℤ → ℤ
+xx z =  ((foreign (Call RuntimeError) (ℤ → ℤ)) z)
+
+test : ℤ → ℤ --ℕ → ℕ
+test = {!assert-foreign (Call RuntimeError) (makeContract (⟨ _ ∷ ⟦ ℤ ⟧ ⟩⇒ ⟨ ⟦ ℤ ⟧ ⟩))!} 
+--  assert-foreign (Call RuntimeError) (makeContract (⟨ _ ∷ ⟦ ℤ ⟧ ⟩⇒ ⟨ ⟦ ℤ ⟧ ⟩))
   where
     open import Data.Integer
     open NatIntIso
