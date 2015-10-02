@@ -189,6 +189,22 @@ module TwoArgTest where
     ⟨ _ ∷ ⟦ List⇔Map ⇋ (A , B) , (liftW tt) , (liftW tt) ⟧ ⟩⇒
     ⟨ ⟦ List⇔Map ⇋ (A , B) , (liftW tt) , (liftW tt) ⟧ ⟩)))))!}-}
 
+module LookupTest where
+  open import Contracts.SSyn
+  open import Contracts.Isos
+  open import Data.Nat
+  open import Data.List
+
+  postulate hs-lookup : (a : Set) → (n : ℕ) → List a → a
+
+  lookup : _
+  lookup = assert (makeContract (
+    ⟨ a ∷ ⟦ Set ⟧ ⟩⇒
+    ⟨ n ∷ ⟦ ℕ ⟧ ⟩⇒
+    ⟨ xs ∷ ⟦ List a ⟧ ⟩⇒
+    ⟨ p ∷ ⟦ n ≤ length xs ⟧ ⟩⇏
+    ⟨ ⟦ a ⟧ ⟩ )) hs-lookup
+
 open import IO
 import IO.Primitive
 open import Data.Unit
