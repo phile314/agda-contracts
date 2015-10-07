@@ -74,7 +74,7 @@ data Position : Set where
 
 data ArgWay : Set where
   Keep : ArgWay
-  Discard : ArgWay
+  Erase : ArgWay
 
 invertPosition : Position → Position
 invertPosition Pos = Neg

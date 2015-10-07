@@ -76,8 +76,8 @@ module T3 where
 
   piK : ∀ {p} (a : AST' p) → (getTy a → AST' (invertPosition p)) → AST' (invertPosition p)
   piK x = pi x Keep
-  piD : ∀ {p} (a : AST' p) → (withWCon (pos+way→Context p Discard) (getTy a) → AST' (invertPosition p)) → AST' (invertPosition p)
-  piD x = pi x Discard
+  piD : ∀ {p} (a : AST' p) → (withWCon (pos+way→Context p Erase) (getTy a) → AST' (invertPosition p)) → AST' (invertPosition p)
+  piD x = pi x Erase
   
   syntax piK e₁ (λ x → e₂) = ⟨ x ∷ e₁ ⟩⇒ e₂
   syntax piD e₁ (λ x → e₂) = ⟨ x ∷ e₁ ⟩⇏ e₂
@@ -163,7 +163,7 @@ module T3 where
 
   ast⇒ArgWay : Term → ArgWay
   ast⇒ArgWay (con (quote Keep) args) = Keep
-  ast⇒ArgWay (con (quote Discard) args) = Discard
+  ast⇒ArgWay (con (quote Erase) args) = Erase
   ast⇒ArgWay _ = InternalError
 
   open import Data.Fin using (fromℕ≤)
