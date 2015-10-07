@@ -160,11 +160,11 @@ getIsoHighType : IsoHandler
 getIsoHighType p argₐ _ argₕ = def (quote PartIso.τₕ) (mkArg (PartIsoInt.wrapped p) ∷ mkArg argₐ ∷ mkArg argₕ ∷ [])
 
 
-getAgdaLowType : T 0 → Term
-getAgdaLowType t = elAGDA (mkElOpts getIsoLowType false) t
+deriveLowType : T 0 → Term
+deriveLowType t = elAGDA (mkElOpts getIsoLowType false) t
 
-getAgdaHighType : T 0 → Term
-getAgdaHighType t = elAGDA (mkElOpts getIsoHighType true) t
+deriveHighType : T 0 → Term
+deriveHighType t = elAGDA (mkElOpts getIsoHighType true) t
 
 
 shift : ℕ → List ℕ → List ℕ
@@ -214,24 +214,24 @@ down : (p : PartIso) → (aa : PartIso.ARGₐ p) → (al : PartIso.ARGₗ p aa) 
 down p aa al ah from = ↯ _ _ (proj₂ $ PartIso.⇅ p aa al ah) from
 
 
-ffi-lift1 : ∀ {n}
+contract-apply1 : ∀ {n}
   → (fde : T n)
   → Term -- thing to wrap
   → Position -- seems to be only used to figure out in which directin to convert
   → List ℕ -- environment
   → Term
-ffi-lift1 (agda-ty _) wr pos Γ = wr
-ffi-lift1 {n} (π fde ∣ k ⇒ fde₁) wr pos Γ =
+contract-apply1 (agda-ty _) wr pos Γ = wr
+contract-apply1 {n} (π fde ∣ k ⇒ fde₁) wr pos Γ =
   lam visible (abs "x" bd)
   where open import Reflection.DeBruijn
-        ls = ffi-lift1 fde (var 0 []) (invertPosition pos) (shift 1 Γ)
+        ls = contract-apply1 fde (var 0 []) (invertPosition pos) (shift 1 Γ)
         toWrap = case k of
           λ { Keep → app (weaken 2 wr) (var 0 [])
             ; Discard → weaken 2 wr
             }
-        rs = ffi-lift1 fde₁ toWrap pos (0 ∷ shift 2 Γ)
+        rs = contract-apply1 fde₁ toWrap pos (0 ∷ shift 2 Γ)
         bd = lett ls inn rs
-ffi-lift1 (iso {n} x argₐ argₗ argₕ) wr pos Γ =
+contract-apply1 (iso {n} x argₐ argₗ argₕ) wr pos Γ =
   -- extract the conversion from the named iso
   -- apply unsafeConvert
   def (convFun pos) ((mkArg $ PartIsoInt.wrapped x) ∷ argₐ' ∷ argₗ' ∷ argₕ' ∷ mkArg wr ∷ [])
@@ -257,8 +257,8 @@ ffi-lift1 (iso {n} x argₐ argₗ argₕ) wr pos Γ =
 
 
 -- produces the wrapper for lifting the low term to the high type
-ffi-lift : (fde : T 0) → Term {- low term / function -} → Term
-ffi-lift fde low  = ffi-lift1 fde low Pos []
+contract-apply : (fde : T 0) → Term {- low term / function -} → Term
+contract-apply fde low  = contract-apply1 fde low Pos []
 
 open import Level
 

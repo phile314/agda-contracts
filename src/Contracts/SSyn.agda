@@ -170,16 +170,16 @@ module T3 where
 
 
   {-# TERMINATING #-}
-  ast⇒T' : ∀ {n} → (t : Term) -- AST
+  surface⇒internal : ∀ {n} → (t : Term) -- AST
     → T n
-  arg-ast⇒T : ∀ {n} → Arg Term → T n
+  arg-surface⇒internal : ∀ {n} → Arg Term → T n
 
   -- Converts the quoted SSyn AST to the internal AST.
   -- We assume that the quoted SSyn AST is valid Agda code with type AST'.
-  ast⇒T' (var x args) = InternalError
-  ast⇒T' {n} (con c args) = case c of (
+  surface⇒internal (var x args) = InternalError
+  surface⇒internal {n} (con c args) = case c of (
     λ { (quote AST'.pi) → let k = ast⇒ArgWay $ unArg $ lookup' 2 args
-               in π ast⇒T' (unArg (lookup' 1 args)) ∣ k ⇒ ast⇒T' ((stripLam ∘ unArg ∘ lookup' 3) args) ;
+               in π surface⇒internal (unArg (lookup' 1 args)) ∣ k ⇒ surface⇒internal ((stripLam ∘ unArg ∘ lookup' 3) args) ;
         (quote AST'.⟦_⟧) → agda-ty (unArg (lookup' 1 args)) ;
         (quote AST'.⟦_⇋_⟧) →
           let pubIso = unArg $ lookup' 1 args
@@ -189,20 +189,20 @@ module T3 where
            in iso intIso aa al ah
       ; _ → InternalError
       })
-  ast⇒T' (def f args) = InternalError
-  ast⇒T' (lam v t) = InternalError
-  ast⇒T' (pat-lam cs args) = InternalError
-  ast⇒T' (pi t₁ t₂) = InternalError
-  ast⇒T' (sort s) = InternalError
-  ast⇒T' (lit l) = InternalError
-  ast⇒T' (quote-goal t) = InternalError
-  ast⇒T' (quote-term t) = InternalError
-  ast⇒T' quote-context = InternalError
-  ast⇒T' (unquote-term t args) = InternalError
-  ast⇒T' (foreign-term t ty) = InternalError
-  ast⇒T' unknown = InternalError
+  surface⇒internal (def f args) = InternalError
+  surface⇒internal (lam v t) = InternalError
+  surface⇒internal (pat-lam cs args) = InternalError
+  surface⇒internal (pi t₁ t₂) = InternalError
+  surface⇒internal (sort s) = InternalError
+  surface⇒internal (lit l) = InternalError
+  surface⇒internal (quote-goal t) = InternalError
+  surface⇒internal (quote-term t) = InternalError
+  surface⇒internal quote-context = InternalError
+  surface⇒internal (unquote-term t args) = InternalError
+  surface⇒internal (foreign-term t ty) = InternalError
+  surface⇒internal unknown = InternalError
 
-  arg-ast⇒T (arg i x) = ast⇒T' x
+  arg-surface⇒internal (arg i x) = surface⇒internal x
 
   open import Data.Unit
   ∅ : ⊤ × WContext ⊤ L × WContext ⊤ H
@@ -230,11 +230,11 @@ macro
   assert : (ast : Term) -- AST
     →  (lowDef : Term)
     → Term
-  assert ast lowDef = forceTy' (getAgdaHighType t) lifted
+  assert ast lowDef = forceTy' (deriveHighType int) lifted
     where
       open import Function
-      t = ast⇒T' {0} ast
-      low = forceTy' (getAgdaLowType t) lowDef
-      lifted = ffi-lift t low
+      int = surface⇒internal ast
+      low = forceTy' (deriveLowType int) lowDef
+      lifted = contract-apply int low
 
 
