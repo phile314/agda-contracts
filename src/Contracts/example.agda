@@ -55,12 +55,9 @@ module T3 where
     ⟨ ⟦ vec⇔list ⇋ x , ((liftW tt) , n) ⟧ ⟩
 
 
-  gg : unquote (getAgdaHighType (ast⇒T' f))
-  gg = unquote (ffi-lift (ast⇒T' f) (def (quote f-low) []))
+  gg : unquote (deriveHighType (surface⇒internal f))
+  gg = unquote (contract-apply (surface⇒internal f) (def (quote f-low) []))
 
-
---  ggg : {!pretty (getAgdaLowType (ast⇒T' {0} (quoteTerm (makeContract (⟨ n ∷ ⟦ ℕ ⟧ ⟩⇒ ⟨ x ∷ ⟦ Set ⟧ ⟩⇒ ⟨ ⟦ vec⇔list ⇋ x ,, n ,, [] ⟧ ⟩)))))!}
---  ggg = {!lett (var 10 []) inn var 0 []!}
 
   pp'' : _
   pp'' = assert (makeContract (⟨ n ∷ ⟦ ℕ ⟧ ⟩⇒ ⟨ x ∷ ⟦ Set ⟧ ⟩⇒ ⟨ ⟦ x ⟧ ⟩)) dummy
@@ -73,39 +70,6 @@ module T3 where
   pp''' : _
   pp''' = assert (makeContract (⟨ _ ∷ ⟦ ℕ ⟧ ⟩⇏ ⟨ n ∷ ⟦ ℕ ⟧ ⟩⇒ ⟨ x ∷ ⟦ Set ⟧ ⟩⇒ ⟨ ⟦ vec⇔list ⇋ x , ((liftW tt) , liftW n) ⟧ ⟩)) f-low
 
-  {-
-  open import Data.Integer
-  addImpl' : ℤ → ℤ → ℤ
-  addImpl' a b = a Data.Integer.+ b
-
-  addContr : Term
-  addContr = quoteTerm (
-        ⟨ a ∷ ⟦ ℤ ⟧ ⟩⇒ --⟦ ℕ⇔ℤ ⇋ [] ⟧ ⟩⇒
-        ⟨ b ∷ ⟦ ℕ⇔ℤ ⇋ [] ⟧ ⟩⇒
-        ⟨ ⟦ ℕ⇔ℤ ⇋ [] ⟧ ⟩ )
---        ⟨ ⟦ vec⇔list ⇋ lift ℕ , lift n , [] ⟧ ⟩ )
-
---  add : unquote (getAgdaHighType (ast⇒T' addContr))
---  add = unquote (ffi-lift (ast⇒T' addContr) (quote addImpl'))
-
-
-  
-  open import Data.Bool
-  lk : Bool → Term
-  lk true = let x = {!open import Data.List!} in {!!}
-  lk false = {!add ( -[1+ 30 ] ) (24)!}
-    where open import Data.List public
-
-  postulate mkForeign : {a : Set} → a
--}
---  q : ℕ → ℕ
---  q = tactic t
-
---  q' : ℕ → ℕ
---  q' = quoteGoal g in unquote {!g!}
-
---  r : ℕ → ℕ
---    using foreign (record {})
 
 module Fmap where
   open import Data.List
@@ -173,8 +137,7 @@ module TwoArgTest where
   List⇔Map : PartIsoPub
   List⇔Map = record { partIso = List⇔Map' ; partIsoInt = List⇔Map-Int }
 
---  open import Data.Nat
---  open import Data.Integer
+
   f-low : (A B : Set) → List (A × B) → List (A × B)
   f-low = dummy
   f : _
@@ -183,11 +146,6 @@ module TwoArgTest where
     ⟨ B ∷ ⟦ Set ⟧ ⟩⇒
     ⟨ _ ∷ ⟦ List⇔Map ⇋ (A , B) , (liftW tt) , (liftW tt) ⟧ ⟩⇒
     ⟨ ⟦ List⇔Map ⇋ (A , B) , (liftW tt) , (liftW tt) ⟧ ⟩)) f-low
-{-  g = {!unquote (getAgdaHighType (ast⇒T' {0} (quoteTerm (makeContract (
-    ⟨ A ∷ ⟦ Set ⟧ ⟩⇒
-    ⟨ B ∷ ⟦ Set ⟧ ⟩⇒
-    ⟨ _ ∷ ⟦ List⇔Map ⇋ (A , B) , (liftW tt) , (liftW tt) ⟧ ⟩⇒
-    ⟨ ⟦ List⇔Map ⇋ (A , B) , (liftW tt) , (liftW tt) ⟧ ⟩)))))!}-}
 
 module LookupTest where
   open import Contracts.SSyn
@@ -204,6 +162,23 @@ module LookupTest where
     ⟨ xs ∷ ⟦ List a ⟧ ⟩⇒
     ⟨ p ∷ ⟦ n ≤ length xs ⟧ ⟩⇏
     ⟨ ⟦ a ⟧ ⟩ )) hs-lookup
+
+module MinusTest where
+  open import Contracts.SSyn
+  open import Contracts.Isos
+  open import Data.Integer hiding (_≤_)
+  open import Foreign.Base
+  open NatIntIso
+  open import Data.Nat
+
+  minus' = foreign (hsCall "Prelude.-") (ℤ → ℤ → ℤ)
+
+  -- not possible
+{-  minus = assert (makeContract (
+    ⟨ x ∷ ⟦ ℕ⇔ℤ ⇋ ∅ ⟧ ⟩⇒
+    ⟨ y ∷ ⟦ ℕ⇔ℤ ⇋ ∅ ⟧ ⟩⇒
+    ⟨ _ ∷ ⟦ {!!} ⟧ ⟩⇏
+    ⟨ ⟦ ℕ⇔ℤ ⇋ ∅ ⟧ ⟩)) minus'-}
 
 open import IO
 import IO.Primitive

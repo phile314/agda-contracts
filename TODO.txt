@@ -1,2 +1,0 @@
-- does having IMPORT_UHC actually make sense? The FFI requires all names to be fully qualified,
-  so we could just extract the necessary imports from there.
