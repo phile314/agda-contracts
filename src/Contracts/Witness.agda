@@ -27,8 +27,8 @@ open import Data.Unit hiding (total)
 
 ⇔Witness' : PartIso
 ⇔Witness' = record
-  { ARG-a = Σ Set (λ bty → Σ (bty → Set) (λ wty → (b : bty) → Dec (wty b)))
-  ; ARG-l = λ _ → ⊤ --[]
+  { ARG-a = Σ Set (λ val-ty → Σ (val-ty → Set) (λ wit-ty → (b : val-ty) → Dec (wit-ty b)))
+  ; ARG-l = λ _ → ⊤
   ; ARG-h = λ _ → ⊤
   ; τ-l = λ aa _ → proj₁ aa
   ; τ-h = λ aa _ → Σ (proj₁ aa) (proj₁ (proj₂ aa))

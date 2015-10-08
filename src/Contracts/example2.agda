@@ -55,9 +55,15 @@ module Gcd where
 
   postulate hsGcd : ℕ → ℕ → ℕ
 
-  gcd : (x y : ℕ) → Σ ℕ (λ z → (z Divides x × z Divides y))
+  IsGCD : ℕ → ℕ → ℕ → Set
+  IsGCD x y z = z Divides x × z Divides y
+
+  gcd : (x : ℕ) → (y : ℕ) → Σ ℕ (IsGCD x y)
   gcd = assert (makeContract (
     ⟨ x ∷ ⟦ ℕ ⟧ ⟩⇒
     ⟨ y ∷ ⟦ ℕ ⟧ ⟩⇒
-    ⟨ ⟦ ⇔Witness ⇋ (ℕ , ((λ z → z Divides x × z Divides y) , (λ z → dec-× (λ _ → z divides? x) (λ _ → z divides? y) z))) , wrap tt , wrap tt ⟧ ⟩
+    ⟨ ⟦ ⇔Witness ⇋ (ℕ , IsGCD x y , divs? x y) , wrap tt , wrap tt ⟧ ⟩
     )) hsGcd
+    where
+      divs? : (x : ℕ) → (y : ℕ) → (z : ℕ) → Dec (IsGCD x y z)
+      divs? x y z = dec-× (λ _ → z divides? x) (λ _ → z divides? y) z
