@@ -151,8 +151,8 @@ module Reflect where
   ast⇒ArgWay _ = InternalError
 
   surface⇒internal : ∀ {n} → (t : Term) -- AST
-    → T n
-  arg-surface⇒internal : ∀ {n} → Arg Term → T n
+    → InternalSyn n
+  arg-surface⇒internal : ∀ {n} → Arg Term → InternalSyn n
 
   -- Converts the quoted SSyn AST to the internal AST.
   -- We assume that the quoted SSyn AST is valid Agda code with type AST'.

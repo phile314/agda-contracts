@@ -7,7 +7,8 @@ open import Data.List as List
 open import Data.Nat
 open import Data.Maybe
 
--- TODO move to stdlib
+
+-- move to Agda stdlib
 lookup : ∀ {A : Set} → ℕ → List A → Maybe A
 lookup i [] = nothing
 lookup ℕ.zero (x ∷ xs) = just x
@@ -82,21 +83,21 @@ invertPosition Neg = Pos
 
 import Data.Vec as V
 
-data T : ℕ → Set where
+data InternalSyn : ℕ → Set where
   -- normal agda type, with at most n free vars
-  agda-ty : ∀ {n} → Term → T n
+  agda-ty : ∀ {n} → Term → InternalSyn n
   π_∣_⇒_ : ∀ {n}
-    → T n -- type of the arg
+    → InternalSyn n -- type of the arg
     → ArgWay
-    → T (ℕ.suc n) -- body
-    → T n
+    → InternalSyn (ℕ.suc n) -- body
+    → InternalSyn n
 
   iso : ∀ {n}
     → (p : PartIsoInt)
     → Term -- ALL arguments - with env of all args
     → Term -- LOW arguments - with env of low args + all args
     → Term -- HIGH arguments - with env of high args + all args
-    → T n
+    → InternalSyn n
 
 
 def-argInfo : Arg-info
@@ -106,9 +107,6 @@ def-argInfo = arg-info visible relevant
 private
   postulate
     InternalError : {a : Set} → a
-    error : {a : Set} → a
-    error2 : {a : Set} → a
-    notImpl notImpl2 notImpl3 : {a : Set} → a
     UnexpectedIsoInIsoArgs : {A : Set} → A
 
 open import Data.Bool hiding (T)
@@ -126,8 +124,8 @@ record elOpts : Set where
         ignoreDiscard : Bool
 
 -- todo handle discard in neg. position properly
-elAGDA : ∀ {n} → elOpts → (t : T n) → Term
-elArg : ∀ {n} → elOpts → (t : T n) → Arg Term
+elAGDA : ∀ {n} → elOpts → (t : InternalSyn n) → Term
+elArg : ∀ {n} → elOpts → (t : InternalSyn n) → Arg Term
 
 private
   unsafeFromJust : ∀ {a} → Maybe a → a
@@ -160,10 +158,10 @@ getIsoHighType : IsoHandler
 getIsoHighType p argₐ _ argₕ = def (quote PartIso.τₕ) (mkArg (PartIsoInt.wrapped p) ∷ mkArg argₐ ∷ mkArg argₕ ∷ [])
 
 
-deriveLowType : T 0 → Term
+deriveLowType : InternalSyn 0 → Term
 deriveLowType t = elAGDA (mkElOpts getIsoLowType false) t
 
-deriveHighType : T 0 → Term
+deriveHighType : InternalSyn 0 → Term
 deriveHighType t = elAGDA (mkElOpts getIsoHighType true) t
 
 
@@ -215,7 +213,7 @@ down p aa al ah from = ↯ _ _ (proj₂ $ PartIso.⇅ p aa al ah) from
 
 
 contract-apply1 : ∀ {n}
-  → (fde : T n)
+  → (fde : InternalSyn n)
   → Term -- thing to wrap
   → Position -- seems to be only used to figure out in which directin to convert
   → List ℕ -- environment
@@ -257,7 +255,7 @@ contract-apply1 (iso {n} x argₐ argₗ argₕ) wr pos Γ =
 
 
 -- produces the wrapper for lifting the low term to the high type
-contract-apply : (fde : T 0) → Term {- low term / function -} → Term
+contract-apply : (fde : InternalSyn 0) → Term {- low term / function -} → Term
 contract-apply fde low  = contract-apply1 fde low Pos []
 
 open import Level

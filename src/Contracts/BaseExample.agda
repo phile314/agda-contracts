@@ -24,7 +24,7 @@ module Ex2 where
 --  fty = ⟨ ℕ⇔ℤ ⟩ → ⟨ ℕ⇔ℤ ⟩ → ⟨ ℕ⇔ℤ ⟩
 
   -- the internal AST representation of the above notation
-  addType : T 0
+  addType : InternalSyn 0
   addType = π ( iso ℕ⇔ℤ' tt' tt' tt' ) ∣ Keep ⇒ (π (iso ℕ⇔ℤ' tt' tt' tt') ∣ Keep ⇒ (iso ℕ⇔ℤ' tt' tt' tt'))
 --  addType = π ( def_∙_ (quote ℤ) {quote bla} [] ) ⇒ (π (def_∙_ (quote ℤ) {quote bla} []) ⇒ (def_∙_ (quote ℤ) {quote bla} []))
 
@@ -60,7 +60,7 @@ module MapEx where
   mapImpl f (x L.∷ xs) = f x L.∷ mapImpl f xs
 
   -- map higher order fun, where we convert the inputs of the higher order thingie
-  mapNZType : T 0
+  mapNZType : InternalSyn 0
   mapNZType =
       π (
         π (iso ℕ⇔ℤ' tt' tt' tt') ∣ Keep ⇒ (iso ℕ⇔ℤ' tt' tt' tt')
@@ -86,7 +86,7 @@ module DepSimple where
   mapImpl2 : (n : ℕ) (A : Set) → List A
   mapImpl2 n A = []
 
-  mapNZType : T 0
+  mapNZType : InternalSyn 0
   mapNZType =
     π (agda-ty (def (quote ℕ) [])) ∣ Keep -- n
     ⇒ (π (agda-ty (quoteTerm Set)) ∣ Keep -- A
