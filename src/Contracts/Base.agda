@@ -46,13 +46,13 @@ Conversions Aₜ Bₜ = Conversion Aₜ Bₜ × Conversion Bₜ Aₜ
 
 record PartIso : Set where
   constructor mkPartIso
-  field ARGₐ : Set
-        ARGₗ : ARGₐ → Set
-        ARGₕ : ARGₐ → Set
-        τₗ : (aa : ARGₐ) → (ARGₗ aa) → Set
-        τₕ : (aa : ARGₐ) → (ARGₕ aa) → Set
+  field ARG-a : Set
+        ARG-l : ARG-a → Set
+        ARG-h : ARG-a → Set
+        τ-l : (aa : ARG-a) → (ARG-l aa) → Set
+        τ-h : (aa : ARG-a) → (ARG-h aa) → Set
 
-        ⇅ : (aa : ARGₐ) → (al : ARGₗ aa) → (ah : ARGₕ aa) → Conversions (τₗ aa al) (τₕ aa ah)
+        ⇅ : (aa : ARG-a) → (al : ARG-l aa) → (ah : ARG-h aa) → Conversions (τ-l aa al) (τ-h aa ah)
 
 mkPartIso1 : (τₗ : Set) → (τₕ : Set) → Conversions τₗ τₕ → PartIso
 mkPartIso1 τₗ τₕ ⇅ = mkPartIso ⊤ (λ _ → ⊤) (λ _ → ⊤) (λ _ _ → τₗ) (λ _ _ → τₕ) (λ _ _ _ → ⇅)
@@ -122,10 +122,10 @@ mkArg : Term → Arg Term
 mkArg = arg (arg-info visible relevant)
 
 getIsoLowType : IsoHandler
-getIsoLowType p argₐ argₗ _ = def (quote PartIso.τₗ) (mkArg (PartIsoInt.wrapped p) ∷ mkArg argₐ ∷ mkArg argₗ ∷ [])
+getIsoLowType p argₐ argₗ _ = def (quote PartIso.τ-l) (mkArg (PartIsoInt.wrapped p) ∷ mkArg argₐ ∷ mkArg argₗ ∷ [])
 
 getIsoHighType : IsoHandler
-getIsoHighType p argₐ _ argₕ = def (quote PartIso.τₕ) (mkArg (PartIsoInt.wrapped p) ∷ mkArg argₐ ∷ mkArg argₕ ∷ [])
+getIsoHighType p argₐ _ argₕ = def (quote PartIso.τ-h) (mkArg (PartIsoInt.wrapped p) ∷ mkArg argₐ ∷ mkArg argₕ ∷ [])
 
 elAGDA : ∀ {n} → Position → TargetType → (t : InternalSyn n) → Term
 elArg : ∀ {n} → Position → TargetType → (t : InternalSyn n) → Arg Term
@@ -200,12 +200,12 @@ app t₁ t₂ = def (quote _$_)
           ∷ arg def-argInfo t₂
           ∷ [])
 
-up : (p : PartIso) → (aa : PartIso.ARGₐ p) → (al : PartIso.ARGₗ p aa) → (ah : PartIso.ARGₕ p aa)
-  → PartIso.τₗ p aa al → PartIso.τₕ p aa ah
+up : (p : PartIso) → (aa : PartIso.ARG-a p) → (al : PartIso.ARG-l p aa) → (ah : PartIso.ARG-h p aa)
+  → PartIso.τ-l p aa al → PartIso.τ-h p aa ah
 up p aa al ah from = ↯ _ _ (proj₁ $ PartIso.⇅ p aa al ah) from
 
-down : (p : PartIso) → (aa : PartIso.ARGₐ p) → (al : PartIso.ARGₗ p aa) → (ah : PartIso.ARGₕ p aa)
-  → PartIso.τₕ p aa ah → PartIso.τₗ p aa al
+down : (p : PartIso) → (aa : PartIso.ARG-a p) → (al : PartIso.ARG-l p aa) → (ah : PartIso.ARG-h p aa)
+  → PartIso.τ-h p aa ah → PartIso.τ-l p aa al
 down p aa al ah from = ↯ _ _ (proj₂ $ PartIso.⇅ p aa al ah) from
 
 

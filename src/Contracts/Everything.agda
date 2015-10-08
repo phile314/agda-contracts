@@ -7,4 +7,5 @@ open import Contracts.Isos
 
 open import Contracts.BaseExample
 open import Contracts.example
+open import Contracts.example2
 open import Contracts.Witness

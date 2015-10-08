@@ -40,11 +40,11 @@ module VecIso where
   vec⇔list = makeIso vec⇔list'
     where
       vec⇔list' = record
-        { ARGₐ = Set
-        ; ARGₗ = λ _ → ⊤
-        ; ARGₕ = λ _ → ℕ
-        ; τₗ = λ aa _ → List aa
-        ; τₕ = λ aa n → Vec aa n
+        { ARG-a = Set
+        ; ARG-l = λ _ → ⊤
+        ; ARG-h = λ _ → ℕ
+        ; τ-l = λ aa _ → List aa
+        ; τ-h = λ aa n → Vec aa n
         ; ⇅ = λ aa _ n → (withMaybe list⇒vec) , (total toList)
         }
         where open import Data.Unit hiding (total)

@@ -27,7 +27,7 @@ module Types where
     field partIsoInt : PartIsoInt
 
   getArgs : PartIsoPub → Set
-  getArgs p = Σ (PartIso.ARGₐ p') (λ aa → (WContext (PartIso.ARGₗ p' aa) L) × (WContext (PartIso.ARGₕ p' aa) H))
+  getArgs p = Σ (PartIso.ARG-a p') (λ aa → (WContext (PartIso.ARG-l p' aa) L) × (WContext (PartIso.ARG-h p' aa) H))
     where p' = PartIsoPub.partIso p
 
   pos+way→Context : Position → ArgWay → Context
@@ -54,7 +54,7 @@ module Types where
   getTy (pi {p} a aw x) = (arg : (withWCon (pos+way→Context p aw) (getTy a))) → (getTy (x arg))
   getTy (⟦ x ⟧) = x
   -- this should be the pair of low / high args
-  getTy (⟦ p ⇋ (aₐ , (aₗ , aₕ)) ⟧) = WContext (PartIso.τₗ p' aₐ (unC aₗ)) L × WContext (PartIso.τₕ p' aₐ (unC aₕ)) H
+  getTy (⟦ p ⇋ (aₐ , (aₗ , aₕ)) ⟧) = WContext (PartIso.τ-l p' aₐ (unC aₗ)) L × WContext (PartIso.τ-h p' aₐ (unC aₕ)) H
     where p' = PartIsoPub.partIso p
 
   C = C' Pos

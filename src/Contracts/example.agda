@@ -122,11 +122,11 @@ module TwoArgTest where
   List⇔Map = makeIso partIso
     where
       partIso = record
-        { ARGₐ = Set × Set
-        ; ARGₗ = λ _ → ⊤
-        ; ARGₕ = λ _ → ⊤
-        ; τₗ = λ aa _ → List (proj₁ aa × proj₂ aa)
-        ; τₕ = λ aa _ → Map (proj₁ aa) (proj₂ aa)
+        { ARG-a = Set × Set
+        ; ARG-l = λ _ → ⊤
+        ; ARG-h = λ _ → ⊤
+        ; τ-l = λ aa _ → List (proj₁ aa × proj₂ aa)
+        ; τ-h = λ aa _ → Map (proj₁ aa) (proj₂ aa)
         ; ⇅ = λ aa _ _ → dummy
         }
 
@@ -189,6 +189,7 @@ module HigherOrderErasure where
     ⟨ _ ∷ ⟨ _ ∷ ⟦ ⊤ ⟧ ⟩⇏ ⟨ ⟦ ⊤ ⟧ ⟩ ⟩⇒
     ⟨ ⟦ ⊤ ⟧ ⟩
     )) foo'
+
 
 open import IO
 import IO.Primitive

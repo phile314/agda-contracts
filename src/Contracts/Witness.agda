@@ -27,11 +27,11 @@ open import Data.Unit hiding (total)
 
 ⇔Witness' : PartIso
 ⇔Witness' = record
-  { ARGₐ = Σ Set (λ bty → Σ (bty → Set) (λ wty → (b : bty) → Dec (wty b)))
-  ; ARGₗ = λ _ → ⊤ --[]
-  ; ARGₕ = λ _ → ⊤
-  ; τₗ = λ aa _ → proj₁ aa
-  ; τₕ = λ aa _ → Σ (proj₁ aa) (proj₁ (proj₂ aa))
+  { ARG-a = Σ Set (λ bty → Σ (bty → Set) (λ wty → (b : bty) → Dec (wty b)))
+  ; ARG-l = λ _ → ⊤ --[]
+  ; ARG-h = λ _ → ⊤
+  ; τ-l = λ aa _ → proj₁ aa
+  ; τ-h = λ aa _ → Σ (proj₁ aa) (proj₁ (proj₂ aa))
   ; ⇅ = λ aa _ _ →
     let dec = proj₂ $ proj₂ aa
         up = λ x → case dec x of λ
@@ -39,6 +39,7 @@ open import Data.Unit hiding (total)
           ; (no ¬p) → nothing }
      in withMaybe up , total proj₁
   }
+
 
 open import Reflection
 
