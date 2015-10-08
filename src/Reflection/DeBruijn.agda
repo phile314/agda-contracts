@@ -1,9 +1,10 @@
+-- NOTE: This code is originally from Ulf Norells agda-prelude,
+-- ported to Agda's stdlib by Philipp Hausmann
+
+-- Defines strengthening and weakening of reflected Agda terms.
 
 module Reflection.DeBruijn where
 
---open import Prelude
---open import Builtin.Reflection
---open import Data.Traversable
 open import Data.Nat renaming (ℕ to Nat)
 open import Reflection
 open import Data.Maybe
@@ -191,9 +192,4 @@ instance
   DeBruijnList {a} {{d}} = DeBruijnTraversable {_} {List} {{RW.rawFunctor}} {{TraversableList}} {{d}}
     where module RW = RawMonad (Data.List.monad {a})
 
-{-  DeBruijnArg : {A : Set} {{_ : DeBruijn A}} → DeBruijn (Arg A)
-  DeBruijnArg = DeBruijnTraversable
-
-  DeBruijnMaybe : {A : Set} {{_ : DeBruijn A}} → DeBruijn (Maybe A)
-  DeBruijnMaybe = DeBruijnTraversable-}
 

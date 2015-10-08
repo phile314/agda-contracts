@@ -1,9 +1,10 @@
+-- NOTE: This code is originally from Ulf Norells agda-prelude,
+-- ported to Agda's stdlib by Philipp Hausmann
+
+-- Defines substitution for reflected Agda terms.
 
 module Reflection.Substitute where
 
---open import Prelude
---open import Control.Strict
---open import Builtin.Reflection
 open import Data.List
 open import Reflection
 open import Data.Nat renaming (ℕ to Nat)
@@ -66,7 +67,7 @@ instance
       -- Strengthening or weakening safe terms always results in safe terms,
       -- but proving that is a bit of a bother, thus maybeSafe.
       str : Nat → Nat → SafeTerm → Maybe SafeTerm
-      str k n (safe v _) = strengthenFrom k n v >>= maybeSafe -- forM v₁ ← strengthenFrom k n v do (λ v₁ → maybeSafe v₁)
+      str k n (safe v _) = strengthenFrom k n v >>= maybeSafe
 
       wk : Nat → Nat → SafeTerm → SafeTerm
       wk k n (safe v p) = maybe′ id (safe unknown _) (maybeSafe (weakenFrom k n v)) 

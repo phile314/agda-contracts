@@ -1,7 +1,7 @@
 {-# OPTIONS --type-in-type #-}
 module Contracts.example2 where
 
-
+-- refine addition to even numbers
 module EvenWitness where
   open import Data.Nat
   open import Contracts.SSyn
@@ -33,6 +33,7 @@ module EvenWitness where
       evenDec = (ℕ , Even , even?) , wrap tt , wrap tt
 
 
+-- refine gcd result with "z divides x/y" proofs
 module Gcd where
   open import Data.Nat
   open import Contracts.SSyn
@@ -47,6 +48,7 @@ module Gcd where
   open import Relation.Nullary
   postulate _divides?_ : (x : ℕ) → (y : ℕ) → Dec (x Divides y)
 
+  -- pair the result of two decision functions
   dec-× : ∀ {A B C} → (A → Dec B) → (A → Dec C) → A → Dec (B × C)
   dec-× b c a with b a | c a
   dec-× b c a | yes p | yes p₁ = yes (p , p₁)

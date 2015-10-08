@@ -2,11 +2,15 @@
 
 module Contracts.example where
 
-open import Contracts.Isos
-
-postulate dummy : forall {a} -> a
 -- surface syntax tests
-module T3 where
+
+
+open import Contracts.Isos
+postulate dummy : forall {a} -> a
+
+
+-- Some basic tests
+module Basic where
   open NatIntIso
   open VecIso
   open import Contracts.Base
@@ -22,57 +26,31 @@ module T3 where
   open import Data.Product
 
 
-  
-  -- an example how the contracts syntax could look like,
-  -- if implemented using normal Agda constructs.
-{-  ty' : AST
-  ty' = ⟨ a ∷ ⟦ Set₁ ⟧ ⟩⇒
-    ⟨ x ∷ ⟦ ℕ⇔ℤ ⇋ [] ⟧ ⟩⇒
-    ⟨ y ∷ ⟦ vec⇔list ⇋ lift a , ((lift x) , []) ⟧ ⟩⇒
-    ⟨ xs ∷ ⟦ List a ⟧ ⟩⇒
-    ⟨ ⟦ List a ⟧ ⟩-}
-
-
   open import Function
   open import Reflection as R
   open import Data.Unit
   
   f' : C
-  f' = ⟨ n ∷ ⟦ ℕ ⟧ ⟩⇒ ⟨ x ∷ ⟦ Set ⟧ ⟩⇒ ⟨ ⟦ vec⇔list ⇋  x , (wrap tt , wrap n) {-liftW x , liftW n , []-} ⟧ ⟩
+  f' = ⟨ n ∷ ⟦ ℕ ⟧ ⟩⇒ ⟨ x ∷ ⟦ Set ⟧ ⟩⇒ ⟨ ⟦ vec⇔list ⇋  x , (wrap tt , wrap n) ⟧ ⟩
   f : Term
   f = quoteTerm (makeContract
-    (⟨ n ∷ ⟦ ℕ ⟧ ⟩⇒ ⟨ x ∷ ⟦ Set ⟧ ⟩⇒ ⟨ ⟦ vec⇔list ⇋ x , ((wrap tt) , (wrap n)) {- liftW x , liftW n , []-} ⟧ ⟩))
+    (⟨ n ∷ ⟦ ℕ ⟧ ⟩⇒ ⟨ x ∷ ⟦ Set ⟧ ⟩⇒ ⟨ ⟦ vec⇔list ⇋ x , ((wrap tt) , (wrap n)) ⟧ ⟩))
 
   f-low : ℕ → (A : Set) → List A
   f-low n A = []
   
---  g : {!  f!}
---  g = {!getAgdaHighType (ast⇒T' f)!}
-  g' : C
-  g' = ⟨ n ∷ ⟦ ℕ ⟧ ⟩⇏
-    ⟨ x ∷ ⟦ Set ⟧ ⟩⇒
-    ⟨ f ∷ (⟨ _ ∷ ⟦ x ⟧ ⟩⇒ ⟨ ⟦ x ⟧ ⟩ ) ⟩⇒
-    ⟨ _ ∷ ⟦ vec⇔list ⇋ x , ((wrap tt) , n) ⟧ ⟩⇒
-    ⟨ ⟦ vec⇔list ⇋ x , ((wrap tt) , n) ⟧ ⟩
 
   open Reflect
-  gg : unquote (deriveHighType (surface⇒internal f))
-  gg = unquote (contract-apply (surface⇒internal f) (def (quote f-low) []))
-
-
-  pp'' : _
-  pp'' = assert (makeContract (⟨ n ∷ ⟦ ℕ ⟧ ⟩⇒ ⟨ x ∷ ⟦ Set ⟧ ⟩⇒ ⟨ ⟦ x ⟧ ⟩)) dummy
-
-  pp'4 : _
-  pp'4 = assert (makeContract (⟨ ⟦ ℕ⇔ℤ ⇋ tt , ((wrap tt) , (wrap tt)) ⟧ ⟩)) dummy
-  pp' : _
-  pp' = assert (makeContract (⟨ n ∷ ⟦ ℕ ⟧ ⟩⇒ ⟨ x ∷ ⟦ Set ⟧ ⟩⇒ ⟨ ⟦ vec⇔list ⇋ x , ((wrap tt) , (wrap n)) ⟧ ⟩)) f-low
+  ff : unquote (deriveHighType (surface⇒internal f))
+  ff = unquote (contract-apply (surface⇒internal f) (def (quote f-low) []))
 
   pp''' : _
   pp''' = assert (makeContract (⟨ _ ∷ ⟦ ℕ ⟧ ⟩⇏ ⟨ n ∷ ⟦ ℕ ⟧ ⟩⇒ ⟨ x ∷ ⟦ Set ⟧ ⟩⇒ ⟨ ⟦ vec⇔list ⇋ x , ((wrap tt) , wrap n) ⟧ ⟩)) f-low
 
 
-module Fmap where
+
+-- map example
+module FMap where
   open import Data.List
   open import Contracts.SSyn
   open import Data.Nat
@@ -95,6 +73,7 @@ module Fmap where
     ⟨ _ ∷ ⟦ vec⇔list ⇋ ( A , (wrap tt , n) ) ⟧ ⟩⇒
     ⟨ ⟦ vec⇔list ⇋ B , (wrap tt , n) ⟧ ⟩)) hs-map
 
+-- simple refined type example
 module Witnessss where
   open import Contracts.Witness
   open import Contracts.SSyn
@@ -109,6 +88,8 @@ module Witnessss where
   f' : _ --ℕ → ℕ → Σ ℕ (_≡_ 10)
   f' = assert (makeContract (⟨ n ∷ ⟦ ℕ ⟧ ⟩⇒ ⟨ x ∷ ⟦ ℕ ⟧ ⟩⇒ ⟨ ⟦ ⇔Witness ⇋ (ℕ , (_≡_ 10 , _≟_ 10)) , wrap tt , wrap tt ⟧ ⟩)) f-low
 
+
+-- test with partial isomorphism between [(a, b)] and a dummy Map a b type.
 module TwoArgTest where
   open import Contracts.SSyn
   open import Contracts.Base
@@ -139,6 +120,7 @@ module TwoArgTest where
     ⟨ _ ∷ ⟦ List⇔Map ⇋ (A , B) , (wrap tt) , (wrap tt) ⟧ ⟩⇒
     ⟨ ⟦ List⇔Map ⇋ (A , B) , (wrap tt) , (wrap tt) ⟧ ⟩)) f-low
 
+-- Test with additional proof object using erasure annotations
 module LookupTest where
   open import Contracts.SSyn
   open import Contracts.Isos
@@ -155,6 +137,7 @@ module LookupTest where
     ⟨ p ∷ ⟦ n ≤ length xs ⟧ ⟩⇏
     ⟨ ⟦ a ⟧ ⟩ )) hs-lookup
 
+-- test with erased proof object depending on (partial) isomorphism application
 module MinusTest where
   open import Contracts.SSyn
   open import Contracts.Isos
@@ -166,12 +149,15 @@ module MinusTest where
   minus' = foreign (hsCall "Prelude.-") (ℤ → ℤ → ℤ)
 
   -- not possible
-{-  minus = assert (makeContract (
+  {-
+  minus = assert (makeContract (
     ⟨ x ∷ ⟦ ℕ⇔ℤ ⇋ ∅ ⟧ ⟩⇒
     ⟨ y ∷ ⟦ ℕ⇔ℤ ⇋ ∅ ⟧ ⟩⇒
     ⟨ _ ∷ ⟦ {!!} ⟧ ⟩⇏
-    ⟨ ⟦ ℕ⇔ℤ ⇋ ∅ ⟧ ⟩)) minus'-}
+    ⟨ ⟦ ℕ⇔ℤ ⇋ ∅ ⟧ ⟩)) minus'
+    -}
 
+-- erasure in higher order functions
 module HigherOrderErasure where
   open import Contracts.SSyn
   open import Foreign.Base
@@ -189,31 +175,3 @@ module HigherOrderErasure where
     ⟨ _ ∷ ⟨ _ ∷ ⟦ ⊤ ⟧ ⟩⇏ ⟨ ⟦ ⊤ ⟧ ⟩ ⟩⇒
     ⟨ ⟦ ⊤ ⟧ ⟩
     )) foo'
-
-
-open import IO
-import IO.Primitive
-open import Data.Unit
-open import Data.Nat.Show
-import Data.List
-open import Data.Integer
-open import Data.Nat
-
---open MapEx
---open DepCon1
-open import Data.Vec
-
-postulate exError : {A : Set} → A
-
-{-
-main : IO.Primitive.IO ⊤
-main = run (putStrLn (Data.Nat.Show.show s))
-  where n = 3
-        p : Vec ℤ n
-        p = + 0 ∷ (-[1+ 48 ] ∷ (+ 13 ∷ []))
-        kk = myMap2 n ℤ ℕ (∣_∣) p
-
-        s = foldl (λ _ → ℕ) Data.Nat._+_ 0 kk
-
--}
-

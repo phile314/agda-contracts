@@ -68,18 +68,18 @@ record PartIsoInt : Set where
 open import Reflection
 
 -- co-/contravariant context
-data Position : Set where
-  Pos : Position
-  Neg : Position
+data Context : Set where
+  Pos : Context -- covariant
+  Neg : Context -- contravariant
 
 -- do we erase or not?
 data ArgWay : Set where
   Keep : ArgWay
   Erase : ArgWay
 
-invertPosition : Position → Position
-invertPosition Pos = Neg
-invertPosition Neg = Pos
+invert : Context → Context
+invert Pos = Neg
+invert Neg = Pos
 
 data InternalSyn : ℕ → Set where
   -- normal agda type, with at most n free vars
@@ -127,8 +127,8 @@ getIsoLowType p argₐ argₗ _ = def (quote PartIso.τ-l) (mkArg (PartIsoInt.wr
 getIsoHighType : IsoHandler
 getIsoHighType p argₐ _ argₕ = def (quote PartIso.τ-h) (mkArg (PartIsoInt.wrapped p) ∷ mkArg argₐ ∷ mkArg argₕ ∷ [])
 
-elAGDA : ∀ {n} → Position → TargetType → (t : InternalSyn n) → Term
-elArg : ∀ {n} → Position → TargetType → (t : InternalSyn n) → Arg Term
+elAGDA : ∀ {n} → Context → TargetType → (t : InternalSyn n) → Term
+elArg : ∀ {n} → Context → TargetType → (t : InternalSyn n) → Arg Term
 
 private
   unsafeFromJust : ∀ {a} → Maybe a → a
@@ -143,7 +143,7 @@ elAGDA ω ρ (π  t ∣ k ⇒ t₁) = case (k , ω , ρ) of
      ; (Erase , Neg , Low) → keep
      ; (Erase , Neg , High) → erase' })
   where
-    keep = pi (arg def-argInfo (el unknown (elAGDA (invertPosition ω) ρ t))) (abs "" (el unknown (elAGDA ω ρ t₁)))
+    keep = pi (arg def-argInfo (el unknown (elAGDA (invert ω) ρ t))) (abs "" (el unknown (elAGDA ω ρ t₁)))
     open import Reflection.DeBruijn as D
     erase' = unsafeFromJust (D.strengthen 1 (elAGDA ω ρ t₁))
 elAGDA ω ρ (iso i argₐ argₗ argₕ) =
@@ -212,24 +212,24 @@ down p aa al ah from = ↯ _ _ (proj₂ $ PartIso.⇅ p aa al ah) from
 contract-apply1 : ∀ {n}
   → (fde : InternalSyn n)
   → Term -- thing to wrap
-  → Position -- seems to be only used to figure out in which directin to convert
+  → Context -- seems to be only used to figure out in which directin to convert
   → List ℕ -- environment
   → Term
-contract-apply1 (agda-ty _) wr pos Γ = wr
-contract-apply1 {n} (π fde ∣ k ⇒ fde₁) wr pos Γ =
+contract-apply1 (agda-ty _) wr ω Γ = wr
+contract-apply1 {n} (π fde ∣ k ⇒ fde₁) wr ω Γ =
   lam visible (abs "x" bd)
   where open import Reflection.DeBruijn
-        ls = contract-apply1 fde (var 0 []) (invertPosition pos) (wkΓ 1 Γ)
+        ls = contract-apply1 fde (var 0 []) (invert ω) (wkΓ 1 Γ)
         toWrap = case k of
           λ { Keep → app (weaken 2 wr) (var 0 [])
             ; Discard → weaken 2 wr
             }
-        rs = contract-apply1 fde₁ toWrap pos (0 ∷ wkΓ 2 Γ)
+        rs = contract-apply1 fde₁ toWrap ω (0 ∷ wkΓ 2 Γ)
         bd = lett ls inn rs
-contract-apply1 (iso {n} x argₐ argₗ argₕ) wr pos Γ =
+contract-apply1 (iso {n} x argₐ argₗ argₕ) wr ω Γ =
   -- extract the conversion from the named iso
   -- apply unsafeConvert
-  def (convFun pos) ((mkArg $ PartIsoInt.wrapped x) ∷ argₐ' ∷ argₗ' ∷ argₕ' ∷ mkArg wr ∷ [])
+  def (convFun ω) ((mkArg $ PartIsoInt.wrapped x) ∷ argₐ' ∷ argₗ' ∷ argₕ' ∷ mkArg wr ∷ [])
   where
         open import Reflection.Substitute
         ix = reverse $ downFrom (List.length Γ)
@@ -246,7 +246,7 @@ contract-apply1 (iso {n} x argₐ argₗ argₕ) wr pos Γ =
         -- this only refers to high args. Use the wrapped term.
         argₕ' = mkArg $ subst (List.map (λ x → safe (var x []) _) Γ) argₕ
 
-        convFun : Position → Name
+        convFun : Context → Name
         convFun Pos = quote up
         convFun Neg = quote down
 

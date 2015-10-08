@@ -8,13 +8,12 @@ open import Data.Product
 
 module Types where
 
-  -- Are we in low/high/common context?
-  data Context : Set where
-    H : Context
-    L : Context
-    Common : Context
+  -- Are we in low/high context?
+  data LHContext : Set where
+    H L : LHContext
 
-  data WContext (A : Set) : Context → Set where
+  -- Wrapper (High/Low datatypes in thesis)
+  data WContext (A : Set) : LHContext → Set where
     wrap : ∀ {c} → A → WContext A c
   
   private
@@ -26,35 +25,31 @@ module Types where
     field partIso : PartIso
     field partIsoInt : PartIsoInt
 
-  getArgs : PartIsoPub → Set
-  getArgs p = Σ (PartIso.ARG-a p') (λ aa → (WContext (PartIso.ARG-l p' aa) L) × (WContext (PartIso.ARG-h p' aa) H))
+  withArgs : PartIsoPub → Set
+  withArgs p = Σ (PartIso.ARG-a p') (λ aa → (WContext (PartIso.ARG-l p' aa) L) × (WContext (PartIso.ARG-h p' aa) H))
     where p' = PartIsoPub.partIso p
 
-  pos+way→Context : Position → ArgWay → Context
-  pos+way→Context p Keep = Common
-  pos+way→Context Neg Discard = H
-  pos+way→Context Pos Discard = L
-
-  withWCon : Context → Set → Set
-  withWCon Common s = s
-  withWCon c s = WContext s c
+  ω+way→Wrap : Context → ArgWay → (Set → Set)
+  ω+way→Wrap p Keep x = x
+  ω+way→Wrap Pos Erase x = WContext x L
+  ω+way→Wrap Neg Erase x = WContext x H
   
 
-  data C' : Position → Set
-  getTy : ∀ {p} → C' p → Set
+  data C' : Context → Set
+  el : ∀ {ω} → C' ω → Set
 
   data C' where
-    pi : ∀ {p} → (a : C' p) → (aw : ArgWay)
-      → (withWCon (pos+way→Context p aw) (getTy a) → C' (invertPosition p))
-      → C' (invertPosition p)
-    ⟦_⟧ : ∀ {p} (A : Set) → C' p -- normal type (List, Nat, etc..)
-    ⟦_⇋_⟧ : ∀ {p} (pi :  PartIsoPub) → getArgs pi → C' p -- isomorphism
+    pi : ∀ {ω} → (a : C' (invert ω)) → (aw : ArgWay)
+      → (ω+way→Wrap (invert ω) aw (el a) → C' ω)
+      → C' ω
+    ⟦_⟧ : ∀ {ω} (A : Set) → C' ω -- normal type (List, Nat, etc..)
+    ⟦_⇋_⟧ : ∀ {ω} (pi :  PartIsoPub) → withArgs pi → C' ω -- isomorphism
 
 
-  getTy (pi {p} a aw x) = (arg : (withWCon (pos+way→Context p aw) (getTy a))) → (getTy (x arg))
-  getTy (⟦ x ⟧) = x
+  el (pi {ω} a aw x) = (arg : (ω+way→Wrap (invert ω) aw (el a))) → (el (x arg))
+  el (⟦ x ⟧) = x
   -- this should be the pair of low / high args
-  getTy (⟦ p ⇋ (aₐ , (aₗ , aₕ)) ⟧) = WContext (PartIso.τ-l p' aₐ (unC aₗ)) L × WContext (PartIso.τ-h p' aₐ (unC aₕ)) H
+  el (⟦ p ⇋ (aₐ , (aₗ , aₕ)) ⟧) = WContext (PartIso.τ-l p' aₐ (unC aₗ)) L × WContext (PartIso.τ-h p' aₐ (unC aₕ)) H
     where p' = PartIsoPub.partIso p
 
   C = C' Pos
@@ -63,6 +58,9 @@ module Types where
 
 
 module Reflect where
+
+  -- Converts reflected terms of type C to internal syntax
+
   open Types
   open import Data.Nat as N
   open import Level
@@ -185,15 +183,17 @@ module Reflect where
   arg-surface⇒internal (arg i x) = surface⇒internal x
 
 module Syntax where
+  -- Some functions to create a nice Agda syntax
+  
   open Types
   open Reflect
 
   id : {A : Set} → A → A
   id x = x
 
-  piK : ∀ {p} (a : C' p) → (getTy a → C' (invertPosition p)) → C' (invertPosition p)
+  piK : ∀ {ω} (a : C' (invert ω)) → (el a → C' ω) → C' ω
   piK x = pi x Keep
-  piD : ∀ {p} (a : C' p) → (withWCon (pos+way→Context p Erase) (getTy a) → C' (invertPosition p)) → C' (invertPosition p)
+  piD : ∀ {ω} (a : C' (invert ω)) → (ω+way→Wrap (invert ω) Erase (el a) → C' ω) → C' ω
   piD x = pi x Erase
   
   syntax piK e₁ (λ x → e₂) = ⟨ x ∷ e₁ ⟩⇒ e₂
@@ -239,7 +239,8 @@ module Syntax where
       where partIsoInt = con (quote mkIsoInt) [ mkArg (quote-term partIso) ]
 
 open Syntax public
--- hide constructor!
+
+-- hide constructor to make it impossible to unwrap things!
 open Types public hiding (wrap)
 
 wrap : ∀ {A c} → A → WContext A c

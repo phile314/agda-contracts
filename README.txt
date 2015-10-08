@@ -1,1 +1,10 @@
-Making Agda Unsafe - Contracts for Agda
+Contracts:
+
+see src/Contracts
+
+
+FFI:
+
+see src/Foreign
+
+
