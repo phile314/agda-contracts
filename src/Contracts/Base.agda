@@ -137,7 +137,7 @@ private
 
 elAGDA ω ρ (agda-ty t) = t
 elAGDA ω ρ (π  t ∣ k ⇒ t₁) = case (k , ω , ρ) of
-  (λ { (Keep , _ , _) → keep -- Keep
+  (λ { (Keep , _ , _) → keep
      ; (Erase , Pos , Low) → erase'
      ; (Erase , Pos , High) → keep
      ; (Erase , Neg , Low) → keep
