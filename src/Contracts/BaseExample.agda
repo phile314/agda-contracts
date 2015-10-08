@@ -16,7 +16,11 @@ module Ex2 where
   open import Data.List
   open import Data.Vec
   open NatIntIso
+  open import Contracts.SSyn
+
   import Level
+
+  ℕ⇔ℤ' = PartIsoPub.partIsoInt ℕ⇔ℤ
 
 
 -- the special type syntax for using isomorpisms.
@@ -54,6 +58,9 @@ module MapEx where
   open import Data.Nat
   import Data.Vec as V
   open import Reflection
+  open import Contracts.SSyn
+
+  ℕ⇔ℤ' = PartIsoPub.partIsoInt ℕ⇔ℤ
 
   mapImpl : (ℤ → ℤ) → L.List ℤ → L.List ℤ
   mapImpl f L.[] = L.[]
@@ -86,6 +93,9 @@ module DepSimple where
   mapImpl2 : (n : ℕ) (A : Set) → List A
   mapImpl2 n A = []
 
+  vec⇔list' = PartIsoPub.partIsoInt vec⇔list
+    where open import Contracts.SSyn
+  
   mapNZType : InternalSyn 0
   mapNZType =
     π (agda-ty (def (quote ℕ) [])) ∣ Keep -- n

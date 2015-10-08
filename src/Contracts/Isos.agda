@@ -13,21 +13,14 @@ module NatIntIso where
   open import Data.Product
   open import Reflection
   open import Data.Unit hiding (total)
-  
-  ℕ⇔ℤI : PartIso
-  ℕ⇔ℤI = mkPartIso1 ℤ  ℕ ((withMaybe f) , (total (ℤ.+_)))
-    where f : ℤ → Maybe ℕ
-          f -[1+ n ] = nothing
-          f (+ n) = just n
-
-  ℕ⇔ℤ' : PartIsoInt
-  ℕ⇔ℤ' = record --toIntPartIso partIso (quote partIso) (quoteTerm partIso)
-    { wrapped = def (quote ℕ⇔ℤI) [] } --; wrapped = partIso}
-
 
   ℕ⇔ℤ : PartIsoPub
-  ℕ⇔ℤ = record { partIso = ℕ⇔ℤI ; partIsoInt = ℕ⇔ℤ' }
-
+  ℕ⇔ℤ = makeIso ℕ⇔ℤ'
+    where
+      ℤ⇒ℕ : ℤ → Maybe ℕ
+      ℤ⇒ℕ -[1+ n ] = nothing
+      ℤ⇒ℕ (+ n) = just n
+      ℕ⇔ℤ' = mkPartIso1 ℤ ℕ (withMaybe ℤ⇒ℕ , (total (ℤ.+_)))
 
 module VecIso where
   open import Data.List as L
@@ -43,23 +36,15 @@ module VecIso where
   list⇒vec xs | yes refl = just (Data.Vec.fromList xs)
   list⇒vec xs | no ¬p = nothing
 
-  vec⇔listI : PartIso
-  vec⇔listI = record
-    { ARGₐ = Set
-    ; ARGₗ = λ _ → ⊤
-    ; ARGₕ = λ _ → ℕ
-    ; τₗ = λ aa _ → List aa
-    ; τₕ = λ aa n → Vec aa n
-    ; ⇅ = λ aa _ n → (withMaybe list⇒vec) , (total toList)
-    }
-    where open import Data.Unit hiding (total)
-
-
-  vec⇔list' : PartIsoInt
-  vec⇔list' = record --toIntPartIso partIso (quote partIso) (quoteTerm partIso)
-    { wrapped = def (quote vl) [] } --; wrapped = partIso }
-    where vl = vec⇔listI
-          open import Reflection
-
   vec⇔list : PartIsoPub
-  vec⇔list = record { partIso = vec⇔listI ; partIsoInt = (vec⇔list') }
+  vec⇔list = makeIso vec⇔list'
+    where
+      vec⇔list' = record
+        { ARGₐ = Set
+        ; ARGₗ = λ _ → ⊤
+        ; ARGₕ = λ _ → ℕ
+        ; τₗ = λ aa _ → List aa
+        ; τₕ = λ aa n → Vec aa n
+        ; ⇅ = λ aa _ n → (withMaybe list⇒vec) , (total toList)
+        }
+        where open import Data.Unit hiding (total)

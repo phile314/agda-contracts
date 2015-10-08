@@ -233,7 +233,10 @@ module Syntax where
         int = surface⇒internal ast
         low = forceTy' (deriveLowType int) lowDef
         lifted = contract-apply int low
-
+        
+    makeIso : (partIso : Term) → Term
+    makeIso partIso = con (quote mkIsoPub) (mkArg partIso ∷ mkArg partIsoInt ∷ [])
+      where partIsoInt = con (quote mkIsoInt) [ mkArg (quote-term partIso) ]
 
 open Syntax public
 -- hide constructor!

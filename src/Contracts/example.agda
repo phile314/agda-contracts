@@ -118,22 +118,17 @@ module TwoArgTest where
 
   data Map (A B : Set) : Set where
 
-  List⇔Map' : PartIso
-  List⇔Map' = record
-    { ARGₐ = Set × Set
-    ; ARGₗ = λ _ → ⊤
-    ; ARGₕ = λ _ → ⊤
-    ; τₗ = λ aa _ → List (proj₁ aa × proj₂ aa)
-    ; τₕ = λ aa _ → Map (proj₁ aa) (proj₂ aa)
-    ; ⇅ = λ aa _ _ → dummy
-    }
-  List⇔Map-Int : PartIsoInt
-  List⇔Map-Int = record { wrapped = def (quote List⇔Map') [] }
-    where open import Reflection
-
   List⇔Map : PartIsoPub
-  List⇔Map = record { partIso = List⇔Map' ; partIsoInt = List⇔Map-Int }
-
+  List⇔Map = makeIso partIso
+    where
+      partIso = record
+        { ARGₐ = Set × Set
+        ; ARGₗ = λ _ → ⊤
+        ; ARGₕ = λ _ → ⊤
+        ; τₗ = λ aa _ → List (proj₁ aa × proj₂ aa)
+        ; τₕ = λ aa _ → Map (proj₁ aa) (proj₂ aa)
+        ; ⇅ = λ aa _ _ → dummy
+        }
 
   f-low : (A B : Set) → List (A × B) → List (A × B)
   f-low = dummy
