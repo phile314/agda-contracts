@@ -37,24 +37,25 @@ module T3 where
   open import Reflection as R
   open import Data.Unit
   
-  f' : AST
-  f' = ⟨ n ∷ ⟦ ℕ ⟧ ⟩⇒ ⟨ x ∷ ⟦ Set ⟧ ⟩⇒ ⟨ ⟦ vec⇔list ⇋  x , (liftW tt , liftW n) {-liftW x , liftW n , []-} ⟧ ⟩
+  f' : C
+  f' = ⟨ n ∷ ⟦ ℕ ⟧ ⟩⇒ ⟨ x ∷ ⟦ Set ⟧ ⟩⇒ ⟨ ⟦ vec⇔list ⇋  x , (wrap tt , wrap n) {-liftW x , liftW n , []-} ⟧ ⟩
   f : Term
-  f = quoteTerm (makeContract (⟨ n ∷ ⟦ ℕ ⟧ ⟩⇒ ⟨ x ∷ ⟦ Set ⟧ ⟩⇒ ⟨ ⟦ vec⇔list ⇋ x , ((liftW tt) , (liftW n)) {- liftW x , liftW n , []-} ⟧ ⟩))
+  f = quoteTerm (makeContract
+    (⟨ n ∷ ⟦ ℕ ⟧ ⟩⇒ ⟨ x ∷ ⟦ Set ⟧ ⟩⇒ ⟨ ⟦ vec⇔list ⇋ x , ((wrap tt) , (wrap n)) {- liftW x , liftW n , []-} ⟧ ⟩))
 
   f-low : ℕ → (A : Set) → List A
   f-low n A = []
   
 --  g : {!  f!}
 --  g = {!getAgdaHighType (ast⇒T' f)!}
-  g' : AST
+  g' : C
   g' = ⟨ n ∷ ⟦ ℕ ⟧ ⟩⇏
     ⟨ x ∷ ⟦ Set ⟧ ⟩⇒
     ⟨ f ∷ (⟨ _ ∷ ⟦ x ⟧ ⟩⇒ ⟨ ⟦ x ⟧ ⟩ ) ⟩⇒
-    ⟨ _ ∷ ⟦ vec⇔list ⇋ x , ((liftW tt) , n) ⟧ ⟩⇒
-    ⟨ ⟦ vec⇔list ⇋ x , ((liftW tt) , n) ⟧ ⟩
+    ⟨ _ ∷ ⟦ vec⇔list ⇋ x , ((wrap tt) , n) ⟧ ⟩⇒
+    ⟨ ⟦ vec⇔list ⇋ x , ((wrap tt) , n) ⟧ ⟩
 
-
+  open Reflect
   gg : unquote (deriveHighType (surface⇒internal f))
   gg = unquote (contract-apply (surface⇒internal f) (def (quote f-low) []))
 
@@ -63,12 +64,12 @@ module T3 where
   pp'' = assert (makeContract (⟨ n ∷ ⟦ ℕ ⟧ ⟩⇒ ⟨ x ∷ ⟦ Set ⟧ ⟩⇒ ⟨ ⟦ x ⟧ ⟩)) dummy
 
   pp'4 : _
-  pp'4 = assert (makeContract (⟨ ⟦ ℕ⇔ℤ ⇋ tt , ((liftW tt) , (liftW tt)) ⟧ ⟩)) dummy
+  pp'4 = assert (makeContract (⟨ ⟦ ℕ⇔ℤ ⇋ tt , ((wrap tt) , (wrap tt)) ⟧ ⟩)) dummy
   pp' : _
-  pp' = assert (makeContract (⟨ n ∷ ⟦ ℕ ⟧ ⟩⇒ ⟨ x ∷ ⟦ Set ⟧ ⟩⇒ ⟨ ⟦ vec⇔list ⇋ x , ((liftW tt) , (liftW n)) ⟧ ⟩)) f-low
+  pp' = assert (makeContract (⟨ n ∷ ⟦ ℕ ⟧ ⟩⇒ ⟨ x ∷ ⟦ Set ⟧ ⟩⇒ ⟨ ⟦ vec⇔list ⇋ x , ((wrap tt) , (wrap n)) ⟧ ⟩)) f-low
 
   pp''' : _
-  pp''' = assert (makeContract (⟨ _ ∷ ⟦ ℕ ⟧ ⟩⇏ ⟨ n ∷ ⟦ ℕ ⟧ ⟩⇒ ⟨ x ∷ ⟦ Set ⟧ ⟩⇒ ⟨ ⟦ vec⇔list ⇋ x , ((liftW tt) , liftW n) ⟧ ⟩)) f-low
+  pp''' = assert (makeContract (⟨ _ ∷ ⟦ ℕ ⟧ ⟩⇏ ⟨ n ∷ ⟦ ℕ ⟧ ⟩⇒ ⟨ x ∷ ⟦ Set ⟧ ⟩⇒ ⟨ ⟦ vec⇔list ⇋ x , ((wrap tt) , wrap n) ⟧ ⟩)) f-low
 
 
 module Fmap where
@@ -110,7 +111,7 @@ module Witnessss where
   postulate f-low : ℕ → ℕ → ℕ
 
   f' : _ --ℕ → ℕ → Σ ℕ (_≡_ 10)
-  f' = assert (makeContract (⟨ n ∷ ⟦ ℕ ⟧ ⟩⇒ ⟨ x ∷ ⟦ ℕ ⟧ ⟩⇒ ⟨ ⟦ ⇔Witness ⇋ (ℕ , (_≡_ 10 , _≟_ 10)) , liftW tt , liftW tt ⟧ ⟩)) f-low
+  f' = assert (makeContract (⟨ n ∷ ⟦ ℕ ⟧ ⟩⇒ ⟨ x ∷ ⟦ ℕ ⟧ ⟩⇒ ⟨ ⟦ ⇔Witness ⇋ (ℕ , (_≡_ 10 , _≟_ 10)) , wrap tt , wrap tt ⟧ ⟩)) f-low
 
 module TwoArgTest where
   open import Contracts.SSyn
@@ -144,8 +145,8 @@ module TwoArgTest where
   f = assert (makeContract (
     ⟨ A ∷ ⟦ Set ⟧ ⟩⇒
     ⟨ B ∷ ⟦ Set ⟧ ⟩⇒
-    ⟨ _ ∷ ⟦ List⇔Map ⇋ (A , B) , (liftW tt) , (liftW tt) ⟧ ⟩⇒
-    ⟨ ⟦ List⇔Map ⇋ (A , B) , (liftW tt) , (liftW tt) ⟧ ⟩)) f-low
+    ⟨ _ ∷ ⟦ List⇔Map ⇋ (A , B) , (wrap tt) , (wrap tt) ⟧ ⟩⇒
+    ⟨ ⟦ List⇔Map ⇋ (A , B) , (wrap tt) , (wrap tt) ⟧ ⟩)) f-low
 
 module LookupTest where
   open import Contracts.SSyn

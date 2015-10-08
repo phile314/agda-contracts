@@ -39,8 +39,8 @@ module Ex2 where
   -- this is the thing we want in the end.
   -- The ffi-lift function does the heavy lifting,
   -- by producing a term which inserts the contracts checks where necessary.
-  add : unquote (getAgdaHighType addType)
-  add = unquote (ffi-lift addType (def (quote add') [])) -- unquote (ffi-lift addType (quote add'))
+  add : unquote (deriveHighType addType)
+  add = unquote (contract-apply addType (def (quote add') [])) -- unquote (ffi-lift addType (quote add'))
     where open import Reflection
 
 
@@ -69,8 +69,8 @@ module MapEx where
     ⇒ (π (agda-ty (quoteTerm (L.List ℤ))) ∣ Keep
     ⇒ (agda-ty (quoteTerm (L.List ℤ))))
 
-  myMap : unquote (getAgdaHighType mapNZType) --unquote (getAgdaHighType mapNZType)
-  myMap = unquote (ffi-lift mapNZType (quoteTerm mapImpl))
+  myMap : unquote (deriveHighType mapNZType) --unquote (getAgdaHighType mapNZType)
+  myMap = unquote (contract-apply mapNZType (quoteTerm mapImpl))
 
 
 module DepSimple where
@@ -92,17 +92,8 @@ module DepSimple where
     ⇒ (π (agda-ty (quoteTerm Set)) ∣ Keep -- A
     ⇒ (iso (vec⇔list') (var 0 []) tt' (var 1 []) ))
 
---  lowType : Set (Level.suc Level.zero)
---  lowType = {!!} --unquote (getAgdaLowType mapNZType)
-
---  lk : {!!}
---  lk = {!pretty (ffi-lift mapNZType (quote mapImpl2))!}
-
   import Agda.Primitive
   import Data.Product
-
---  partIso : PartIso {Level.zero}
---  partIso = PartIsoInt.wrapped VecIso.vec⇔list
 
   fixType : (A : Set) → A → A
   fixType _ x = x
@@ -111,9 +102,9 @@ module DepSimple where
   import Data.List.Base
   import Data.Vec
 
-  myMap2 : unquote (getAgdaHighType mapNZType) --unquote (getAgdaHighType mapNZType) --unquote (getAgdaHighType mapNZType)
---  myMap2 =  {!pretty (elimLets (ffi-lift mapNZType (quote mapImpl2)))!}
-  myMap2 = unquote (ffi-lift mapNZType (def (quote mapImpl2) [])) -- unquote (ffi-lift mapNZType (quote mapImpl2))
+  myMap2 : unquote (deriveHighType mapNZType)
+  myMap2 = unquote (contract-apply mapNZType (def (quote mapImpl2) []))
+
 
 {-
 module DepCon1 where
@@ -143,17 +134,9 @@ module DepCon1 where
 --    ⇒ (def (quote List) ∙ L.[ var # 3 ∙ [] ] )  ))))  --)
     ⇒ iso (vec⇔list') (var 2 []) tt' (var 4 [])))))
 
---  lowType : Set (Level.suc Level.zero)
---  lowType = {!!} --unquote (getAgdaLowType mapNZType)
-
---  lk : {!!}
---  lk = {!pretty (ffi-lift mapNZType (quote mapImpl2))!}
 
   import Agda.Primitive
   import Data.Product
-
---  partIso : PartIso {Level.zero}
---  partIso = PartIsoInt.wrapped VecIso.vec⇔list
 
   fixType : (A : Set) → A → A
   fixType _ x = x
@@ -182,8 +165,6 @@ module DepCon where
   mapImpl2 : (n : ℕ) (A : Set) (B : Set) → (A → B) → Vec A n → Vec B n
   mapImpl2 n A B = Vec.map
 
---  lifth : ℕ → Lift ℕ
---  lifth = {!!}
 {-
   mapNZType : T {Level.zero} 0
   mapNZType =
@@ -207,12 +188,6 @@ module DepCon where
   k : ℕ → Set → Conversions {!!} {!!}
   k n A = {!!}
     where 
-
-{-  myMap2' : unquote (getAgdaHighType mapNZType)
-  myMap2' = λ n → λ A → λ f → let f' : (x : A) → A
-                                  f' = λ x → f x
-                               in λ xs → let xs' = unsafeConvert {!!} xs
-                                            in {!!}-}
 
   myMap2 : unquote (getAgdaHighType mapNZType)
 --  myMap2 = unquote (ffi-lift mapNZType (quote mapImpl2))

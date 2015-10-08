@@ -3,35 +3,23 @@
 
 module Contracts.SSyn where
 
+open import Contracts.Base
+open import Data.Product
 
--- surface syntax tests
-module T3 where
-  open import Contracts.Base
-  open import Data.Nat as N
-  open import Level
-  
-  open import Data.List as List
-  open import Data.Vec hiding (_>>=_)
-  open import Data.Maybe
-  open import Relation.Binary.PropositionalEquality
-  open import Relation.Nullary
-  open import Data.Product
+module Types where
 
+  -- Are we in low/high/common context?
   data Context : Set where
     H : Context
     L : Context
-    Both : Context
-
+    Common : Context
 
   data WContext (A : Set) : Context → Set where
-    C : ∀ {c} → A → WContext A c
-
-  liftW : ∀ {c} {A : Set} → A → WContext A c
-  liftW x = C x
+    wrap : ∀ {c} → A → WContext A c
   
   private
     unC : ∀ {a c} → WContext a c → a
-    unC (C x) = x
+    unC (wrap x) = x
 
   record PartIsoPub : Set where
     constructor mkIsoPub
@@ -43,24 +31,24 @@ module T3 where
     where p' = PartIsoPub.partIso p
 
   pos+way→Context : Position → ArgWay → Context
-  pos+way→Context p Keep = Both
+  pos+way→Context p Keep = Common
   pos+way→Context Neg Discard = H
   pos+way→Context Pos Discard = L
 
   withWCon : Context → Set → Set
-  withWCon Both s = s
+  withWCon Common s = s
   withWCon c s = WContext s c
   
 
-  data AST' : Position → Set
-  getTy : ∀ {p} → AST' p → Set
+  data C' : Position → Set
+  getTy : ∀ {p} → C' p → Set
 
-  data AST' where
-    pi : ∀ {p} → (a : AST' p) → (aw : ArgWay)
-      → (withWCon (pos+way→Context p aw) (getTy a) → AST' (invertPosition p))
-      → AST' (invertPosition p)
-    ⟦_⟧ : ∀ {p} (A : Set) → AST' p -- normal type (List, Nat, etc..)
-    ⟦_⇋_⟧ : ∀ {p} (pi :  PartIsoPub) → getArgs pi → AST' p -- isomorphism
+  data C' where
+    pi : ∀ {p} → (a : C' p) → (aw : ArgWay)
+      → (withWCon (pos+way→Context p aw) (getTy a) → C' (invertPosition p))
+      → C' (invertPosition p)
+    ⟦_⟧ : ∀ {p} (A : Set) → C' p -- normal type (List, Nat, etc..)
+    ⟦_⇋_⟧ : ∀ {p} (pi :  PartIsoPub) → getArgs pi → C' p -- isomorphism
 
 
   getTy (pi {p} a aw x) = (arg : (withWCon (pos+way→Context p aw) (getTy a))) → (getTy (x arg))
@@ -69,31 +57,27 @@ module T3 where
   getTy (⟦ p ⇋ (aₐ , (aₗ , aₕ)) ⟧) = WContext (PartIso.τₗ p' aₐ (unC aₗ)) L × WContext (PartIso.τₕ p' aₐ (unC aₕ)) H
     where p' = PartIsoPub.partIso p
 
-  AST = AST' Pos
+  C = C' Pos
 
-  id : {A : Set} → A → A
-  id x = x
 
-  piK : ∀ {p} (a : AST' p) → (getTy a → AST' (invertPosition p)) → AST' (invertPosition p)
-  piK x = pi x Keep
-  piD : ∀ {p} (a : AST' p) → (withWCon (pos+way→Context p Erase) (getTy a) → AST' (invertPosition p)) → AST' (invertPosition p)
-  piD x = pi x Erase
+
+
+module Reflect where
+  open Types
+  open import Data.Nat as N
+  open import Level
   
-  syntax piK e₁ (λ x → e₂) = ⟨ x ∷ e₁ ⟩⇒ e₂
-  syntax piD e₁ (λ x → e₂) = ⟨ x ∷ e₁ ⟩⇏ e₂
-  syntax id e = ⟨ e ⟩
-  infixl 10 piK
-  infixl 10 piD
-  infixl 10 id
+  open import Data.List as List
+  open import Data.Vec hiding (_>>=_)
+  open import Data.Maybe
+  open import Relation.Binary.PropositionalEquality
+  open import Relation.Nullary
 
   open import Reflection
   open import Function
 
   unArg : ∀ {A} → Arg A → A
   unArg (arg i x) = x
-
-  getLevel : Term → Level
-  getLevel t = Level.zero
 
   private
     postulate
@@ -146,7 +130,7 @@ module T3 where
 
   unWCon : Term → Term
   -- an argument get's lifted here into high/low context
-  unWCon (con (quote C) args) = unArg $ lookup' 2 args
+  unWCon (con (quote wrap) args) = unArg $ lookup' 2 args
   -- argument was already in low/high context
   unWCon t = t
 
@@ -166,10 +150,6 @@ module T3 where
   ast⇒ArgWay (con (quote Erase) args) = Erase
   ast⇒ArgWay _ = InternalError
 
-  open import Data.Fin using (fromℕ≤)
-
-
-  {-# TERMINATING #-}
   surface⇒internal : ∀ {n} → (t : Term) -- AST
     → T n
   arg-surface⇒internal : ∀ {n} → Arg Term → T n
@@ -178,10 +158,10 @@ module T3 where
   -- We assume that the quoted SSyn AST is valid Agda code with type AST'.
   surface⇒internal (var x args) = InternalError
   surface⇒internal {n} (con c args) = case c of (
-    λ { (quote AST'.pi) → let k = ast⇒ArgWay $ unArg $ lookup' 2 args
+    λ { (quote C'.pi) → let k = ast⇒ArgWay $ unArg $ lookup' 2 args
                in π surface⇒internal (unArg (lookup' 1 args)) ∣ k ⇒ surface⇒internal ((stripLam ∘ unArg ∘ lookup' 3) args) ;
-        (quote AST'.⟦_⟧) → agda-ty (unArg (lookup' 1 args)) ;
-        (quote AST'.⟦_⇋_⟧) →
+        (quote C'.⟦_⟧) → agda-ty (unArg (lookup' 1 args)) ;
+        (quote C'.⟦_⇋_⟧) →
           let pubIso = unArg $ lookup' 1 args
               nArgs = pubIsoGetNumArgs pubIso
               intIso = record { wrapped = pubIsoToIntIso pubIso }
@@ -204,37 +184,61 @@ module T3 where
 
   arg-surface⇒internal (arg i x) = surface⇒internal x
 
+module Syntax where
+  open Types
+  open Reflect
+
+  id : {A : Set} → A → A
+  id x = x
+
+  piK : ∀ {p} (a : C' p) → (getTy a → C' (invertPosition p)) → C' (invertPosition p)
+  piK x = pi x Keep
+  piD : ∀ {p} (a : C' p) → (withWCon (pos+way→Context p Erase) (getTy a) → C' (invertPosition p)) → C' (invertPosition p)
+  piD x = pi x Erase
+  
+  syntax piK e₁ (λ x → e₂) = ⟨ x ∷ e₁ ⟩⇒ e₂
+  syntax piD e₁ (λ x → e₂) = ⟨ x ∷ e₁ ⟩⇏ e₂
+  syntax id e = ⟨ e ⟩
+  infixl 10 piK
+  infixl 10 piD
+  infixl 10 id
+
   open import Data.Unit
   ∅ : ⊤ × WContext ⊤ L × WContext ⊤ H
-  ∅ = tt , ((liftW tt) , (liftW tt))
+  ∅ = tt , ((wrap tt) , (wrap tt))
 
-open T3 public
+  open import Reflection
+  open import Data.List
+  open import Contracts.Base
 
-open import Reflection
-open import Data.List
-open import Contracts.Base
+  forceTy : (A : Set) → A → A
+  forceTy _ x = x
 
-forceTy : (A : Set) → A → A
-forceTy _ x = x
+  forceTy' : Term → Term → Term
+  forceTy' ty val =
+    def (quote forceTy)
+      ( arg (arg-info visible relevant) ty
+      ∷ arg (arg-info visible relevant) val
+      ∷ [])
 
-forceTy' : Term → Term → Term
-forceTy' ty val =
-  def (quote forceTy)
-    ( arg (arg-info visible relevant) ty
-    ∷ arg (arg-info visible relevant) val
-    ∷ [])
+  makeContract = forceTy C
 
-makeContract = forceTy AST
+  macro
+    assert : (ast : Term) -- AST
+      →  (lowDef : Term)
+      → Term
+    assert ast lowDef = forceTy' (deriveHighType int) lifted
+      where
+        open import Function
+        int = surface⇒internal ast
+        low = forceTy' (deriveLowType int) lowDef
+        lifted = contract-apply int low
 
-macro
-  assert : (ast : Term) -- AST
-    →  (lowDef : Term)
-    → Term
-  assert ast lowDef = forceTy' (deriveHighType int) lifted
-    where
-      open import Function
-      int = surface⇒internal ast
-      low = forceTy' (deriveLowType int) lowDef
-      lifted = contract-apply int low
 
+open Syntax public
+-- hide constructor!
+open Types public hiding (wrap)
+
+wrap : ∀ {A c} → A → WContext A c
+wrap = WContext.wrap
 
