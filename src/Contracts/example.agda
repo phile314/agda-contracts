@@ -80,24 +80,20 @@ module Fmap where
   open VecIso
   open import Contracts.Base
   open import Reflection
+  open import Data.Product
+  open import Data.Unit
 
   postulate
-    hs-map : ℕ → (A : Set) → {- (A → A)-} (ℕ → ℕ) → List A --→ List A
+    hs-map : (A B : Set) → (A → B) → List A → List B
 
-{-  g : {!!}
-  g = {!unquote (ffi-lift (ast⇒T' {0} (quoteTerm (makeContract (
-    ⟨ n ∷ ⟦ ℕ ⟧ ⟩⇒ --⇏
-    ⟨ A ∷ ⟦ Set ⟧ ⟩⇒
---    ⟨ f ∷ ⟨ _ ∷ ⟦ ℕ ⟧ ⟩⇒ ⟨ ⟦ ℕ ⟧ ⟩ ⟩⇒
---    ⟨ _ ∷ ⟦ vec⇔list ⇋ ( A ,, (n , []) ) ⟧ ⟩⇒
-    ⟨ ⟦ vec⇔list ⇋ A ,, (3 ,, []) ⟧ ⟩)))) (def (quote hs-map) []) )!}-}
-{-  map' : _
+
   map' = assert (makeContract (
     ⟨ n ∷ ⟦ ℕ ⟧ ⟩⇏
     ⟨ A ∷ ⟦ Set ⟧ ⟩⇒
-    ⟨ f ∷ ⟨ _ ∷ ⟦ A ⟧ ⟩⇒ ⟨ ⟦ A ⟧ ⟩ ⟩⇒
-    ⟨ _ ∷ ⟦ vec⇔list ⇋ ( A ,, (n , []) ) ⟧ ⟩⇒
-    ⟨ ⟦ vec⇔list ⇋ A ,, (n , []) ⟧ ⟩)) hs-map-}
+    ⟨ B ∷ ⟦ Set ⟧ ⟩⇒
+    ⟨ f ∷ ⟨ _ ∷ ⟦ A ⟧ ⟩⇒ ⟨ ⟦ B ⟧ ⟩ ⟩⇒
+    ⟨ _ ∷ ⟦ vec⇔list ⇋ ( A , (wrap tt , n) ) ⟧ ⟩⇒
+    ⟨ ⟦ vec⇔list ⇋ B , (wrap tt , n) ⟧ ⟩)) hs-map
 
 module Witnessss where
   open import Contracts.Witness
@@ -180,6 +176,34 @@ module MinusTest where
     ⟨ y ∷ ⟦ ℕ⇔ℤ ⇋ ∅ ⟧ ⟩⇒
     ⟨ _ ∷ ⟦ {!!} ⟧ ⟩⇏
     ⟨ ⟦ ℕ⇔ℤ ⇋ ∅ ⟧ ⟩)) minus'-}
+
+module HigherOrderErasure where
+  open import Contracts.SSyn
+  open import Foreign.Base
+  open import Data.Unit
+
+  postulate foo' : (⊤ → ⊤) → ⊤
+
+  open import Contracts.Base
+  con = quoteTerm (makeContract (
+    ⟨ _ ∷ ⟨ _ ∷ ⟦ ⊤ ⟧ ⟩⇏ ⟨ ⟦ ⊤ ⟧ ⟩ ⟩⇒
+    ⟨ ⟦ ⊤ ⟧ ⟩
+    ))
+
+  open import Reflection
+  open import Data.List.Base
+  int : InternalSyn 0
+  int = π
+    π agda-ty (def (quote ⊤) List.[])
+    ∣ Erase ⇒
+    agda-ty (def (quote ⊤) List.[])
+    ∣ Keep ⇒
+    agda-ty (def (quote ⊤) List.[])
+
+  foo = assert (makeContract (
+    ⟨ _ ∷ ⟨ _ ∷ ⟦ ⊤ ⟧ ⟩⇏ ⟨ ⟦ ⊤ ⟧ ⟩ ⟩⇒
+    ⟨ ⟦ ⊤ ⟧ ⟩
+    )) foo'
 
 open import IO
 import IO.Primitive

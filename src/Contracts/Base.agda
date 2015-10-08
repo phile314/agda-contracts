@@ -65,14 +65,14 @@ record PartIsoInt : Set where
   constructor mkIsoInt
   field wrapped : Term -- the part iso as term
 
-
-open import Data.Fin
 open import Reflection
 
+-- co-/contravariant context
 data Position : Set where
   Pos : Position
   Neg : Position
 
+-- do we erase or not?
 data ArgWay : Set where
   Keep : ArgWay
   Erase : ArgWay
@@ -80,8 +80,6 @@ data ArgWay : Set where
 invertPosition : Position → Position
 invertPosition Pos = Neg
 invertPosition Neg = Pos
-
-import Data.Vec as V
 
 data InternalSyn : ℕ → Set where
   -- normal agda type, with at most n free vars
@@ -109,8 +107,6 @@ private
     InternalError : {a : Set} → a
     UnexpectedIsoInIsoArgs : {A : Set} → A
 
-open import Data.Bool hiding (T)
-
 IsoHandler : Set
 IsoHandler = (p : PartIsoInt)
   → Term -- ALL argument
@@ -118,35 +114,9 @@ IsoHandler = (p : PartIsoInt)
   → Term -- HIGH argument
   → Term
 
-record elOpts : Set where
-  constructor mkElOpts
-  field isoHandler : IsoHandler
-        ignoreDiscard : Bool
-
--- todo handle discard in neg. position properly
-elAGDA : ∀ {n} → elOpts → (t : InternalSyn n) → Term
-elArg : ∀ {n} → elOpts → (t : InternalSyn n) → Arg Term
-
 private
-  unsafeFromJust : ∀ {a} → Maybe a → a
-  unsafeFromJust (just x) = x
-  unsafeFromJust nothing = InternalError
-
--- Also, t may only have n free vars I think!
-elAGDA h (agda-ty t) = t
-elAGDA h (π  t ∣ k ⇒ t₁) = case k of
-  (λ { Keep → r-keep
-     ; Discard → if elOpts.ignoreDiscard h
-         then r-keep
-         else (unsafeFromJust (D.strengthen 1 (elAGDA h t₁)))
-     })
-  where
-    r-keep = pi (arg def-argInfo (el unknown (elAGDA h t))) (abs "" (el unknown (elAGDA h t₁)))
-    open import Reflection.DeBruijn as D
-elAGDA h (iso i argₐ argₗ argₕ) = (elOpts.isoHandler h) i argₐ argₗ argₕ
-
-elArg h t = arg def-argInfo (elAGDA h t)
-
+  data TargetType : Set where
+    Low High : TargetType
 
 mkArg : Term → Arg Term
 mkArg = arg (arg-info visible relevant)
@@ -157,16 +127,43 @@ getIsoLowType p argₐ argₗ _ = def (quote PartIso.τₗ) (mkArg (PartIsoInt.w
 getIsoHighType : IsoHandler
 getIsoHighType p argₐ _ argₕ = def (quote PartIso.τₕ) (mkArg (PartIsoInt.wrapped p) ∷ mkArg argₐ ∷ mkArg argₕ ∷ [])
 
+elAGDA : ∀ {n} → Position → TargetType → (t : InternalSyn n) → Term
+elArg : ∀ {n} → Position → TargetType → (t : InternalSyn n) → Arg Term
+
+private
+  unsafeFromJust : ∀ {a} → Maybe a → a
+  unsafeFromJust (just x) = x
+  unsafeFromJust nothing = InternalError
+
+elAGDA ω ρ (agda-ty t) = t
+elAGDA ω ρ (π  t ∣ k ⇒ t₁) = case (k , ω , ρ) of
+  (λ { (Keep , _ , _) → keep -- Keep
+     ; (Erase , Pos , Low) → erase'
+     ; (Erase , Pos , High) → keep
+     ; (Erase , Neg , Low) → keep
+     ; (Erase , Neg , High) → erase' })
+  where
+    keep = pi (arg def-argInfo (el unknown (elAGDA (invertPosition ω) ρ t))) (abs "" (el unknown (elAGDA ω ρ t₁)))
+    open import Reflection.DeBruijn as D
+    erase' = unsafeFromJust (D.strengthen 1 (elAGDA ω ρ t₁))
+elAGDA ω ρ (iso i argₐ argₗ argₕ) =
+  case ρ of
+    (λ { Low → getIsoLowType i argₐ argₗ argₕ
+       ; High → getIsoHighType i argₐ argₗ argₕ })
+
+elArg ω ρ t = arg def-argInfo (elAGDA ω ρ t)
+
 
 deriveLowType : InternalSyn 0 → Term
-deriveLowType t = elAGDA (mkElOpts getIsoLowType false) t
+deriveLowType t = elAGDA Pos Low t
 
 deriveHighType : InternalSyn 0 → Term
-deriveHighType t = elAGDA (mkElOpts getIsoHighType true) t
+deriveHighType t = elAGDA Pos High t
 
 
-shift : ℕ → List ℕ → List ℕ
-shift k = List.map (N._+_ k)
+-- weaken the environment
+wkΓ : ℕ → List ℕ → List ℕ
+wkΓ k = List.map (N._+_ k)
 
 open import Data.String
 
@@ -222,12 +219,12 @@ contract-apply1 (agda-ty _) wr pos Γ = wr
 contract-apply1 {n} (π fde ∣ k ⇒ fde₁) wr pos Γ =
   lam visible (abs "x" bd)
   where open import Reflection.DeBruijn
-        ls = contract-apply1 fde (var 0 []) (invertPosition pos) (shift 1 Γ)
+        ls = contract-apply1 fde (var 0 []) (invertPosition pos) (wkΓ 1 Γ)
         toWrap = case k of
           λ { Keep → app (weaken 2 wr) (var 0 [])
             ; Discard → weaken 2 wr
             }
-        rs = contract-apply1 fde₁ toWrap pos (0 ∷ shift 2 Γ)
+        rs = contract-apply1 fde₁ toWrap pos (0 ∷ wkΓ 2 Γ)
         bd = lett ls inn rs
 contract-apply1 (iso {n} x argₐ argₗ argₕ) wr pos Γ =
   -- extract the conversion from the named iso
