@@ -190,16 +190,6 @@ module HigherOrderErasure where
     ⟨ ⟦ ⊤ ⟧ ⟩
     ))
 
-  open import Reflection
-  open import Data.List.Base
-  int : InternalSyn 0
-  int = π
-    π agda-ty (def (quote ⊤) List.[])
-    ∣ Erase ⇒
-    agda-ty (def (quote ⊤) List.[])
-    ∣ Keep ⇒
-    agda-ty (def (quote ⊤) List.[])
-
   foo = assert (makeContract (
     ⟨ _ ∷ ⟨ _ ∷ ⟦ ⊤ ⟧ ⟩⇏ ⟨ ⟦ ⊤ ⟧ ⟩ ⟩⇒
     ⟨ ⟦ ⊤ ⟧ ⟩
