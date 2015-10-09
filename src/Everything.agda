@@ -1,12 +1,12 @@
 module Everything where
 
--- FFI support code
+-- FFI support code (requires new FFI)
 open import Foreign.Base
 
 -- Contract code
 open import Contracts.Everything
 
--- FFI + Contracts combination
+-- FFI + Contracts combination (requires new FFI)
 open import ForeignContracts
 
 -- helper code
