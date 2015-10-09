@@ -1,6 +1,6 @@
 {-# OPTIONS --type-in-type #-}
 
-module Contracts.ExampleSurfaceSyn1 where
+module Contracts.ExamplesSurfaceSyn1 where
 
 -- surface syntax tests
 

@@ -12,8 +12,8 @@ open import Contracts.Isos
 open import Contracts.Witness
 
 -- Examples using the internal syntax
-open import Contracts.BaseExample
+open import Contracts.ExamplesInternalSyn
 
 -- Examples using the surface syntax
-open import Contracts.example
-open import Contracts.example2
+open import Contracts.ExamplesSurfaceSyn1
+open import Contracts.ExamplesSurfaceSyn2
