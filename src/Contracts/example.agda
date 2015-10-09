@@ -142,11 +142,10 @@ module MinusTest where
   open import Contracts.SSyn
   open import Contracts.Isos
   open import Data.Integer hiding (_≤_)
-  open import Foreign.Base
   open NatIntIso
   open import Data.Nat
 
-  minus' = foreign (hsCall "Prelude.-") (ℤ → ℤ → ℤ)
+  postulate minus' : ℤ → ℤ → ℤ
 
   -- not possible
   {-
@@ -160,7 +159,6 @@ module MinusTest where
 -- erasure in higher order functions
 module HigherOrderErasure where
   open import Contracts.SSyn
-  open import Foreign.Base
   open import Data.Unit
 
   postulate foo' : (⊤ → ⊤) → ⊤

@@ -177,7 +177,8 @@ module Reflect where
   surface⇒internal (quote-term t) = InternalError
   surface⇒internal quote-context = InternalError
   surface⇒internal (unquote-term t args) = InternalError
-  surface⇒internal (foreign-term t ty) = InternalError
+-- FFI: comment the next line to use the contracts library with the official Agda dev version
+--  surface⇒internal (foreign-term t ty) = InternalError
   surface⇒internal unknown = InternalError
 
   arg-surface⇒internal (arg i x) = surface⇒internal x
