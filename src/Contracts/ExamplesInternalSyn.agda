@@ -1,13 +1,15 @@
 {-# OPTIONS --type-in-type #-}
 
-module Contracts.BaseExample where
+-- Examples using the internal syntax
+
+module Contracts.ExamplesInternalSyn where
 
 open import Contracts.Isos
 
 tt' = quoteTerm tt
   where open import Data.Unit
 
-module Ex2 where
+module AddEx where
   open import Data.Nat
   open import Data.Integer
   open import Contracts.Base

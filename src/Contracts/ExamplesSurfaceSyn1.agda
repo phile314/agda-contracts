@@ -1,6 +1,6 @@
 {-# OPTIONS --type-in-type #-}
 
-module Contracts.example where
+module Contracts.ExampleSurfaceSyn1 where
 
 -- surface syntax tests
 
@@ -10,7 +10,7 @@ postulate dummy : forall {a} -> a
 
 
 -- Some basic tests
-module Basic where
+module BasicEx where
   open NatIntIso
   open VecIso
   open import Contracts.Base
@@ -50,7 +50,7 @@ module Basic where
 
 
 -- map example
-module FMap where
+module MapEx where
   open import Data.List
   open import Contracts.SSyn
   open import Data.Nat
@@ -73,24 +73,9 @@ module FMap where
     ⟨ _ ∷ ⟦ vec⇔list ⇋ ( A , (wrap tt , n) ) ⟧ ⟩⇒
     ⟨ ⟦ vec⇔list ⇋ B , (wrap tt , n) ⟧ ⟩)) hs-map
 
--- simple refined type example
-module Witnessss where
-  open import Contracts.Witness
-  open import Contracts.SSyn
-  open import Data.Nat
-  open import Data.List
-  open import Data.Product
-  open import Relation.Binary.PropositionalEquality
-  open import Data.Unit hiding (_≟_)
-
-  postulate f-low : ℕ → ℕ → ℕ
-
-  f' : _ --ℕ → ℕ → Σ ℕ (_≡_ 10)
-  f' = assert (makeContract (⟨ n ∷ ⟦ ℕ ⟧ ⟩⇒ ⟨ x ∷ ⟦ ℕ ⟧ ⟩⇒ ⟨ ⟦ ⇔Witness ⇋ (ℕ , (_≡_ 10 , _≟_ 10)) , wrap tt , wrap tt ⟧ ⟩)) f-low
-
 
 -- test with partial isomorphism between [(a, b)] and a dummy Map a b type.
-module TwoArgTest where
+module TwoArgEx where
   open import Contracts.SSyn
   open import Contracts.Base
   open import Data.Unit
@@ -121,7 +106,7 @@ module TwoArgTest where
     ⟨ ⟦ List⇔Map ⇋ (A , B) , (wrap tt) , (wrap tt) ⟧ ⟩)) f-low
 
 -- Test with additional proof object using erasure annotations
-module LookupTest where
+module LookupEx where
   open import Contracts.SSyn
   open import Contracts.Isos
   open import Data.Nat
@@ -138,7 +123,7 @@ module LookupTest where
     ⟨ ⟦ a ⟧ ⟩ )) hs-lookup
 
 -- test with erased proof object depending on (partial) isomorphism application
-module MinusTest where
+module MinusEx where
   open import Contracts.SSyn
   open import Contracts.Isos
   open import Data.Integer hiding (_≤_)
@@ -157,7 +142,7 @@ module MinusTest where
     -}
 
 -- erasure in higher order functions
-module HigherOrderErasure where
+module HigherOrderErasureEx where
   open import Contracts.SSyn
   open import Data.Unit
 

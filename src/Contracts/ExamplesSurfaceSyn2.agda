@@ -1,8 +1,26 @@
 {-# OPTIONS --type-in-type #-}
-module Contracts.example2 where
+
+module Contracts.ExamplesSurfaceSyn2 where
+
+
+-- simple refined type example
+module WitnessEx where
+  open import Contracts.Witness
+  open import Contracts.SSyn
+  open import Data.Nat
+  open import Data.List
+  open import Data.Product
+  open import Relation.Binary.PropositionalEquality
+  open import Data.Unit hiding (_≟_)
+
+  postulate f-low : ℕ → ℕ → ℕ
+
+  f' : _ --ℕ → ℕ → Σ ℕ (_≡_ 10)
+  f' = assert (makeContract (⟨ n ∷ ⟦ ℕ ⟧ ⟩⇒ ⟨ x ∷ ⟦ ℕ ⟧ ⟩⇒ ⟨ ⟦ ⇔Witness ⇋ (ℕ , (_≡_ 10 , _≟_ 10)) , wrap tt , wrap tt ⟧ ⟩)) f-low
+
 
 -- refine addition to even numbers
-module EvenWitness where
+module EvenWitnessEx where
   open import Data.Nat
   open import Contracts.SSyn
   open import Contracts.Witness
@@ -34,7 +52,7 @@ module EvenWitness where
 
 
 -- refine gcd result with "z divides x/y" proofs
-module Gcd where
+module GcdEx where
   open import Data.Nat
   open import Contracts.SSyn
   open import Contracts.Witness
